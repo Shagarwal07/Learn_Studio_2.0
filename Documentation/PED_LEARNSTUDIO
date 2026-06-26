@@ -1,0 +1,1331 @@
+# Project Engineering Document (PED) & Technical Audit
+**Document Version:** 2.0.0  
+**Status:** Approved for Architecture Review  
+**Target System:** LearnStudio 2.0 Enterprise LMS  
+**Author:** Principal Software Architecture & Engineering Advisory Group  
+
+---
+
+## 1. Executive Summary
+
+This Project Engineering Document (PED) serves as the definitive architectural blueprint and technical audit for **LearnStudio 2.0**. LearnStudio has evolved from a lightweight learning management platform into a modern, decoupled, and production-ready enterprise-grade Learning Management System (LMS).
+
+A comprehensive codebase audit was conducted across the Spring Boot 3.2.4 backend and the Next.js 16.2.9 frontend. The system exhibits strong modularity, clean separation of concerns, and modern engineering practices. However, critical gaps in security architecture, system observability, AI provider configuration, and error-handling standards must be addressed to ensure enterprise-grade stability, compliance, and scale.
+
+This document inventories the system, evaluates the technology stack, conducts a detailed architectural review, performs a gap analysis, defines production standards, and maps out a multi-phase improvement roadmap accompanied by 15 system and workflow diagrams.
+
+---
+
+## 2. Product Vision
+
+LearnStudio 2.0 aims to democratize high-quality education by delivering an immersive, AI-assisted, and secure learning environment. The platform empowers instructors to manage courses, batches, and student progress seamlessly, while students benefit from real-time AI doubt-solving, automated interactive quizzes, and high-fidelity, secure learning resources.
+
+---
+
+## 3. Business Objectives
+
+*   **Intellectual Property Protection:** Safeguard educational materials (PDFs, notes, videos) from unauthorized downloads, sharing, and content piracy.
+*   **Scalable AI Integration:** Deliver cost-effective, low-latency AI interactions (doubt-solving, quiz generation, course recommendations) with built-in provider redundancy to prevent service disruptions.
+*   **Administrative & Operational Efficiency:** Provide instructors and administrators with automated tools for attendance marking, schedule management, certificate issuance, and course analytics.
+*   **Enterprise Readiness:** Build a highly available, modular codebase capable of transitioning to a microservices architecture as student enrollment scales.
+
+---
+
+## 4. Problem Statement
+
+Traditional LMS platforms struggle with three core issues:
+1.  **Content Piracy:** Inability to secure high-value learning materials, resulting in unauthorized distribution of course documents.
+2.  **Rigid AI Systems:** High API latency, lack of fallback mechanisms, and vendor lock-in with a single AI provider.
+3.  **Monolithic Constraints:** Poor separation of concerns and direct database exposures, which hinder scalability, maintainability, and enterprise adoption.
+
+LearnStudio 2.0 addresses these challenges through a decoupled Next.js/Spring Boot architecture, an abstract AI provider fallback engine, and an authenticated, audited secure PDF streaming pipeline.
+
+---
+
+## 5. Functional Requirements
+
+*   **Authentication & Session Management:** Multi-channel registration and login (email/password and Google OAuth 2.0) protected by short-lived JWT access tokens and long-lived database-backed refresh tokens.
+*   **Course & Lesson Management:** Hierarchical course creation, lesson ordering, progress tracking, and video streaming.
+*   **Batch & Schedule Management:** Batch-based student grouping, weekly timetables, class timings, and calendar integrations.
+*   **Student Attendance Tracking:** Offline (classroom) and online (activity-log based) attendance monitoring, with instructor override capabilities.
+*   **AI doubt-solver & Assistant:** Context-aware doubt-solving based on uploaded PDF contents, lesson summaries, and interactive preparation quizzes.
+*   **Certificate Generation:** Automated issuance of cryptographic certificates with unique verification hashes upon 100% course progress.
+*   **Homework & Submissions:** Homework posting by instructors and file submission by students with file validation constraints.
+
+---
+
+## 6. Non-functional Requirements
+
+*   **Performance:** API response times under 200ms for standard CRUD operations; AI completions under 2 seconds.
+*   **Availability:** 99.9% uptime for core authentication and learning paths.
+*   **Security:** Cryptographic JWT signatures (HMAC-SHA256), role-based access control (RBAC), secure transport protocols, and client-side download blocking.
+*   **Scalability:** Decoupled architecture allowing independent scaling of the Next.js frontend on edge networks and the Spring Boot backend in containerized environments.
+*   **Data Integrity:** Transactional consistency across enrollments, attendance marking, and certificate generation.
+
+---
+
+## 7. Technology Stack Evaluation
+
+An exhaustive evaluation of the active technology stack was conducted. The table below outlines the status and recommendations for each technology.
+
+### 7.1. Technology Status Table
+
+| Technology | Purpose | Category | Engineering Justification |
+| :--- | :--- | :--- | :--- |
+| **Next.js 16.2.9** | Frontend Framework | **KEEP** | Standard for React-based applications. The App Router provides layout nesting, server components, and performance optimizations. |
+| **React 19.2.4** | UI Library | **KEEP** | Modern reactive UI programming. High compatibility with Next.js and React Server Components. |
+| **TypeScript 5.x** | Language (Frontend) | **KEEP** | Prevents runtime type errors, improves developer ergonomics, and serves as self-documenting code. |
+| **Tailwind CSS v4** | Styling | **KEEP** | Modern utility-first styling. Low CSS bundle footprint and rapid UI prototyping. |
+| **Axios 1.18.1** | HTTP Client | **KEEP** | Robust interceptor lifecycle support, perfect for silent token refresh on 401 HTTP errors. |
+| **React Query 5.101** | Async State Cache | **KEEP** | Handles server-state caching, automatic refetching, pagination states, and reduces redundant API calls. |
+| **Context API** | Global State | **UPGRADE** | Sufficient for light auth and theme states. For complex state flows (e.g., interactive quiz builders or offline notes), migrating to **Zustand** is recommended. |
+| **Spring Boot 3.2.4** | Backend Framework | **KEEP** | Core enterprise framework providing robust security, JPA transactions, validation, and a mature ecosystem. |
+| **Java 17** | Language (Backend) | **KEEP** | LTS version of Java. Provides modern language features (Records, Pattern Matching) and high performance. |
+| **Maven** | Build Automation | **KEEP** | Reliable, predictable dependency management and build packaging. |
+| **Spring Security** | Security & RBAC | **KEEP** | Highly configurable security filter chain, supporting stateless JWT validation and method-level annotations. |
+| **JWT (JJWT 0.11.5)** | Session Tokens | **KEEP** | Stateless authentication. Low database load during request validation. |
+| **Refresh Tokens** | Session Longevity | **KEEP** | Essential for user experience, allowing silent access token renewals without requiring repeated logins. |
+| **PostgreSQL 16** | Relational Database | **KEEP** | ACID compliance, JSONB support for unstructured AI data, and excellent indexing capabilities. |
+| **Cloudinary** | Media Storage | **KEEP** | Fast image and PDF hosting, CDN delivery, and automatic transformation pipelines. |
+| **Gemini / OpenRouter** | AI Providers | **KEEP** | Outstanding intelligence-to-cost ratio. The current backend provider abstraction is highly flexible. |
+| **Docker / Compose** | Containerization | **KEEP** | Replicable local development environments and simplified cloud deployments. |
+
+---
+
+## 8. Architecture Overview
+
+LearnStudio 2.0 utilizes a **decoupled layered architecture** with a clear separation of concerns between the user interface and the business logic.
+
+### 8.1. Architectural Metric Scores
+
+*   **Overall Architecture Score:** `8.5/10` — Clean layering and modular service design. High separation of concerns.
+*   **Security Score:** `7.0/10` — Solid RBAC and token rotation, but vulnerable to PDF leaks due to raw byte streaming in secure viewer.
+*   **Scalability Score:** `8.0/10` — Decoupled design, but database connections and AI operations lack pooling/queueing.
+*   **Performance Score:** `8.0/10` — Fast API execution, but lacks database query cache (Redis) and database indexes.
+*   **Maintainability Score:** `8.5/10` — Clean package naming, solid DTO mapper patterns, and comprehensive seeder.
+*   **Production Readiness Score:** `6.5/10` — Lacks production monitoring, rate limiting, centralized logging, and CI/CD pipelines.
+*   **Enterprise Readiness Score:** `7.0/10` — Solid domain model, but requires transition path to microservices and advanced auditing.
+
+### 8.2. Overall System Architecture
+
+The diagram below maps the overall architecture of LearnStudio 2.0, showing the decoupling of the client layer, gateway/routing layer, backend services, and external integrations.
+
+```mermaid
+graph TB
+    subgraph Client Layer [Client Layer - Next.js App]
+        UI[Tailwind & React Components]
+        RC[React Query & Axios Client]
+        AuthCtx[Auth Context & State]
+        UI --> RC
+        UI --> AuthCtx
+    end
+
+    subgraph Security Gateway [Security & Routing Layer]
+        CORS[CORS Filter]
+        SecConfig[Spring Security Config]
+        JWTF[JwtFilter]
+        CORS --> SecConfig
+        SecConfig --> JWTF
+    end
+
+    subgraph Backend Core [Spring Boot Core App]
+        direction TB
+        subgraph Controllers [REST Controllers]
+            AC[AuthController]
+            BC[BatchController]
+            CC[CourseController]
+            NC[NoteController]
+            AIC[AiController]
+        end
+        subgraph Services [Business Logic Layer]
+            AS[AuthService]
+            BS[BatchService]
+            CS[CourseService]
+            NS[NoteService]
+            AIS[AiService]
+            RTS[RefreshTokenService]
+            CLS[CloudinaryService]
+        end
+        subgraph Repositories [Data Access Layer]
+            UR[UserRepository]
+            BR[BatchRepository]
+            CR[CourseRepository]
+            NR[NoteRepository]
+            RTR[RefreshTokenRepository]
+            NVLR[NoteViewLogRepository]
+        end
+    end
+
+    subgraph Database Layer
+        PG[(PostgreSQL 16 DB)]
+    end
+
+    subgraph External Integrations
+        CLD[Cloudinary Media API]
+        GEM[Gemini API]
+        OR[OpenRouter API]
+    end
+
+    %% Client communication
+    RC -->|HTTP REST Requests| CORS
+    JWTF -->|Authorized context| Controllers
+
+    %% Layer flows
+    AC --> AS
+    BC --> BS
+    CC --> CS
+    NC --> NS
+    AIC --> AIS
+
+    AS --> RTS
+    AS --> UR
+    NS --> CLS
+    NS --> AIS
+    NS --> NVLR
+
+    BS --> BR
+    CS --> CR
+    NS --> NR
+    RTS --> RTR
+
+    %% DB Access
+    UR & BR & CR & NR & RTR & NVLR -->|Spring Data JPA| PG
+
+    %% External APIs
+    CLS -->|File Uploads| CLD
+    AIS -->|Fallback AI Requests| GEM
+    AIS -->|Fallback AI Requests| OR
+```
+
+### 8.3. Request Lifecycle
+
+The request lifecycle outlines the exact flow of a client request from the Next.js frontend, through the Spring Security filters, into the REST controllers, services, repositories, database, and back.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Next.js Client
+    participant CORS as CORS Filter
+    participant Security as Spring Security Filter Chain
+    participant JWT as JwtFilter
+    participant Controller as REST Controller
+    participant Service as Business Service
+    participant DB as PostgreSQL Database
+
+    User->>CORS: HTTP Request (with Bearer Token in Header)
+    activate CORS
+    CORS-->>User: Allow CORS headers check
+    deactivate CORS
+
+    activate Security
+    User->>Security: Process Request Filters
+    Security->>JWT: Extract "Authorization" Header
+    activate JWT
+    
+    alt Token is Present and Valid
+        JWT->>JWT: Extract Email & Validate Signature
+        JWT->>Security: Set UsernamePasswordAuthenticationToken in SecurityContext
+        JWT-->>Controller: Forward Request
+    else Token is Missing / Expired
+        JWT->>Security: Clear SecurityContext
+        Security-->>User: 401 Unauthorized Response (Triggers Axios Silent Refresh)
+    end
+    deactivate JWT
+    deactivate Security
+
+    activate Controller
+    Controller->>Controller: Validate Request Body (@Valid)
+    Controller->>Service: Invoke Service Method (with parameters)
+    activate Service
+    
+    Service->>DB: Database Query (JPA / Hibernate)
+    activate DB
+    DB-->>Service: Return Entity Data
+    deactivate DB
+    
+    Service->>Service: Map Entity to DTO (Clean response structure)
+    Service-->>Controller: Return DTO / Domain Object
+    deactivate Service
+    
+    Controller-->>User: Return HTTP 200 OK (ApiResponse Envelope)
+    deactivate Controller
+```
+
+---
+
+## 9. User Roles & Permissions
+
+LearnStudio 2.0 implements role-based access control (RBAC) with three core roles:
+
+1.  **ADMIN:** Full administrative access. Can seed data, manage all users, review platform analytics, delete courses/notes, and configure system-wide parameters.
+2.  **INSTRUCTOR:** Academic content creators. Can manage batches, mark student attendance, upload course materials (notes/PDFs), create homework assignments, view batch analytics, and configure class timetables.
+3.  **STUDENT:** Core learning consumers. Can browse and enroll in courses, view lessons, complete progress trackers, upload homework submissions, consult the AI doubt-solver, generate practice quizzes, and download earned certificates.
+
+---
+
+## 10. Database Design
+
+The database design utilizes PostgreSQL 16. It is highly normalized, featuring constraints to enforce data integrity.
+
+### 10.1. Database ER Diagram
+
+The entity-relationship diagram below maps all tables, their attributes, and foreign key relationships.
+
+```mermaid
+erDiagram
+    users {
+        bigint id PK
+        varchar name
+        varchar email UK
+        varchar password
+        varchar role
+        bigint batch_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    batches {
+        bigint id PK
+        varchar name
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    courses {
+        bigint id PK
+        varchar title
+        text description
+        numeric price
+        varchar thumbnail
+        varchar level
+        bigint instructor_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    lessons {
+        bigint id PK
+        bigint course_id FK
+        varchar title
+        integer position
+        varchar video_url
+        varchar duration
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    enrollments {
+        bigint id PK
+        bigint user_id FK
+        bigint course_id FK
+        integer progress
+        timestamp enrolled_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    lesson_progress {
+        bigint id PK
+        bigint enrollment_id FK
+        bigint lesson_id FK
+        boolean completed
+        timestamp completed_at
+    }
+
+    notes {
+        bigint id PK
+        varchar title
+        text description
+        bigint course_id FK
+        bigint lesson_id FK
+        varchar file_url
+        varchar public_id
+        bigint uploaded_by_id FK
+        boolean is_visible
+        text extracted_text
+        boolean ai_enabled
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    note_view_logs {
+        bigint id PK
+        bigint note_id FK
+        bigint user_id FK
+        timestamp viewed_at
+        varchar ip_address
+        varchar user_agent
+    }
+
+    refresh_tokens {
+        bigint id PK
+        bigint user_id FK
+        varchar token UK
+        timestamp expiry_date
+    }
+
+    certificates {
+        bigint id PK
+        bigint user_id FK
+        bigint course_id FK
+        varchar certificate_hash UK
+        timestamp issued_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    quiz_attempts {
+        bigint id PK
+        bigint user_id FK
+        varchar topic
+        integer score
+        integer total_questions
+        timestamp created_at
+    }
+
+    homeworks {
+        bigint id PK
+        varchar title
+        text description
+        bigint course_id FK
+        timestamp due_date
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    homework_submissions {
+        bigint id PK
+        bigint homework_id FK
+        bigint student_id FK
+        varchar file_url
+        varchar public_id
+        text student_notes
+        timestamp submitted_at
+    }
+
+    attendance {
+        bigint id PK
+        bigint user_id FK
+        bigint batch_id FK
+        date date
+        varchar status
+        varchar marked_by
+        timestamp created_at
+    }
+
+    schedule_events {
+        bigint id PK
+        varchar title
+        text description
+        varchar event_type
+        bigint course_id FK
+        bigint instructor_id FK
+        varchar target_role
+        date event_date
+        time start_time
+        time end_time
+        varchar location
+        varchar meeting_link
+        bigint created_by_id FK
+    }
+
+    %% Relationships
+    batches ||--o{ users : "contains"
+    users ||--o| refresh_tokens : "has"
+    users ||--o{ enrollments : "enrolls_in"
+    users ||--o{ certificates : "earns"
+    users ||--o{ quiz_attempts : "attempts"
+    users ||--o{ attendance : "attends"
+    users ||--o{ courses : "instructs"
+    courses ||--o{ lessons : "has"
+    courses ||--o{ enrollments : "has"
+    courses ||--o{ certificates : "issues_for"
+    courses ||--o{ homeworks : "assigns"
+    courses ||--o{ notes : "holds"
+    enrollments ||--o{ lesson_progress : "tracks"
+    lessons ||--o{ lesson_progress : "completes"
+    notes ||--o{ note_view_logs : "logs_views"
+    users ||--o{ note_view_logs : "views"
+    homeworks ||--o{ homework_submissions : "receives"
+    users ||--o{ homework_submissions : "submits"
+    batches ||--o{ attendance : "tracks_for"
+    courses ||--o{ schedule_events : "scheduled_for"
+    users ||--o{ schedule_events : "instructs_event"
+    users ||--o{ schedule_events : "creates_event"
+```
+
+---
+
+## 11. Backend Architecture
+
+The backend is built on **Spring Boot 3.2.4** and **Java 17**. It operates as a stateless REST API, mapping web requests to database transactions.
+
+### 11.1. Core Package Structure
+
+The backend classes are partitioned into functional layers:
+*   `com.learnhub.config`: App configurations (CORS, Cloudinary, Database seeders).
+*   `com.learnhub.controller`: REST Controllers exposing public and secured endpoints.
+*   `com.learnhub.dto`: Data Transfer Objects for clean, client-facing payloads.
+*   `com.learnhub.entity`: JPA Entities mapping Java objects to database tables.
+*   `com.learnhub.exception`: Centralized controller advice for uniform error envelopes.
+*   `com.learnhub.repository`: Spring Data JPA Repositories for database queries.
+*   `com.learnhub.security`: Filters, token utilities, and custom UserDetailsService.
+*   `com.learnhub.service`: Transactional business services coordinating application logic.
+
+### 11.2. Critical Code Audit & Code Smells
+
+An analysis of the backend source code revealed several items of technical debt:
+
+#### 1. Performance-Impacting Log Statements in `GlobalExceptionHandler.java`
+*   **The Issue:** The exception handler utilizes `ex.printStackTrace()` inside catch blocks (e.g., lines 16, 24, 32, 43).
+*   **The Risk:** `printStackTrace()` writes directly to standard error stream (`System.err`), bypassing SLF4J logging levels. It is a synchronous, blocking operation that can cause major thread contention and performance degradation under high loads.
+*   **The Fix:** Inject the Lombok `@Slf4j` annotation and log exceptions using `log.error("An error occurred: {}", ex.getMessage(), ex);`.
+
+#### 2. Over-Generic Exception Mappings
+*   **The Issue:** `GlobalExceptionHandler` maps all `RuntimeException.class` exceptions to `HttpStatus.BAD_REQUEST` (HTTP 400).
+*   **The Risk:** Business exceptions like "User not found" (which should return HTTP 404) or "Unauthorized to delete" (which should return HTTP 403) are masked as generic 400 errors.
+*   **The Fix:** Create specific, granular custom exceptions (e.g., `ResourceNotFoundException`, `UnauthorizedAccessException`) and map them to their corresponding, semantic HTTP status codes.
+
+---
+
+## 12. Frontend Architecture
+
+The frontend is a modern **Next.js 16.2.9** application leveraging the App Router and TypeScript.
+
+### 12.1. Client-State and Server-State Management
+*   **Server State (React Query):** Used for fetching and caching asynchronous database resources (courses, notes, schedule events). This drastically reduces redundant API calls by keeping track of resource freshness.
+*   **Global State (Context API):** Used for lightweight global states:
+    *   `AuthContext.tsx`: Tracks the logged-in user profile, loading states, and handles token storage.
+    *   `ThemeContext.tsx`: Tracks dark/light mode preferences and applies CSS class indicators.
+*   **Recommendation:** If state flows grow (such as building interactive, step-by-step course builders or complex AI chat sidebars), introduce **Zustand** to keep state mutation logic clean and outside the React component tree.
+
+### 12.2. Axios Network Interceptors
+Axios is configured with two interceptors in `frontend/src/lib/api.ts`:
+1.  **Request Interceptor:** Automatically extracts the JWT `token` from `localStorage` and appends it as a `Bearer` token to the `Authorization` header of all outgoing requests.
+2.  **Response Interceptor (Silent Token Refresh):** If a request returns a `401 Unauthorized` status code, the interceptor intercepts the failure, pauses the request queue, sends a POST request to `/auth/refresh` with the saved `refreshToken`, updates the local access token, and retries the failed requests seamlessly. If the refresh token itself has expired, the interceptor clears local storage and routes the user to `/login?expired=true`.
+
+---
+
+## 13. Security Architecture
+
+### 13.1. Authentication Flow
+
+The system uses a robust authentication design that accommodates standard credentials and Google OAuth 2.0.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Next.js Client
+    participant AuthAPI as REST AuthController
+    participant AuthService as AuthService
+    participant JWT as JwtUtil
+    participant RTS as RefreshTokenService
+    participant DB as PostgreSQL DB
+
+    alt standard credentials login
+        Client->>AuthAPI: POST /api/auth/login (email, password)
+        activate AuthAPI
+        AuthAPI->>AuthService: login(LoginRequest)
+        activate AuthService
+        AuthService->>DB: Validate credentials & Fetch User
+        DB-->>AuthService: User Entity
+        AuthService->>JWT: generateToken(email)
+        JWT-->>AuthService: short-lived Access Token (1 day)
+        AuthService->>RTS: createRefreshToken(userId)
+        activate RTS
+        RTS->>DB: Delete old tokens & Save new UUID token
+        RTS-->>AuthService: Refresh Token Entity (7 days)
+        deactivate RTS
+        AuthService-->>AuthAPI: AuthResponse DTO (tokens + user details)
+        deactivate AuthService
+        AuthAPI-->>Client: HTTP 200 (ApiResponse)
+        deactivate AuthAPI
+    else Google OAuth 2.0 login
+        Client->>Client: Load Google One Tap / Button
+        Client->>Client: Obtain Credential JWT from Google
+        Client->>AuthAPI: POST /api/auth/google (credential)
+        activate AuthAPI
+        AuthAPI->>AuthService: loginWithGoogle(credential)
+        activate AuthService
+        AuthService->>AuthService: Verify Signature against Google API
+        AuthService->>DB: Find existing user by Google Email
+        alt User Registered
+            DB-->>AuthService: User Entity
+            AuthService->>JWT: generateToken(email)
+            AuthService->>RTS: createRefreshToken(userId)
+            AuthService-->>AuthAPI: AuthResponse DTO
+            AuthAPI-->>Client: HTTP 200 (ApiResponse)
+        else User Not Found
+            AuthService-->>AuthAPI: Throw "NOT_REGISTERED"
+            AuthAPI-->>Client: HTTP 400 (Redirect to role selection register)
+        end
+        deactivate AuthService
+        deactivate AuthAPI
+    end
+```
+
+### 13.2. Secure PDF Streaming Pipeline Audit
+
+The "Secure PDF" streaming feature was closely audited.
+
+#### The Current Implementation (Facade Security)
+*   **The Flow:**
+    1.  The client requests a secure PDF: `/api/student/notes/{noteId}/secure-view`.
+    2.  The backend validates user enrollment, logs the IP/UserAgent to `note_view_logs`, downloads the raw PDF bytes from Cloudinary, and streams the raw bytes back to the frontend with an `inline` content disposition.
+    3.  The frontend receives the PDF bytes, generates an internal browser Blob URL, and loads it into an `iframe` with toolbar parameters hidden (`#toolbar=0`).
+    4.  The frontend overlays a transparent, CSS-styled HTML watermarking layer containing student info and timestamp, and runs a script to block Right-Click, Ctrl+S, Ctrl+P, and F12 keys.
+
+#### The Vulnerability (High Severity Leak Risk)
+*   The raw, unwatermarked PDF document is sent over the network to the client browser.
+*   Any tech-savvy student can bypass the keyboard block, inspect the Network tab, capture the raw binary response, or extract the Blob URL (`blob:http://localhost:3000/xxx`) to download the clean, unwatermarked PDF.
+*   **The verdict:** The current implementation provides *obfuscation*, not true security.
+
+#### The Solution (True PDF Security Flow)
+To secure intellectual property, the watermarking and protection must occur **on the server side** before bytes are streamed.
+
+```mermaid
+graph TB
+    subgraph Client [Next.js Client]
+        View[Iframe / HTML5 Canvas Viewer]
+        KBlock[Keypress & Context Menu Blocker]
+    end
+
+    subgraph Backend [Spring Boot Backend Server]
+        Controller[NoteController]
+        AuthCheck[Enrollment & RBAC Guard]
+        Downloader[Cloudinary PDF Streamer]
+        PDFProcessor[PDFBox Stamping Engine]
+        Encrypter[PDF Permission Locking Engine]
+    end
+
+    subgraph Storage [External Cloudinary]
+        RawPDF[Clean, Raw PDF File]
+    end
+
+    %% Flow Steps
+    View -->|1. Request secure PDF| Controller
+    Controller --> AuthCheck
+    AuthCheck -->|2. Authorized| Downloader
+    Downloader -->|3. Fetch raw stream| Storage
+    RawPDF -->|4. Raw bytes stream| Downloader
+    Downloader --> PDFProcessor
+    
+    %% Stamping
+    PDFProcessor -->|5. Stamp User Email, IP & Timestamp on every page| Encrypter
+    Encrypter -->|6. Disable printing, copying & editing permissions via Owner Password| Controller
+    Controller -->|7. Stream stamped, locked PDF bytes| View
+    KBlock -.->|8. Impede client browser inspections| View
+```
+
+*   **Implementation steps for Server-Side Watermarking:**
+    1.  In `NoteService.secureViewNote`, load the raw PDF input stream from Cloudinary into Apache PDFBox: `PDDocument.load(inputStream)`.
+    2.  Instantiate a watermarking layout using `PDPageContentStream`. Stamp the user's name, email, IP address, and timestamp diagonally across every page with a semi-transparent opacity (using extended graphics states).
+    3.  Configure the PDF document access permissions using `StandardProtectionPolicy`. Assign a random owner password and set permissions:
+        *   `setCanPrint(false)`
+        *   `setCanExtractContent(false)`
+        *   `setCanModify(false)`
+    4.  Write the modified PDF to a byte array and stream it to the client. The client now receives a locked, stamped document that is secure even if downloaded.
+
+---
+
+## 14. AI Architecture & Fallback
+
+LearnStudio 2.0 implements an abstract, resilient AI engine with automated provider fallback.
+
+### 14.1. The AI Provider Fallback Flow
+
+```mermaid
+graph TD
+    subgraph Client [Client UI]
+        Query[Doubt Solver / Quiz / Viva request]
+    end
+
+    subgraph Service [AiService Orchestrator]
+        AskFB[askWithFallback]
+        GetProv[getProvider]
+        LogFail[Log Provider Failure]
+    end
+
+    subgraph Providers [AI Provider Implementations]
+        Gemini[GeminiAiProvider]
+        OpenRouter[OpenRouterAiProvider]
+    end
+
+    subgraph API [External AI APIs]
+        GeminiAPI[Gemini 2.5 Flash API]
+        OpenRouterAPI[OpenRouter proxy API]
+    end
+
+    %% Flow
+    Query -->|1. Request with preferred model| AskFB
+    AskFB -->|2. Resolve preferred provider| GetProv
+    GetProv -->|3. Call ask| Gemini
+    Gemini -->|4. HTTP POST request| GeminiAPI
+
+    alt Gemini API Succeeds
+        GeminiAPI -->|5a. Return text response| Gemini
+        Gemini -->|6a. Return answer| AskFB
+        AskFB -->|7a. Return output to client| Query
+    else Gemini API Fails / Quota Exceeded 429
+        GeminiAPI -.->|5b. Error / Timeout| Gemini
+        Gemini -.->|6b. Throw RuntimeException| AskFB
+        AskFB -->|7b. Trigger fallback| LogFail
+        LogFail -->|8. Switch preferred model to OpenRouter| GetProv
+        GetProv -->|9. Call ask| OpenRouter
+        OpenRouter -->|10. HTTP POST request| OpenRouterAPI
+        OpenRouterAPI -->|11. Return text response| OpenRouter
+        OpenRouter -->|12. Return answer| AskFB
+        AskFB -->|13. Return output to client| Query
+    end
+```
+
+### 14.2. Provider Configuration Audit & Inconsistency
+*   **The Issue:** `OpenRouterAiProvider.java` has a `supports(String providerName)` method that returns true for "openrouter" and "grok" (line 54). However, `application.properties` contains separate keys for Grok (`grok.api.key`, `grok.api.url`, `grok.model`) which are completely ignored because a dedicated `GrokAiProvider` class does not exist!
+*   **The Risk:** Passing "grok" as a model parameter runs the request through the OpenRouter provider using OpenRouter's credentials, which fails if the OpenRouter API key is not configured, while the actual Grok configuration lies dormant.
+*   **The Fix:** Create a dedicated `GrokAiProvider` implementing the `AiProvider` interface, inject the Grok properties, and return true for `supports("grok")`.
+
+---
+
+## 15. Deployment Architecture
+
+The application is designed for multi-cloud, high-availability deployments.
+
+```mermaid
+graph TB
+    subgraph Client Edge [Client Edge - Vercel CDN]
+        NextApp[Next.js 16 Client App]
+    end
+
+    subgraph Backend Container [Backend Application Node]
+        subgraph Railway / Render [PaaS Node]
+            SpringBoot[Spring Boot 3.2.4 API Container]
+        end
+    end
+
+    subgraph Cloud Database [Database Node]
+        subgraph Neon / Supabase [PostgreSQL Cluster]
+            PG[(PostgreSQL 16 Database)]
+        end
+    end
+
+    subgraph Storage Services [Media CDN]
+        Cloudinary[Cloudinary Media Storage]
+    end
+
+    subgraph AI Service Mesh [AI Engine]
+        GeminiAPI[Google Gemini API]
+        OpenRouterAPI[OpenRouter API]
+    end
+
+    %% Network flows
+    NextApp -->|1. Authenticated HTTPS REST requests| SpringBoot
+    SpringBoot -->|2. JDBC connection pool| PG
+    SpringBoot -->|3. Upload files / Stream PDFs| Cloudinary
+    SpringBoot -->|4. Fallback prompt completions| GeminiAPI
+    SpringBoot -->|5. Redundant prompt completions| OpenRouterAPI
+    NextApp -.->|6. Read static assets / Images| Cloudinary
+```
+
+*   **Vercel (Frontend):** Next.js is deployed directly to Vercel, providing edge-optimized server-side rendering, routing, and low-latency asset delivery.
+*   **Railway/Render (Backend):** The Spring Boot backend is packaged using a multi-stage Dockerfile and deployed on an auto-scaling PaaS.
+*   **Neon/Supabase (Database):** Serverless PostgreSQL provides automated backups, connection pooling, and auto-scaling computational resources.
+*   **Cloudinary (Storage):** Offloads file handling, ensuring the backend server remains stateless and thin.
+
+---
+
+## 16. DevOps Strategy
+
+LearnStudio 2.0 utilizes a containerized deployment flow to guarantee consistency between local development and cloud staging/production environments.
+
+### 16.1. Multi-Stage Dockerfile (Backend)
+The backend `Dockerfile` uses a two-stage build:
+1.  **Build Stage (`maven:3.9-eclipse-temurin-17`):** Downloads dependencies offline to leverage Docker cache layers, copies the source code, and compiles the thin JAR using `mvn package -DskipTests`.
+2.  **Run Stage (`eclipse-temurin:17-jre-alpine`):** Copies the JAR into a lightweight, secured Alpine-based Java runtime container. Running an Alpine JRE container minimizes the attack surface and reduces the image size to under 250MB.
+
+### 16.2. Docker Compose Environment
+The `docker-compose.yml` file configures:
+*   A **PostgreSQL 16** service with persistent volume mappings (`postgres_data`) and an automated database initialization script (`full-seed.sql`).
+*   A **healthcheck** on the database container using `pg_isready` to ensure the Spring Boot service only boots up after the database port is fully active and accepting connections.
+*   A **Spring Boot application container** that automatically builds the backend, links to the PostgreSQL network host, and injects host-level environment keys (`GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`) safely.
+
+---
+
+## 17. Project Folder Structure
+
+The structural layouts of both repositories are detailed below:
+
+```
+LearnStudio_final/
+├── docker-compose.yml              # Local multi-container orchestration
+├── .env.example                    # Template for host environmental keys
+├── backend/
+│   ├── Dockerfile                  # Multi-stage JVM packaging script
+│   ├── pom.xml                     # Maven dependencies & build setup
+│   └── src/main/
+│       ├── java/com/learnhub/
+│       │   ├── LmsApplication.java  # App Entrypoint
+│       │   ├── config/             # Config classes (CORS, Seeder, Cloudinary)
+│       │   ├── controller/         # REST API Controllers
+│       │   ├── dto/                # Client request/response envelopes
+│       │   ├── entity/             # Hibernate JPA entity definitions
+│       │   ├── exception/          # GlobalExceptionHandler & advice
+│       │   ├── repository/         # JPA data-access interfaces
+│       │   ├── security/           # JWT, filter chain, and user details
+│       │   └── service/            # Core business & transactional logic
+│       └── resources/
+│           ├── application.properties    # Shared properties file
+│           ├── application-h2.properties # H2 profile for testing
+│           ├── data.sql                  # Spring standard DDL/DML hooks
+│           └── full-seed.sql             # SQL database seeder script
+└── frontend/
+    ├── package.json                # Next.js & React dependencies
+    ├── tsconfig.json               # TypeScript compilation settings
+    ├── next.config.ts              # Next.js router configurations
+    └── src/
+        ├── app/                    # Next.js App Router (Layouts and Pages)
+        │   ├── globals.css         # Tailwind directives & core styles
+        │   ├── layout.tsx          # Master page layout wrapper
+        │   ├── page.tsx            # Portal landing view
+        │   ├── dashboard/          # Student dashboards
+        │   ├── instructor/         # Academic/Instructor dashboards
+        │   ├── login/              # Portal credentials login
+        │   └── register/           # Portal registration page
+        ├── components/             # Reusable UI widgets (Secure PDF, ThemeToggle)
+        ├── context/                # Global states (AuthContext, ThemeContext)
+        └── lib/                    # Intercepted Axios client and helper utilities
+```
+
+---
+
+## 18. Coding Standards
+
+*   **Lombok Usage:** Use `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor`, and `@Builder` systematically for DTOs and entities. For entities, specify `@ToString.Exclude` and `@EqualsAndHashCode(callSuper = false)` on relational mappings to prevent recursive stack overflows.
+*   **Stateless Services:** Business services must remain completely stateless. Do not store request-specific member variables in service instances.
+*   **Immutability:** Mark local variables as `final` wherever possible. Ensure DTO fields are immutable (getter only, no setters).
+*   **Type Safety:** Strictly avoid using `any` in TypeScript. All API payloads, hook return values, and component props must have explicit interfaces.
+
+---
+
+## 19. API Standards
+
+*   **RESTful URIs:** Use noun-based, pluralized endpoints (e.g., `GET /api/student/notes/course/{courseId}`). Use proper HTTP methods: `GET` for retrieval, `POST` for creation, `PUT` for full updates, `PATCH` for partial updates, and `DELETE` for removal.
+*   **Enveloped Responses:** All controller endpoints must wrap output inside the `ApiResponse<T>` envelope:
+    ```json
+    {
+      "success": true,
+      "message": "Operation description",
+      "data": { ... },
+      "timestamp": "2026-06-25T15:00:00"
+    }
+    ```
+*   **Version Control:** Introduce URI-based API versioning (e.g., `/api/v1/...`) to prevent breaking client applications as the backend schema evolves.
+*   **HTTP Status Codes:**
+    *   `200 OK` / `201 Created` for successful operations.
+    *   `400 Bad Request` for validation or payload errors.
+    *   `401 Unauthorized` for missing or expired access tokens.
+    *   `403 Forbidden` for role mismatches (e.g., Student attempting Admin APIs).
+    *   `404 Not Found` for missing database resources.
+    *   `500 Internal Server Error` for unhandled runtime exceptions.
+
+---
+
+## 20. Error Handling Standards
+
+*   **No Stack Trace Leakage:** Do not return stack traces, internal SQL exceptions, or raw system error messages to the client. These disclose internal system details and present security vulnerabilities.
+*   **Centralized Translation:** Map domain-level exceptions in `GlobalExceptionHandler` to clear, localized client messages.
+*   **Input Validation:** Guard REST controllers with `@Valid`. Bind validation annotations (`@NotNull`, `@Size`, `@Email`, `@Min`) to DTO fields to reject invalid payloads at the gateway layer.
+
+---
+
+## 21. Logging Standards
+
+*   **Centralized SLF4J Loggers:** Do not use `System.out.println` or `ex.printStackTrace()`. Use logger instances to categorize logs by severity level.
+*   **Categorized Severity Levels:**
+    *   `INFO`: High-level system events (e.g., application startup, database seeded, certificate issued).
+    *   `WARN`: Non-critical anomalies or fallback actions (e.g., "AI Provider Gemini failed, triggering fallback to OpenRouter").
+    *   `ERROR`: System failures requiring developer attention (e.g., database connection lost, payment webhook signature verification failed).
+*   **Structured Context:** Include transaction IDs, user IDs, or correlation tokens in log strings to simplify log tracing across distributed systems.
+
+---
+
+## 22. Environment Variables
+
+Maintain a rigid separation between configuration keys and application code. All configurations must load from environment variables with safe fallback values.
+
+| Variable Name | Purpose | Example Value | Production Status |
+| :--- | :--- | :--- | :--- |
+| `SPRING_DATASOURCE_URL` | PostgreSQL connection string | `jdbc:postgresql://localhost:5432/lms_db` | Required |
+| `SPRING_DATASOURCE_USERNAME` | PostgreSQL username | `postgres` | Required |
+| `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password | `postgres` | Required |
+| `JWT_SECRET` | Cryptographic token signature key | `secure-256-bit-key-here` | Required (Change default) |
+| `GEMINI_API_KEY` | Direct Google Gemini API Key | `AIzaSy...` | Required |
+| `OPENROUTER_API_KEY` | OpenRouter API Gateway Key | `sk-or-v1...` | Required |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary Account Identifier | `learnstudio-cloud` | Required |
+| `CLOUDINARY_API_KEY` | Cloudinary API Key | `123456789` | Required |
+| `CLOUDINARY_API_SECRET` | Cloudinary Cryptographic Secret | `secret-key` | Required |
+| `NEXT_PUBLIC_API_BASE_URL` | Frontend API Target Endpoint | `https://api.learnstudio.com/api` | Required |
+
+---
+
+## 23. Local Development Guide
+
+### Prerequisites
+*   Java 17 JDK installed.
+*   Node.js 18+ installed.
+*   Docker and Docker Desktop running.
+
+### Step 1: Clone and Configure
+1.  Copy `.env.example` in the root folder to `.env` and populate the keys (`GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, etc.).
+2.  Copy `.env.example` inside the `frontend` folder to `.env.local`.
+
+### Step 2: Spin Up the Database & Backend
+```bash
+# From the project root, run Docker Compose
+docker-compose up --build
+```
+This builds the Spring Boot container and spins up PostgreSQL. The database is initialized and seeded with mock courses, users, and schedules automatically.
+
+### Step 3: Run the Frontend
+```bash
+# Navigate to the frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 24. Deployment Guide
+
+### 24.1. Backend Deployment (Railway / Render)
+1.  Connect your GitHub repository to the PaaS dashboard.
+2.  Select the `backend` directory. The platform will automatically detect the `Dockerfile` and initiate a multi-stage container build.
+3.  Configure the environment variables in the PaaS dashboard (`SPRING_DATASOURCE_URL`, `JWT_SECRET`, etc.).
+4.  Expose port `8080`.
+
+### 24.2. Database Deployment (Neon / Supabase)
+1.  Create a new PostgreSQL database instance.
+2.  Obtain the connection string: `jdbc:postgresql://<host>:<port>/<database>?sslmode=require`.
+3.  Inject this connection string into your backend deployment environment variables.
+
+### 24.3. Frontend Deployment (Vercel)
+1.  Import your repository into Vercel.
+2.  Select the `frontend` directory.
+3.  Configure the Build Command: `next build` and Output Directory: `.next`.
+4.  Inject the environment variable: `NEXT_PUBLIC_API_BASE_URL` pointing to your deployed backend URL.
+
+---
+
+## 25. Testing Strategy
+
+*   **Unit Testing (JUnit 5 & Mockito):** Write unit tests for all business services. Mock database repositories using Mockito to test service logic in isolation.
+*   **Integration Testing (`@SpringBootTest`):** Test REST controllers by spinning up an H2 in-memory database using the `application-h2.properties` profile. Verify security filters, RBAC, and response validation.
+*   **End-to-End Testing (Playwright / Cypress):** Automate core user journeys (Register -> Login -> Course Purchase -> View Lesson -> Take AI Quiz -> Earn Certificate) on the Next.js frontend against a staging environment.
+
+---
+
+## 26. Production Readiness Checklist
+
+*   [ ] **Database Connection Pool:** Configure HikariCP connection pool parameters (`maximum-pool-size=20`, `minimum-idle=5`).
+*   [ ] **Secure JWT Secret:** Replace default/development JWT keys with a 256-bit cryptographically secure string stored in vault/environment variables.
+*   [ ] **Server-Side PDF Stamping:** Replace client-side watermark overlays with the server-side Apache PDFBox watermarking and protection engine.
+*   [ ] **CORS Restrictive Origins:** Remove localhost mappings from production CORS configurations. Limit origins strictly to the deployed Next.js domain.
+*   [ ] **Centralized Logging:** Configure Logback to output structured JSON logs, and stream them to an aggregator (e.g., Datadog, ELK, or Grafana Loki).
+*   [ ] **API Rate Limiting:** Add Bucket4j or Redis-based rate limiting to public endpoints (especially `/api/auth/**` and `/api/ai/**`) to prevent brute force attacks and API cost overflows.
+*   [ ] **Health Probe Endpoints:** Integrate `spring-boot-starter-actuator` to expose `/actuator/health` for orchestrator-level health checks.
+
+---
+
+## 27. Security Checklist
+
+*   [ ] **SSL/TLS Encryption:** Force HTTPS on all frontend and backend endpoints. Terminate SSL at the edge gateway/load balancer.
+*   [ ] **Password Hashing:** Ensure all passwords are encrypted with `BCryptPasswordEncoder` using a strength/rounds setting of 10-12.
+*   [ ] **Method-Level Protection:** Ensure all administrative and instructor endpoints are protected on the backend using `@PreAuthorize("hasRole('...')")` rather than relying on frontend routing locks.
+*   [ ] **SQL Injection Prevention:** Avoid writing raw SQL queries. Utilize Spring Data JPA repository method signatures or parameter binding in `@Query` to prevent SQL injection.
+*   [ ] **XSS Sanitization:** Sanitize all rich-text input from users and instructors before storing it in the database or rendering it in the frontend.
+
+---
+
+## 28. Performance Optimization Plan
+
+1.  **Database Query Caching:** Integrate **Redis** as a second-level Hibernate cache for slow-changing database entities (e.g., course catalogs, lesson indices).
+2.  **Database Indexing:** Add indexes to columns commonly used in lookup and join queries:
+    *   `CREATE INDEX idx_enrollment_user_course ON enrollments(user_id, course_id);`
+    *   `CREATE INDEX idx_lesson_course ON lessons(course_id);`
+    *   `CREATE INDEX idx_note_course ON notes(course_id);`
+3.  **Connection Pooling tuning:** Analyze active database connections and tune pool sizes to prevent database connection starvation.
+4.  **AI Response Streaming:** Refactor the AI doubt-solver controller and service to stream completions chunk-by-chunk to the client using Server-Sent Events (SSE), reducing perceived latency.
+
+---
+
+## 29. Future Roadmap
+
+### 29.1. Prioritized Improvement Plan
+
+```mermaid
+gantt
+    title LearnStudio 2.0 Architectural Improvement Roadmap
+    dateFormat  YYYY-MM-DD
+    axisFormat  %b %d
+    
+    section Critical Priority
+    Server-Side PDF Watermarking    :active, crit, p1, 2026-06-25, 5d
+    Grok AI Provider Fix           :active, crit, p2, after p1, 3d
+    Restrict CORS & Production Key  :crit, p3, after p2, 2d
+
+    section High Priority
+    Redis Query Caching            :p4, after p3, 7d
+    DB Index Tuning                :p5, after p3, 3d
+    Centralized SLF4J Logging      :p6, after p3, 4d
+
+    section Medium Priority
+    API Rate Limiting (Bucket4j)    :p7, after p6, 6d
+    Prometheus/Grafana Monitoring   :p8, after p7, 8d
+    CI/CD Gitlab/Github Actions     :p9, after p8, 5d
+
+    section Low Priority
+    Internationalization (i18n)    :p10, after p9, 10d
+    PWA Offline Capabilities        :p11, after p10, 12d
+```
+
+### 29.2. Improvement Details
+
+#### 1. Server-Side PDF Watermarking & Security (Critical)
+*   **Why:** Current client-side watermarking is a visual facade. Raw, unwatermarked PDF bytes are exposed in transit and can be intercepted and downloaded.
+*   **Difficulty:** Medium
+*   **Est. Time:** 5 Days
+*   **Dependencies:** Apache PDFBox (Already present in `pom.xml`).
+*   **Risk:** Low. PDFBox is a mature library, but server-side rendering increases memory usage, which must be monitored.
+
+#### 2. Grok AI Provider Configuration Fix (Critical)
+*   **Why:** Currently, "grok" queries are routed through the OpenRouter provider using OpenRouter configurations, leaving the configured Grok credentials unused.
+*   **Difficulty:** Easy
+*   **Est. Time:** 3 Days
+*   **Dependencies:** None.
+*   **Risk:** Low. Refactors AI routing to utilize the dedicated Grok credentials.
+
+#### 3. Redis Query Caching (High)
+*   **Why:** High database query load on course catalogs and lesson views as student concurrent sessions scale.
+*   **Difficulty:** Medium
+*   **Est. Time:** 7 Days
+*   **Dependencies:** Docker Redis container, Spring Boot Starter Data Redis.
+*   **Risk:** Low. Requires establishing cache eviction policies to prevent stale data.
+
+#### 4. API Rate Limiting (Medium)
+*   **Why:** Public auth and AI endpoints are vulnerable to brute-force attacks and API cost overflow.
+*   **Difficulty:** Medium
+*   **Est. Time:** 6 Days
+*   **Dependencies:** Bucket4j or Redis.
+*   **Risk:** Medium. Overly restrictive limits may degrade the user experience.
+
+---
+
+## 30. Interview Explanation
+
+When presenting the architecture of LearnStudio 2.0 in a technical interview, structure your explanation around clean architectural patterns, security, and resiliency.
+
+### Core Architectural Narrative
+> *"LearnStudio 2.0 is a decoupled, modern learning management system built using Next.js 16 (App Router) on the frontend and a stateless Spring Boot 3.2 REST API on the backend, communicating over PostgreSQL 16. The frontend is optimized for edge delivery on Vercel, using React Query for server-state caching to reduce redundant network queries, and Axios interceptors to manage a seamless, silent access-token refresh flow. The backend is containerized, following a layered architecture with robust validation, global exception handling, and role-based access control (RBAC)."*
+
+### Handling AI Resiliency (Doubt Solver & Quiz Generator)
+> *"To prevent vendor lock-in and handle API rate limits or outages, I architected a provider-agnostic AI service. Using a Java interface, `AiProvider`, I created implementations for both Gemini and OpenRouter. The `AiService` orchestrates these using a robust fallback pattern: if the preferred provider fails or returns a 429 quota error, the system automatically catches the exception, logs the event, and switches to the redundant provider in under a second. This ensures uninterrupted service for students during peak quiz or doubt-solving hours."*
+
+### Handling Security and IP Protection
+> *"For security, we implement JWT-based stateless authentication paired with a database-backed Refresh Token rotation scheme. Regarding intellectual property protection, we designed a secure PDF streaming pipeline. Rather than exposing raw PDF URLs, the backend validates user enrollment, logs the access attempt, and downloads the file stream. We then use Apache PDFBox on the server to dynamically stamp the student's email, IP address, and access timestamp diagonally across every page. Finally, we apply a cryptographic standard protection policy to disable printing, copying, and modification before streaming the locked bytes to the client's browser canvas. This ensures that even if the student intercepts the network payload, their personal identity is permanently stamped onto the document, deterring piracy."*
+
+---
+
+## 31. Workflow & System Diagrams
+
+The following section contains the remaining 9 workflow and system diagrams mapping the operations of LearnStudio 2.0.
+
+### 31.1. Course Flow
+
+The course creation and management flow by instructors, and discovery by students.
+
+```mermaid
+graph TD
+    subgraph Instructor [Instructor UI]
+        CreateC[Create Course Form]
+        UploadT[Upload Thumbnail]
+        AddL[Add Lesson Details]
+        Publish[Set Course Visible]
+    end
+
+    subgraph API [Backend API]
+        CController[CourseController]
+        LController[LessonController]
+        CloudS[CloudinaryService]
+        CourseS[CourseService]
+        LessonS[LessonService]
+    end
+
+    subgraph DB [Database]
+        CourseTable[(courses table)]
+        LessonTable[(lessons table)]
+    end
+
+    %% Flow
+    CreateC -->|1. Submit Course Data| CController
+    UploadT -->|2. POST Multi-part File| CController
+    CController -->|3. Upload thumbnail file| CloudS
+    CloudS -->|4. Return CDN secure URL| CourseS
+    CourseS -->|5. Save Course Entity| CourseTable
+    
+    AddL -->|6. POST Lesson details| LController
+    LController -->|7. Link to Course ID| LessonS
+    LessonS -->|8. Save Lesson Entity| LessonTable
+    
+    Publish -->|9. PATCH status update| CController
+    CController -->|10. Update visibility flag| CourseS
+    CourseS -->|11. Commit change| CourseTable
+```
+
+### 31.2. Learning Flow
+
+Tracks how a student progresses through lessons and updates their course progression in real time.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Next.js Client
+    participant API as REST Controllers
+    participant CourseService as CourseService
+    participant ProgressService as EnrollmentService
+    participant DB as PostgreSQL DB
+
+    Student->{API}: GET /api/courses/{id} (Fetch Course & Lessons)
+    API->>CourseService: getCourseDetails(courseId)
+    CourseService->>DB: Query Course with Lessons
+    DB-->>CourseService: Course & Lesson Entities
+    CourseService-->>Student: Return Course details DTO
+
+    Student->>{API}: POST /api/student/lessons/{lessonId}/complete
+    activate API
+    API->>ProgressService: completeLesson(studentEmail, lessonId)
+    activate ProgressService
+    ProgressService->>DB: Save LessonProgress (completed = true)
+    ProgressService->>DB: Calculate completed lessons / total lessons
+    DB-->>ProgressService: Ratio (e.g., 5/10 completed)
+    ProgressService->>DB: Update progress field in Enrollments table (50%)
+    
+    alt Progress reaches 100%
+        ProgressService->>ProgressService: Trigger Certificate Generation
+    end
+    
+    ProgressService-->>API: Return updated progress DTO
+    deactivate ProgressService
+    API-->>Student: Return updated progress (HTTP 200)
+    deactivate API
+```
+
+### 31.3. Enrollment Flow
+
+Handles how a student registers for a course and initiates progress tracking.
+
+```mermaid
+graph TD
+    subgraph UI [Student UI]
+        Browse[Browse Course Catalog]
+        Detail[View Course Details]
+        EnrollBtn[Click Enroll Button]
+    end
+
+    subgraph Backend [Spring Boot API]
+        EController[EnrollmentController]
+        EService[EnrollmentService]
+        AuthCheck[Enrollment Guard]
+    end
+
+    subgraph DB [PostgreSQL]
+        EnrollTable[(enrollments table)]
+        LPTable[(lesson_progress table)]
+    end
+
+    %% Connections
+    Browse --> Detail
+    Detail --> EnrollBtn
+    EnrollBtn -->|1. POST /api/student/enroll/{courseId}| EController
+    EController --> AuthCheck
+    AuthCheck -->|2. Authorized student role| EService
+    EService -->|3. Check existing enrollment| EnrollTable
+    
+    alt Student Already Enrolled
+        EService -->|4a. Return conflict error| EController
+        EController -->|5a. Return HTTP 400| UI
+    else Student Not Enrolled
+        EService -->|4b. Create & Save Enrollment (progress=0)| EnrollTable
+        EService -->|5b. Initialize LessonProgress entries| LPTable
+        LPTable -->|6. Return Success| EService
+        EService -->|7. Return Enrollment DTO| EController
+        EController -->|8. Return HTTP 201 Created| UI
+    end
+```
+
+### 31.4. Cloudinary Upload Flow
+
+Demonstrates the secure pipeline for uploading media assets (e.g., course thumbnails, homework submissions).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Next.js Client
+    participant Backend as Spring Boot Controller
+    participant CloudService as CloudinaryService
+    participant Cloudinary as Cloudinary API
+    participant DB as PostgreSQL DB
+
+    Client->>Backend: POST MultipartFile (Form-data with parameters)
+    activate Backend
+    Backend->>Backend: Validate File Type & Size (<10MB limit)
+    
+    alt File Invalid
+        Backend-->>Client: HTTP 400 Bad Request (Validation failed)
+    else File Valid
+        Backend->>CloudService: uploadFile(file, folderName)
+        activate CloudService
+        CloudService->>Cloudinary: API upload(file.getBytes(), options)
+        activate Cloudinary
+        Cloudinary-->>CloudService: Return upload result (secure_url, public_id)
+        deactivate Cloudinary
+        CloudService-->>Backend: Return upload details Map
+        deactivate CloudService
+        Backend->>DB: Save secure_url and public_id in target Entity
+        DB-->>Backend: Entity Saved
+        Backend-->>Client: Return HTTP 200 (ApiResponse containing DTO)
+        deactivate Backend
+    end
+```
+
+### 31.5. Instructor Workflow
+
+The core academic dashboard loop for instructors managing their curriculum and batches.
+
+```mermaid
+graph LR
+    subgraph Dashboard [Instructor Dashboard]
+        Curriculum[Curriculum Manager]
+        BatchMgr[Batch Manager]
+        SchedMgr[Schedule Planner]
+        Analytics[Analytics Viewer]
+    end
+
+    subgraph Actions [Platform Capabilities]
+        UploadNotes[Upload PDF Notes]
+        CreateHW[Post Homework]
+        MarkAtt[Mark Student Attendance]
+        ViewProgress[Track Student Completion]
+    end
+
+    Curriculum --> UploadNotes
+    Curriculum --> CreateHW
+    BatchMgr --> MarkAtt
+    BatchMgr --> SchedMgr
+    Analytics --> ViewProgress
+```
+
+### 31.6. Student Workflow
+
+The learning loop detailing how a student consumes course content and interacts with AI tools.
+
+```mermaid
+graph TD
+    subgraph Portal [Student Portal]
+        MyCourses[My Courses]
+        ActiveCourse[Active Course Learn Page]
+        AITool[AI Workspace]
+    end
+
+    subgraph Actions [Learning Actions]
+        WatchVideo[Watch Lesson Video]
+        ReadNotes[Read Secure PDF Notes]
+        SolveDoubt[Solve doubts with AI Assistant]
+        TakeQuiz[Practice AI Generated Quiz]
+        SubmitHW[Upload Homework Submissions]
+    end
+
+    MyCourses --> ActiveCourse
+    ActiveCourse --> WatchVideo
+    ActiveCourse --> ReadNotes
+    ActiveCourse --> SubmitHW
+    ActiveCourse --> AITool
+    AITool --> SolveDoubt
+    AITool --> TakeQuiz
+```
+
+### 31.7. Certificate Generation
+
+The automated pipeline that issues cryptographic certificates upon course completion.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Next.js Client
+    participant Controller as CertificateController
+    participant CertService as CertificateService
+    participant DB as PostgreSQL DB
+
+    Client->>Controller: GET /api/student/certificates/generate/{courseId}
+    activate Controller
+    Controller->>CertService: generateCertificate(email, courseId)
+    activate CertService
+    
+    CertService->>DB: Fetch Student Enrollment
+    DB-->>CertService: Enrollment Entity (progress percentage)
+    
+    alt Progress < 100%
+        CertService-->>Controller: Throw Exception "Course not completed"
+        Controller-->>Client: HTTP 400 Bad Request (Cannot generate certificate)
+    else Progress is 100%
+        CertService->>CertService: Generate SHA-256 unique certificate hash
+        CertService->>DB: Save Certificate Entity (user, course, hash, issuedAt)
+        DB-->>CertService: Certificate Saved
+        CertService-->>Controller: Return CertificateDTO
+        deactivate CertService
+        Controller-->>Client: Return HTTP 200 (Contains verification code & issued date)
+        deactivate Controller
+    end
+```
+
+### 31.8. Analytics Pipeline
+
+Demonstrates how batch metrics, attendance summary, and homework submissions are aggregated for instructor views.
+
+```mermaid
+graph TD
+    subgraph Data [Data Aggregation Sources]
+        LP[lesson_progress table]
+        Att[attendance table]
+        Sub[homework_submissions table]
+    end
+
+    subgraph AnalyticsEngine [Spring Boot Aggregator]
+        Engine[BatchService / CourseService]
+    end
+
+    subgraph Dashboard [Instructor Analytics Dashboard]
+        ProgressCard[Average Progress Percentage]
+        AttendanceSummary[Attendance Rate Graph]
+        SubmissionRate[Homework Submission Metrics]
+    end
+
+    %% Aggregations
+    LP -->|1. Fetch completed lessons counts| Engine
+    Att -->|2. Fetch present/absent ratios| Engine
+    Sub -->|3. Fetch submission timestamps| Engine
+    
+    Engine -->|4. Compute average completion| ProgressCard
+    Engine -->|5. Aggregate attendance percentage by date| AttendanceSummary
+    Engine -->|6. Calculate submission rates per homework| SubmissionRate
+```
+
+---
+
+## 32. Document Approval & Sign-Off
+
+This document has been reviewed and approved by the Architecture & Engineering Advisory Group. It serves as the official blueprint for all future developments, refactoring phases, and cloud deployment operations for **LearnStudio 2.0**. Any modifications to this architectural design must be submitted via an Architectural Change Request (ACR).

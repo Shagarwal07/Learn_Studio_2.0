@@ -1,0 +1,210 @@
+# Implementation Plan — LearnStudio Auto-TA Multi-Agent Service
+
+This document outlines the architecture, database schema, API design, and frontend implementation plan for the **Auto-TA** service, an automated exam paper generation system powered by a multi-agent orchestration pipeline.
+
+## Architectural Overview
+
+The Auto-TA system is designed as a modular, decoupled set of services inside the LearnStudio platform. It utilizes a **Manager-Worker (Router-Agent) pattern** to coordinate parallel execution, compiler merging, and a human-in-the-loop feedback loop.
+
+```mermaid
+graph TD
+    A[Professor Input] -->|Submit Request| B[Manager Agent / Router]
+    B -->|Fan-Out Task| C[Theory Agent]
+    B -->|Fan-Out Task| D[Mathematics Agent]
+    B -->|Fan-Out Task| E[Question Bank Agent]
+    
+    C -->|Generate Text/MCQs| F[Editor / Compiler Agent]
+    D -->|Generate Numericals| F
+    E -->|Fetch Questions| F
+    
+    F -->|Deduplicate, Verify & Format| G[Professor Review]
+    G -->|Approve| H[Final Exam Paper]
+    G -->|Reject & Request Revision| I[Feedback Loop]
+    I -->|Identify affected agent| B
+```
+
+---
+
+## Database Schema
+
+We will add the following entities to the database under the `com.learnhub.entity` package to ensure full traceability, versioning, and logging.
+
+```mermaid
+erDiagram
+    EXAM_REQUEST ||--o{ GENERATED_PAPER : generates
+    EXAM_REQUEST ||--o{ AGENT_EXECUTION_LOG : logs
+    GENERATED_PAPER ||--o{ GENERATED_QUESTION : contains
+    GENERATED_PAPER ||--o{ PAPER_VERSION : has
+    GENERATED_PAPER ||--o{ REVIEW_HISTORY : logs
+    GENERATED_QUESTION ||--o{ QUESTION_METADATA : tagged-with
+```
+
+### 1. `ExamRequest`
+Stores the initial parameters submitted by the professor.
+- `id` (Long, PK, Auto-increment)
+- `subject` (String, nullable=false)
+- `course` (String, nullable=false)
+- `syllabus` (Text, nullable=false)
+- `marks` (Integer, nullable=false)
+- `difficulty` (String, nullable=false)
+- `questionPattern` (String, nullable=false)
+- `totalQuestions` (Integer, nullable=false)
+- `status` (Enum: `PENDING`, `RUNNING`, `COMPLETED`, `REJECTED`, `FAILED`)
+- `createdAt` (LocalDateTime)
+
+### 2. `GeneratedQuestion`
+Stores the questions produced by the agents or retrieved from the bank.
+- `id` (Long, PK)
+- `questionText` (Text, nullable=false)
+- `options` (Text, nullable=true) -- JSON string for MCQ options
+- `correctAnswer` (Text, nullable=true)
+- `solutionSteps` (Text, nullable=true) -- Step-wise solutions for math questions
+- `marks` (Integer, nullable=false)
+- `difficulty` (String, nullable=false)
+- `questionType` (String) -- MCQ, SHORT, LONG, NUMERICAL
+- `agentType` (String) -- THEORY, MATHEMATICS, QUESTION_BANK
+- `subject` (String)
+- `version` (Integer)
+
+### 3. `QuestionBank`
+Stores reusable pre-existing questions in the database.
+- `id` (Long, PK)
+- `questionText` (Text, nullable=false)
+- `options` (Text, nullable=true)
+- `correctAnswer` (Text, nullable=true)
+- `marks` (Integer, nullable=false)
+- `difficulty` (String)
+- `questionType` (String)
+- `subject` (String)
+- `lastUsedAt` (LocalDate, nullable=true)
+
+### 4. `GeneratedPaper`
+Represents the combined exam paper.
+- `id` (Long, PK)
+- `examRequest` (ManyToOne, `ExamRequest`)
+- `title` (String, nullable=false)
+- `totalMarks` (Integer, nullable=false)
+- `status` (Enum: `DRAFT`, `UNDER_REVIEW`, `REVISION_NEEDED`, `APPROVED`, `PUBLISHED`)
+- `version` (Integer)
+- `fileUrl` (String, nullable=true)
+- `createdAt` (LocalDateTime)
+
+### 5. `ReviewHistory`
+Traceability logs for reviews.
+- `id` (Long, PK)
+- `generatedPaper` (ManyToOne, `GeneratedPaper`)
+- `action` (Enum: `APPROVE`, `REJECT`, `REQUEST_REGENERATION`)
+- `comments` (Text)
+- `reviewedAt` (LocalDateTime)
+
+### 6. `AgentExecutionLog`
+Real-time console logs for each agent.
+- `id` (Long, PK)
+- `examRequest` (ManyToOne, `ExamRequest`)
+- `agentType` (String) -- MANAGER, THEORY, MATHEMATICS, QUESTION_BANK, EDITOR
+- `status` (Enum: `RUNNING`, `SUCCESS`, `FAILED`)
+- `executionTimeMs` (Long)
+- `logOutput` (Text) -- Detailed trace of steps taken
+- `timestamp` (LocalDateTime)
+
+### 7. `PaperVersion`
+Stores snapshot history of the paper's questions.
+- `id` (Long, PK)
+- `generatedPaper` (ManyToOne, `GeneratedPaper`)
+- `version` (Integer)
+- `questionsJson` (Text) -- Serialized list of question IDs
+- `changeReason` (String)
+- `timestamp` (LocalDateTime)
+
+---
+
+## Backend Services (`com.learnhub.service.autota`)
+
+We will create a clean, decoupled set of services:
+
+### 1. `ManagerService`
+- Coordinates the workflow.
+- Parses requirements and creates task payloads.
+- Spawns parallel tasks for `TheoryService`, `MathematicsService`, and `QuestionBankService` using `CompletableFuture`.
+- Implements **Error Handling**: if an agent fails, it automatically retries once. If it fails again, it logs the error, continues collecting successful agent outputs, and forwards them to the compiler.
+
+### 2. `TheoryService`
+- Generates conceptual, MCQs, and textual questions.
+- Integrated with Gemini AI to generate customized questions matching difficulty, syllabus, and marks.
+
+### 3. `MathematicsService`
+- Generates mathematical/numerical questions.
+- Ensures AI provides verified step-by-step solutions and correct formulas.
+
+### 4. `QuestionBankService`
+- Queries pre-existing questions from the `QuestionBank` repository.
+- Avoids recently used questions using `lastUsedAt`.
+
+### 5. `EditorService`
+- Compiles the final paper.
+- Removes duplicate questions.
+- Checks marks distribution and syllabus coverage against the `ExamRequest`.
+- Generates structured JSON, HTML preview, and streams secure watermarked PDF options.
+
+### 6. `ReviewService`
+- Coordinates professor feedback and the **Feedback Loop**.
+- If a revision is requested, it analyzes which questions are rejected, identifies the responsible agent, re-triggers *only* that agent for the necessary count of questions, merges them back into the paper while keeping unaffected questions intact, and increments the `PaperVersion`.
+
+---
+
+## REST APIs
+
+All endpoints will be exposed under `/api/autota`:
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/autota/requests` | `POST` | Submit a new exam paper request (triggers Manager Agent) |
+| `/api/autota/requests/{id}/status` | `GET` | Retrieve live status and execution logs of all agents |
+| `/api/autota/papers/{id}` | `GET` | Retrieve the generated paper details (JSON structured questions) |
+| `/api/autota/papers/{id}/review` | `POST` | Submit review (Approve / Reject & Revise with comments) |
+| `/api/autota/papers/{id}/regenerate-question` | `POST` | Regenerate a single specific question (Feedback Loop trigger) |
+| `/api/autota/papers/{id}/versions` | `GET` | Retrieve the paper's version history |
+
+---
+
+## Frontend UI Workspace (`/dashboard/instructor/auto-ta`)
+
+We will build a high-fidelity, interactive multi-agent workspace using our rich dark theme:
+
+### 1. **Auto-TA Dashboard (`page.tsx`)**
+- High-impact layout displaying summary cards: Total Exams Generated, Pending Reviews, Success Rate, Average Generation Time.
+- Active workspace split: Left sidebar showing recent generation requests, and right side rendering the details.
+
+### 2. **Exam Creator Wizard (`create/page.tsx`)**
+- A beautiful, form-wizard interface with glassmorphism styling.
+- Interactive sliders for difficulty, dropdowns for subjects, textarea for syllabus topics, and a dynamic marks distribution builder (e.g., "MCQs: 20 marks, Numericals: 30 marks").
+
+### 3. **Live Progress and Console Terminal (`progress/[id]/page.tsx`)**
+- **Orchestration Map**: A live animated flowchart representing the agents (Theory, Mathematics, Question Bank) running in parallel. The nodes pulse and glow based on their active status (Running, Success, Failed).
+- **Real-Time Logs Terminal**: A console window with scrolling monospaced logs showing the internal thoughts and API calls of each agent in real time!
+  ```
+  [Manager] Parsing syllabus: "Chapters 1-3, Algebra and Kinematics"
+  [Manager] Fan-out: Theory Agent (3 MCQs), Math Agent (2 Numericals), Bank Agent (1 Reusable)
+  [Theory Agent] Contacting Gemini AI model...
+  [Math Agent] Generating numerical problems with step-wise solutions...
+  [Editor Agent] Merging questions and verifying marks distribution (50/50 marks)... SUCCESS.
+  ```
+
+### 4. **Paper Preview and Human-in-the-Loop Editor (`preview/[id]/page.tsx`)**
+- Rendered exam paper matching professional formatting standards.
+- Each question has inline action buttons:
+  - **Edit**: Edit text directly inline.
+  - **Regenerate**: Triggers the **Feedback Loop** for that single question.
+  - **Reorder**: drag-and-drop questions.
+- Review panel: **Approve & Publish** (finalizes the paper) or **Request Revision** (opens a sidebar to submit comments for targeted regeneration).
+
+---
+
+## Verification Plan
+
+### Automated Verification
+- We will write a JUnit test class `AutoTaPipelineTest` to verify the parallel execution flow, error retries, and merging logic.
+- We will verify that compiling and running the project executes successfully.
+
+### Manual Verification
+- We will use the browser subagent to walk through the entire professor creation flow, watch the live progress terminal, edit a generated question, request a revision, and publish the final paper!

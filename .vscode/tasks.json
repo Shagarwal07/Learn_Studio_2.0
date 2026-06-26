@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🚀 Start Spring Boot",
+      "type": "shell",
+      "command": "mvn spring-boot:run",
+      "options": { "cwd": "${workspaceFolder}/backend" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "tabName": "🚀 Spring Boot",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🛑 Stop Spring Boot",
+      "type": "shell",
+      "command": "powershell -Command \"$p = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -First 1; if ($p) { Stop-Process -Id $p -Force; Write-Host 'Stopped PID' $p } else { Write-Host 'Nothing running on :8080' }\"",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "tabName": "🛑 Stop"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔄 Restart Spring Boot",
+      "dependsOrder": "sequence",
+      "dependsOn": ["🛑 Stop Spring Boot", "🚀 Start Spring Boot"],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "🗄️ Run DB Seed",
+      "type": "shell",
+      "command": "mysql -u root -pP@ssword2073 lms_db < backend/src/main/resources/full-seed.sql",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "tabName": "🗄️ DB Seed"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🌐 Open Frontend (Live Server)",
+      "type": "shell",
+      "command": "start http://127.0.0.1:5500/index.html",
+      "group": "build",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    }
+  ]
+}

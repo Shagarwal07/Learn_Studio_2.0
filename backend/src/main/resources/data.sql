@@ -1,0 +1,2 @@
+-- Lessons are seeded via full-seed.sql (run once manually).
+-- This file intentionally left empty to prevent duplicate inserts on restart.
