@@ -174,26 +174,36 @@ public class NoteService {
 
         // Fetch PDF from Cloudinary URL, apply watermark and protection, and return bytes
         try {
-            byte[] pdfBytes;
+            byte[] pdfBytes = null;
             if (note.getPublicId() != null && !note.getPublicId().isBlank()) {
-                // Extract version from fileUrl if available (e.g. v1782482454)
-                String version = null;
-                if (note.getFileUrl() != null) {
-                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/v(\\d+)/");
-                    java.util.regex.Matcher matcher = pattern.matcher(note.getFileUrl());
-                    if (matcher.find()) {
-                        version = matcher.group(1);
+                try {
+                    // Extract version from fileUrl if available (e.g. v1782482454)
+                    String version = null;
+                    if (note.getFileUrl() != null) {
+                        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/v(\\d+)/");
+                        java.util.regex.Matcher matcher = pattern.matcher(note.getFileUrl());
+                        if (matcher.find()) {
+                            version = matcher.group(1);
+                        }
                     }
+                    pdfBytes = cloudinaryService.downloadFile(note.getPublicId(), version);
+                } catch (Exception ex) {
+                    System.err.println("Signed Cloudinary download failed: " + ex.getMessage() + ". Trying public fallback URL...");
                 }
-                pdfBytes = cloudinaryService.downloadFile(note.getPublicId(), version);
-            } else if (note.getFileUrl() != null && !note.getFileUrl().isBlank()) {
-                URL url = new URL(note.getFileUrl());
-                try (InputStream is = url.openStream()) {
-                    pdfBytes = is.readAllBytes();
-                }
-            } else {
-                throw new RuntimeException("No file URL or public ID available for this note");
             }
+            
+            if (pdfBytes == null) {
+                if (note.getFileUrl() != null && !note.getFileUrl().isBlank()) {
+                    System.out.println("Downloading PDF directly from public URL: " + note.getFileUrl());
+                    URL url = new URL(note.getFileUrl());
+                    try (InputStream is = url.openStream()) {
+                        pdfBytes = is.readAllBytes();
+                    }
+                } else {
+                    throw new RuntimeException("No file URL or public ID available for this note");
+                }
+            }
+
             try (InputStream is = new java.io.ByteArrayInputStream(pdfBytes)) {
                 return watermarkAndProtectPdf(is, user, ipAddress);
             }

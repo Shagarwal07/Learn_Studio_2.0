@@ -197,6 +197,7 @@ export default function InstructorBatchesPage() {
   const [attendanceSubject, setAttendanceSubject] = useState('');
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [attendanceRecords, setAttendanceRecords] = useState<Record<number, 'PRESENT' | 'ABSENT'>>({});
+  const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
 
   // Notes tab states
   const [noteTitle, setNoteTitle] = useState('');
@@ -380,6 +381,15 @@ export default function InstructorBatchesPage() {
     },
     enabled: !!selectedBatchId
   });
+
+  // Filtered lists for attendance search
+  const filteredStudentsForAttendance = batchDetails?.students.filter(st =>
+    st.name.toLowerCase().includes(attendanceSearchQuery.toLowerCase())
+  ) || [];
+
+  const filteredAttendanceLogs = attendanceLogs.filter(log =>
+    log.studentName.toLowerCase().includes(attendanceSearchQuery.toLowerCase())
+  );
 
   // ────────────────────────────────────────────────────────────────────────
   // MUTATIONS
@@ -1354,10 +1364,33 @@ export default function InstructorBatchesPage() {
 
                         {/* Student Attendance List Grid */}
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-4 px-1">
-                            <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                              Student Marking Roster ({batchDetails.students.length})
-                            </h5>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
+                            <div className="flex flex-wrap items-center gap-3 flex-1">
+                              <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                                Student Marking Roster ({filteredStudentsForAttendance.length} of {batchDetails.students.length})
+                              </h5>
+                              
+                              {/* Search Bar */}
+                              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                <input
+                                  type="text"
+                                  value={attendanceSearchQuery}
+                                  onChange={(e) => setAttendanceSearchQuery(e.target.value)}
+                                  placeholder="Search student by name..."
+                                  className="w-full pl-9 pr-8 py-1.5 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-500 rounded-xl text-[11px] font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                                />
+                                {attendanceSearchQuery && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAttendanceSearchQuery('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350 text-[10px] font-bold"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
 
                             {/* Mass Actions */}
                             <div className="flex gap-2.5 text-[9px] font-extrabold uppercase tracking-wider">
@@ -1386,48 +1419,54 @@ export default function InstructorBatchesPage() {
                           </div>
 
                           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                            {batchDetails.students.map((st) => {
-                              const status = attendanceRecords[st.id] || 'PRESENT';
-                              const isPresent = status === 'PRESENT';
+                            {filteredStudentsForAttendance.length === 0 ? (
+                              <div className="py-8 text-center border border-dashed border-slate-850 rounded-xl text-xs text-slate-500 bg-slate-955/10">
+                                No students found matching "{attendanceSearchQuery}".
+                              </div>
+                            ) : (
+                              filteredStudentsForAttendance.map((st) => {
+                                const status = attendanceRecords[st.id] || 'PRESENT';
+                                const isPresent = status === 'PRESENT';
 
-                              return (
-                                <div
-                                  key={st.id}
-                                  className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-slate-955/20 ${
-                                    isPresent
-                                      ? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
-                                      : 'border-rose-955/40 border-l-4 border-l-rose-500/80'
-                                  }`}
-                                >
-                                  <div className="min-w-0 space-y-0.5">
-                                    <h4 className="text-xs font-bold text-slate-205 truncate">
-                                      {st.name}
-                                    </h4>
-                                    <p className="text-[9px] text-slate-500 truncate">
-                                      {st.email}
-                                    </p>
-                                  </div>
-
-                                  {/* Checkbox toggle status */}
-                                  <button
-                                    onClick={() => {
-                                      setAttendanceRecords(prev => ({
-                                        ...prev,
-                                        [st.id]: isPresent ? 'ABSENT' : 'PRESENT'
-                                      }));
-                                    }}
-                                    className={`px-3 py-1.5 text-[9px] font-extrabold rounded-lg border uppercase tracking-wider cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${
+                                return (
+                                  <div
+                                    key={st.id}
+                                    className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-slate-955/20 ${
                                       isPresent
-                                        ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
-                                        : 'bg-rose-500/10 border-rose-500/10 text-rose-400'
+                                        ? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
+                                        : 'border-rose-955/40 border-l-4 border-l-rose-500/80'
                                     }`}
                                   >
-                                    {isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                                    {status}
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                    <div className="min-w-0 space-y-0.5">
+                                      <h4 className="text-xs font-bold text-slate-205 truncate">
+                                        {st.name}
+                                      </h4>
+                                      <p className="text-[9px] text-slate-500 truncate">
+                                        {st.email}
+                                      </p>
+                                    </div>
+
+                                    {/* Checkbox toggle status */}
+                                    <button
+                                      onClick={() => {
+                                        setAttendanceRecords(prev => ({
+                                          ...prev,
+                                          [st.id]: isPresent ? 'ABSENT' : 'PRESENT'
+                                        }));
+                                      }}
+                                      className={`px-3 py-1.5 text-[9px] font-extrabold rounded-lg border uppercase tracking-wider cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${
+                                        isPresent
+                                          ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
+                                          : 'bg-rose-500/10 border-rose-500/10 text-rose-400'
+                                      }`}
+                                    >
+                                      {isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                                      {status}
+                                    </button>
+                                  </div>
+                                );
+                              })
+                            )}
                           </div>
                         </div>
 
@@ -1446,14 +1485,45 @@ export default function InstructorBatchesPage() {
                         </button>
 
                         {/* Previous Attendance Logs Section */}
-                        <div className="space-y-3 pt-5 border-t border-slate-850/80">
-                          <h5 className="text-xs font-bold text-slate-205 uppercase tracking-wider">
-                            Previous Attendance Logs
-                          </h5>
+                        <div className="space-y-4 pt-5 border-t border-slate-850/80">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <h5 className="text-xs font-bold text-slate-205 uppercase tracking-wider">
+                              Previous Attendance Logs
+                            </h5>
+                            {attendanceSearchQuery ? (
+                              <div className="text-[10px] text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                                Filtering log records for "{attendanceSearchQuery}"
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-slate-400 font-semibold bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
+                                Showing all logs for {batchDetails.name}
+                              </div>
+                            )}
+                          </div>
 
-                          {attendanceLogs.length === 0 ? (
+                          {/* Line Highlight for selected batch OR student match alert */}
+                          {attendanceSearchQuery ? (
+                            <div className="p-3 bg-indigo-950/15 border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-slate-300 flex items-center justify-between">
+                              <span>Showing previous logs matching student: <strong className="text-indigo-400">"{attendanceSearchQuery}"</strong></span>
+                              <button 
+                                onClick={() => setAttendanceSearchQuery('')}
+                                className="text-[10px] font-bold text-indigo-450 hover:underline cursor-pointer"
+                              >
+                                Show All Batch Logs
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-slate-950/40 border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-slate-300">
+                              Active Batch Logs: <span className="font-extrabold text-indigo-400">{batchDetails.name}</span> ({batchDetails.level})
+                            </div>
+                          )}
+
+                          {filteredAttendanceLogs.length === 0 ? (
                             <div className="py-8 text-center border border-dashed border-slate-850 rounded-xl text-slate-500 text-xs bg-slate-955/10">
-                              No attendance records logged yet for this batch.
+                              {attendanceSearchQuery 
+                                ? `No attendance records found matching student "${attendanceSearchQuery}".`
+                                : "No attendance records logged yet for this batch."
+                              }
                             </div>
                           ) : (
                             <div className="overflow-hidden border border-slate-850/80 rounded-xl bg-slate-955/20">
@@ -1468,7 +1538,7 @@ export default function InstructorBatchesPage() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-850/40">
-                                    {attendanceLogs.map((log) => {
+                                    {filteredAttendanceLogs.map((log) => {
                                       const isPres = log.status === 'PRESENT';
                                       return (
                                         <tr key={log.id} className="hover:bg-slate-900/30 transition-colors">
