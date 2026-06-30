@@ -95,6 +95,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         userRepository.saveAll(List.of(admin, instructor, student, student2));
 
+        /*
         // 2. Seed Courses
         Course webDev = Course.builder()
                 .title("Full-Stack Web Development")
@@ -265,6 +266,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                 .build();
 
         scheduleEventRepository.saveAll(List.of(event1, event2, event3, event4, event5));
+        */
 
         // 6. Seed Attendance for testing (student2 - abc@gmail.com)
         // Offline Attendance: We want exactly 44 Present and 6 Absent out of 50 total records (88%)
@@ -453,34 +455,6 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         scheduleEventRepository.saveAll(List.of(timing1, timing2, timing3, timing4));
 
-        // Seed Batch Note
-        Note batchNote = Note.builder()
-                .title("Algebra Formulas Sheet")
-                .description("Comprehensive summary of formulas, equations, and rules.")
-                .batch(batch)
-                .subjectName("Mathematics")
-                .fileUrl("https://res.cloudinary.com/demo/image/upload/v1570975253/sample.pdf")
-                .publicId("sample_pdf_id")
-                .uploadedBy(instructor)
-                .isVisible(true)
-                .aiEnabled(true)
-                .build();
-        noteRepository.save(batchNote);
-
-        // Seed Batch Homework
-        Homework batchHomework = Homework.builder()
-                .title("Physics Motion Assignment")
-                .description("Complete questions 1 to 10 from the chapter on motion.")
-                .batch(batch)
-                .subjectName("Science")
-                .fileUrl("https://res.cloudinary.com/demo/image/upload/v1570975253/sample.pdf")
-                .publicId("sample_hw_id")
-                .dueDate(java.time.LocalDateTime.now().plusDays(3))
-                .createdBy(instructor)
-                .isVisible(true)
-                .build();
-        homeworkRepository.save(batchHomework);
-
         // Seed Batch Test
         Test batchTest = Test.builder()
                 .title("English Vocabulary Unit Test")
@@ -492,17 +466,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                 .createdBy(instructor)
                 .build();
         testRepository.save(batchTest);
-
-        // Seed Batch Announcement
-        Announcement batchAnn = Announcement.builder()
-                .title("Science Lab Practicals Scheduled")
-                .message("Please bring your lab manuals and wear aprons this Friday for chemistry practicals.")
-                .batch(batch)
-                .targetRole(Announcement.TargetRole.STUDENT)
-                .pinned(true)
-                .createdBy(instructor)
-                .build();
-        announcementRepository.save(batchAnn);
 
         // 9. Seed Question Bank for Auto-TA
         if (questionBankRepository.count() == 0) {

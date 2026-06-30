@@ -48,12 +48,20 @@ public class AttendanceService {
 
         // 2. Calculate Online Stats (from dynamic merged sources)
         List<OnlineActivityLogDTO> onlineLogs = getMergedOnlineActivities(user.getId());
+        
+        LocalDate registerDate = user.getCreatedAt() != null ? user.getCreatedAt().toLocalDate() : LocalDate.now().minusDays(30);
+        int onlineTotalDays = Math.max(1, (int) java.time.temporal.ChronoUnit.DAYS.between(registerDate, LocalDate.now()) + 1);
+        if (onlineTotalDays > 30) {
+            onlineTotalDays = 30; // 30-day tracking window
+        }
+        
+        LocalDate limitDate = LocalDate.now().minusDays(onlineTotalDays);
         Set<LocalDate> activeDates = onlineLogs.stream()
                 .map(OnlineActivityLogDTO::getDate)
+                .filter(date -> !date.isBefore(limitDate))
                 .collect(Collectors.toSet());
         
         int onlineActiveDays = activeDates.size();
-        int onlineTotalDays = 25; // Standard 25-day tracking window
         double onlineRate = ((double) onlineActiveDays / onlineTotalDays) * 100.0;
         if (onlineRate > 100.0) {
             onlineRate = 100.0;
@@ -136,12 +144,19 @@ public class AttendanceService {
 
         List<OnlineActivityLogDTO> activities = getMergedOnlineActivities(user.getId());
         
+        LocalDate registerDate = user.getCreatedAt() != null ? user.getCreatedAt().toLocalDate() : LocalDate.now().minusDays(30);
+        int onlineTotalDays = Math.max(1, (int) java.time.temporal.ChronoUnit.DAYS.between(registerDate, LocalDate.now()) + 1);
+        if (onlineTotalDays > 30) {
+            onlineTotalDays = 30; // 30-day tracking window
+        }
+        
+        LocalDate limitDate = LocalDate.now().minusDays(onlineTotalDays);
         Set<LocalDate> activeDates = activities.stream()
                 .map(OnlineActivityLogDTO::getDate)
+                .filter(date -> !date.isBefore(limitDate))
                 .collect(Collectors.toSet());
         
         int onlineActiveDays = activeDates.size();
-        int onlineTotalDays = 25;
         double onlineRate = ((double) onlineActiveDays / onlineTotalDays) * 100.0;
         if (onlineRate > 100.0) {
             onlineRate = 100.0;
@@ -156,12 +171,22 @@ public class AttendanceService {
                         Collectors.summingInt(x -> 1)
                 ));
 
+        // Calculate dynamic completion rate across all enrollments
+        List<Enrollment> enrollments = user.getEnrollments();
+        double completionRate = 0.0;
+        if (enrollments != null && !enrollments.isEmpty()) {
+            double totalProgress = enrollments.stream()
+                    .mapToDouble(Enrollment::getProgress)
+                    .sum();
+            completionRate = totalProgress / enrollments.size();
+        }
+
         return StudentOnlineAttendanceDTO.builder()
                 .onlineRate(Math.round(onlineRate * 10.0) / 10.0)
                 .onlineActiveDays(onlineActiveDays)
                 .onlineTotalDays(onlineTotalDays)
                 .streak(streak)
-                .completionRate(92.0) // Platform completion rate
+                .completionRate(Math.round(completionRate * 10.0) / 10.0) // Dynamic platform completion rate
                 .activities(activities)
                 .courseParticipation(courseParticipation)
                 .build();
