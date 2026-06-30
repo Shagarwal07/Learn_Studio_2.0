@@ -372,13 +372,16 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // 8. Seed Batch-wise Offline structures
         Set<String> batchSubjectsSet = new HashSet<>(List.of("English", "Hindi", "Mathematics", "Science", "Social Science"));
-        Batch batch = Batch.builder()
-                .name("Class VIII Morning Batch")
-                .level("Class VIII")
-                .instructor(instructor)
-                .subjects(batchSubjectsSet)
-                .build();
-        batch = batchRepository.save(batch);
+        
+        Batch batchV = Batch.builder().name("Class V").level("Class V").instructor(instructor).subjects(batchSubjectsSet).build();
+        Batch batchVI = Batch.builder().name("Class VI").level("Class VI").instructor(instructor).subjects(batchSubjectsSet).build();
+        Batch batchVII = Batch.builder().name("Class VII").level("Class VII").instructor(instructor).subjects(batchSubjectsSet).build();
+        Batch batchVIII = Batch.builder().name("Class VIII").level("Class VIII").instructor(instructor).subjects(batchSubjectsSet).build();
+        Batch batchIX = Batch.builder().name("Class IX").level("Class IX").instructor(instructor).subjects(batchSubjectsSet).build();
+        Batch batchX = Batch.builder().name("Class X").level("Class X").instructor(instructor).subjects(batchSubjectsSet).build();
+
+        batchRepository.saveAll(List.of(batchV, batchVI, batchVII, batchVIII, batchIX, batchX));
+        Batch batch = batchVIII;
 
         // Assign student & student2 to this batch
         student.setBatch(batch);

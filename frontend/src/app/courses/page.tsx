@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -36,6 +36,11 @@ export default function CourseCatalogPage() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Redirect to lock explore page (comment out or delete to unlock in future)
+  useEffect(() => {
+    router.replace('/dashboard');
+  }, [router]);
 
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState<string>('ALL');

@@ -15,6 +15,7 @@ backend/target/
 # Environment & secrets
 .env
 application-prod.properties
+resources/google-credentials.json
 
 # OS files
 .DS_Store
@@ -35,3 +36,4 @@ node_modules/
 # Scratch and test files
 scratch/
 test_note.txt
+Cache/

@@ -221,6 +221,26 @@ export default function InstructorBatchesPage() {
   const [hwFormError, setHwFormError] = useState('');
   const [hwFormSuccess, setHwFormSuccess] = useState('');
 
+  // Google Drive Sync State & Handler
+  const [syncingDrive, setSyncingDrive] = useState(false);
+  const handleSyncGoogleDrive = async () => {
+    setSyncingDrive(true);
+    try {
+      const response = await api.post('/admin/sync/drive');
+      if (response.data.success) {
+        alert('Google Drive synchronization completed successfully!');
+        refetchNotes();
+        refetchHomeworks();
+      } else {
+        alert(response.data.message || 'Sync failed.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to sync with Google Drive. Check backend configuration.');
+    } finally {
+      setSyncingDrive(false);
+    }
+  };
+
   // Test states
   const [testTitle, setTestTitle] = useState('');
   const [testDescription, setTestDescription] = useState('');
@@ -1481,11 +1501,31 @@ export default function InstructorBatchesPage() {
                 {/* 5. NOTES TAB */}
                 {activeTab === 'notes' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Study Notes</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                        Upload lecture handouts, curriculum PDFs, and study guides directly to students assigned to this batch.
-                      </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Study Notes</h4>
+                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                          Upload lecture handouts, curriculum PDFs, and study guides directly to students assigned to this batch.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleSyncGoogleDrive}
+                        disabled={syncingDrive}
+                        type="button"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                      >
+                        {syncingDrive ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Syncing Drive...
+                          </>
+                        ) : (
+                          <>
+                            <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                            Sync Google Drive
+                          </>
+                        )}
+                      </button>
                     </div>
 
                     {batchDetails.subjects.length === 0 ? (

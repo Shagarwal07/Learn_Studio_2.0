@@ -467,6 +467,15 @@ public class BatchService {
                 .toList();
     }
 
+    public BatchDTO getStudentBatch(String email) {
+        User student = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+        if (student.getBatch() == null) {
+            return null;
+        }
+        return convertToDTO(student.getBatch());
+    }
+
     private NoteDTO convertNoteToDTO(Note note) {
         return NoteDTO.builder()
                 .id(note.getId())

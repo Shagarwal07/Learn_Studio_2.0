@@ -84,8 +84,13 @@ export default function RegisterPage() {
           </motion.div>
         )}
 
+        <div className="p-4 mb-6 bg-amber-500/10 border border-amber-500/25 text-amber-400 rounded-2xl text-xs text-center flex items-center justify-center gap-2">
+          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+          <span><strong>Registration Locked:</strong> Account creation is temporarily closed by the administrator.</span>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
+          <div className="space-y-2 opacity-50">
             <label className="block text-text-secondary text-[10px] font-extrabold uppercase tracking-wider" htmlFor="name">
               Full Name
             </label>
@@ -99,13 +104,14 @@ export default function RegisterPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-border-color rounded-xl focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape text-white placeholder-text-muted transition-all text-xs sm:text-sm"
+                disabled={true}
+                className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-border-color rounded-xl focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape text-white placeholder-text-muted transition-all text-xs sm:text-sm cursor-not-allowed"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 opacity-50">
             <label className="block text-text-secondary text-[10px] font-extrabold uppercase tracking-wider" htmlFor="email">
               Email Address
             </label>
@@ -119,13 +125,14 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-border-color rounded-xl focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape text-white placeholder-text-muted transition-all text-xs sm:text-sm"
+                disabled={true}
+                className="w-full pl-11 pr-4 py-3.5 bg-white/5 border border-border-color rounded-xl focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape text-white placeholder-text-muted transition-all text-xs sm:text-sm cursor-not-allowed"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 opacity-50">
             <label className="block text-text-secondary text-[10px] font-extrabold uppercase tracking-wider" htmlFor="password">
               Password
             </label>
@@ -139,31 +146,34 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-11 pr-11 py-3.5 bg-white/5 border border-border-color rounded-xl focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape text-white placeholder-text-muted transition-all text-xs sm:text-sm"
+                disabled={true}
+                className="w-full pl-11 pr-11 py-3.5 bg-white/5 border border-border-color rounded-xl focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape text-white placeholder-text-muted transition-all text-xs sm:text-sm cursor-not-allowed"
                 required
               />
               <button
                 type="button"
+                disabled={true}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-4 text-text-muted hover:text-white transition-colors"
+                className="absolute inset-y-0 right-0 flex items-center pr-4 text-text-muted cursor-not-allowed"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 opacity-50">
             <label className="block text-text-secondary text-[10px] font-extrabold uppercase tracking-wider">
               Select Your Role
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
+                disabled={true}
                 onClick={() => setRole('STUDENT')}
-                className={`py-3.5 px-4 border rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer ${
+                className={`py-3.5 px-4 border rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider cursor-not-allowed ${
                   role === 'STUDENT'
-                    ? 'bg-gradient-to-r from-accent-grape/20 to-primary-blue/20 border-accent-grape text-white shadow-md shadow-accent-grape/10'
-                    : 'bg-white/5 border-border-color text-text-secondary hover:border-white/20'
+                    ? 'bg-white/5 border-accent-grape/40 text-slate-400'
+                    : 'bg-white/5 border-border-color text-text-secondary'
                 }`}
               >
                 <GraduationCap className="w-4.5 h-4.5" />
@@ -171,11 +181,12 @@ export default function RegisterPage() {
               </button>
               <button
                 type="button"
+                disabled={true}
                 onClick={() => setRole('INSTRUCTOR')}
-                className={`py-3.5 px-4 border rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer ${
+                className={`py-3.5 px-4 border rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider cursor-not-allowed ${
                   role === 'INSTRUCTOR'
-                    ? 'bg-gradient-to-r from-accent-grape/20 to-primary-blue/20 border-accent-grape text-white shadow-md shadow-accent-grape/10'
-                    : 'bg-white/5 border-border-color text-text-secondary hover:border-white/20'
+                    ? 'bg-white/5 border-accent-grape/40 text-slate-400'
+                    : 'bg-white/5 border-border-color text-text-secondary'
                 }`}
               >
                 <User className="w-4.5 h-4.5" />
@@ -185,18 +196,12 @@ export default function RegisterPage() {
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 mt-4 bg-gradient-to-r from-accent-grape to-primary-blue hover:from-accent-grape/90 hover:to-primary-blue/90 disabled:from-slate-800 disabled:to-slate-800 text-white font-bold rounded-xl shadow-lg shadow-accent-grape/15 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            type="button"
+            disabled={true}
+            className="w-full py-3.5 mt-4 bg-slate-800 border border-slate-700/60 text-slate-500 font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Creating account...
-              </>
-            ) : (
-              'Create Account'
-            )}
+            <Lock className="w-4 h-4 text-slate-500" />
+            Registration Locked
           </button>
         </form>
 

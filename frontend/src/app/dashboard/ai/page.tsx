@@ -56,6 +56,67 @@ export default function AiAssistantPage() {
     },
   });
 
+  // Fetch student's assigned batch details
+  const { data: studentBatch } = useQuery<any>({
+    queryKey: ['student-batch-my-ai'],
+    queryFn: async () => {
+      const response = await api.get('/student/batch/my');
+      return response.data.success ? response.data.data : null;
+    },
+  });
+
+  // Fetch student's batch notes for note-specific topics
+  const { data: studentNotes = [] } = useQuery<any[]>({
+    queryKey: ['student-batch-notes-ai'],
+    queryFn: async () => {
+      const response = await api.get('/student/batch/notes');
+      return response.data.success ? response.data.data : [];
+    },
+  });
+
+  // Compute dynamic subjects and popular topics
+  const batchSubjects = studentBatch?.subjects 
+    ? Array.from(studentBatch.subjects) 
+    : ['Science', 'Mathematics', 'English', 'Hindi', 'Social Science'];
+
+  const getDynamicQuizTopics = (): string[] => {
+    // If notes exist, use their titles
+    if (studentNotes && studentNotes.length > 0) {
+      const noteTitles = studentNotes
+        .map((n: any) => n.title)
+        .filter(Boolean)
+        .slice(0, 5);
+      if (noteTitles.length >= 3) {
+        return noteTitles;
+      }
+    }
+
+    // Otherwise, select based on batch level
+    const level = studentBatch?.level || '';
+    if (level.includes('Class V') || level.includes('Class 5') || level === 'Class V') {
+      return ['Fractions & Decimals', 'Plants & Animals', 'English Grammar', 'EVS Basics', 'Hindi Storytelling'];
+    }
+    if (level.includes('Class VI') || level.includes('Class 6') || level === 'Class VI') {
+      return ['Whole Numbers', 'Food & Components', 'History: Early States', 'Sanskrit Grammar', 'Earth & Climate'];
+    }
+    if (level.includes('Class VII') || level.includes('Class 7') || level === 'Class VII') {
+      return ['Integers & Equations', 'Nutrition in Plants', 'Mughal Empire', 'Weather & Climate', 'English Adjectives'];
+    }
+    if (level.includes('Class VIII') || level.includes('Class 8') || level === 'Class VIII') {
+      return ['Linear Equations', 'Cell Structure', 'Force & Pressure', 'Constitutional Rights', 'Crop Production'];
+    }
+    if (level.includes('Class IX') || level.includes('Class 9') || level === 'Class IX') {
+      return ['Number Systems', 'Matter in Surroundings', 'Force & Laws of Motion', 'French Revolution', 'Cell: Life Unit'];
+    }
+    if (level.includes('Class X') || level.includes('Class 10') || level === 'Class X') {
+      return ['Quadratic Equations', 'Chemical Reactions', 'Life Processes', 'Light Reflection', 'Nationalism in India'];
+    }
+
+    return ['Force & Motion', 'Algebra Formulas', 'Organic Chemistry', 'Cell Biology', 'English Grammar'];
+  };
+
+  const popularTopics = getDynamicQuizTopics();
+
   // --- Doubt Solver Action ---
   const handleAskDoubt = async () => {
     if (!doubtQuestion.trim()) return;
@@ -65,7 +126,7 @@ export default function AiAssistantPage() {
     try {
       const response = await api.post('/ai/doubt', {
         question: doubtQuestion,
-        courseName: doubtCourse || 'Programming',
+        courseName: doubtCourse || 'General Subject',
         model: 'gemini',
       });
       if (response.data.success && response.data.data?.answer) {
@@ -257,20 +318,23 @@ export default function AiAssistantPage() {
               <div>
                 <h4 className="font-black text-white text-base">Ask Your Doubt</h4>
                 <p className="text-xs text-text-secondary mt-1">
-                  Ask any programming or conceptual question and receive interactive explanations immediately.
+                  Ask any academic or conceptual question and receive interactive explanations immediately.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-1">
                   <label className="block text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-2">Subject / Course Name</label>
-                  <input
-                    type="text"
+                  <select
                     value={doubtCourse}
                     onChange={(e) => setDoubtCourse(e.target.value)}
-                    placeholder="e.g. React.js, SQL, AWS."
-                    className="w-full px-4 py-3 bg-white/5 border border-border-color rounded-xl text-xs text-white placeholder-text-muted focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
-                  />
+                    className="w-full px-4 py-3 bg-[#070b16] border border-border-color rounded-xl text-xs text-white focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all cursor-pointer"
+                  >
+                    <option value="">Select Subject</option>
+                    {batchSubjects.map((sub: any) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-2">Your Question</label>
@@ -280,7 +344,7 @@ export default function AiAssistantPage() {
                       value={doubtQuestion}
                       onChange={(e) => setDoubtQuestion(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAskDoubt()}
-                      placeholder="e.g. Explain how useEffect dependency array works."
+                      placeholder="e.g. Explain Newton's Laws of Motion or Algebra formulas."
                       className="w-full pl-4 pr-12 py-3 bg-white/5 border border-border-color rounded-xl text-xs text-white placeholder-text-muted focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
                     />
                     <button
@@ -375,7 +439,7 @@ export default function AiAssistantPage() {
                   <div>
                     <h4 className="font-black text-white text-base">AI Live Quiz Generator</h4>
                     <p className="text-xs text-text-secondary mt-1">
-                      Enter a tech topic and Gemini will compile a customized 5-question multiple choice test.
+                      Enter a school subject or topic and Gemini will compile a customized 5-question multiple choice test.
                     </p>
                   </div>
 
@@ -385,7 +449,7 @@ export default function AiAssistantPage() {
                       value={quizTopic}
                       onChange={(e) => setQuizTopic(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleGenerateQuiz()}
-                      placeholder="e.g. React Hooks, SQL Joins, Docker Basics."
+                      placeholder="e.g. Trigonometry, Carbon Compounds, Force & Motion."
                       className="flex-1 px-4 py-3 bg-white/5 border border-border-color rounded-xl text-xs text-white placeholder-text-muted focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
                     />
                     <button
@@ -405,9 +469,11 @@ export default function AiAssistantPage() {
 
                   {/* Popular Topics */}
                   <div className="space-y-3">
-                    <span className="text-[9px] font-extrabold text-text-muted uppercase block tracking-wider">Popular Topics</span>
+                    <span className="text-[9px] font-extrabold text-text-muted uppercase block tracking-wider">
+                      {studentNotes && studentNotes.length > 0 ? "Topics from Uploaded Notes" : "Recommended Topics"}
+                    </span>
                     <div className="flex flex-wrap gap-2.5">
-                      {['React Hooks', 'SQL Joins', 'Docker Containers', 'Spring Boot REST', 'AWS IAM'].map(top => (
+                      {popularTopics.map(top => (
                         <button
                           key={top}
                           onClick={() => handleGenerateQuiz(top)}

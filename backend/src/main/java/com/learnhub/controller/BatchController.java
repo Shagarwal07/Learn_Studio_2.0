@@ -182,9 +182,11 @@ public class BatchController {
         return ResponseEntity.ok(ApiResponse.success(announcements, "Batch announcements list retrieved successfully"));
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // STUDENT BATCH ENDPOINTS
-    // ────────────────────────────────────────────────────────────────────────
+    @GetMapping("/student/batch/my")
+    public ResponseEntity<ApiResponse<BatchDTO>> getStudentBatch(Principal principal) {
+        BatchDTO batch = batchService.getStudentBatch(principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(batch, "My batch retrieved successfully"));
+    }
 
     @GetMapping("/student/batch/tests")
     public ResponseEntity<ApiResponse<List<TestDTO>>> getStudentBatchTests(Principal principal) {

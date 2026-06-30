@@ -22,8 +22,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        AuthResponse response = authService.register(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Registration successful"));
+        return ResponseEntity.badRequest().body(ApiResponse.error("Registration is currently locked by the administrator."));
     }
 
     @PostMapping("/login")
@@ -40,8 +39,7 @@ public class AuthController {
 
     @PostMapping("/google/register")
     public ResponseEntity<ApiResponse<AuthResponse>> googleRegister(@RequestBody Map<String, String> body) {
-        AuthResponse response = authService.registerWithGoogle(body.get("credential"), body.get("role"));
-        return ResponseEntity.ok(ApiResponse.success(response, "Google registration successful"));
+        return ResponseEntity.badRequest().body(ApiResponse.error("Registration is currently locked by the administrator."));
     }
 
     @PostMapping("/refresh")

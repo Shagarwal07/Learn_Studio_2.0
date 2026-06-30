@@ -12,4 +12,5 @@ public interface HomeworkRepository extends JpaRepository<Homework, Long> {
     List<Homework> findByLessonId(Long lessonId);
     List<Homework> findByBatchId(Long batchId);
     List<Homework> findByBatchIdAndSubjectName(Long batchId, String subjectName);
+    boolean existsByPublicId(String publicId);
 }

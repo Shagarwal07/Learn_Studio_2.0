@@ -24,7 +24,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  ClipboardCheck
+  ClipboardCheck,
+  Lock
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -94,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     menuItems = [
       { name: 'Dashboard', href: '/dashboard', icon: Grid },
       { name: 'My Courses', href: '/dashboard/my-courses', icon: PlayCircle },
-      { name: 'Explore Courses', href: '/courses', icon: Compass },
+      { name: 'Explore Courses', href: '/courses', icon: Compass, locked: true },
       { name: 'Schedule', href: '/dashboard/schedule', icon: Calendar },
       { name: 'Attendance', href: '/dashboard/attendance', icon: ClipboardCheck },
       { name: 'Notes', href: '/dashboard/notes', icon: FileText },
@@ -180,14 +181,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
+                    href={item.locked ? '#' : item.href}
+                    onClick={(e) => {
+                      if (item.locked) {
+                        e.preventDefault();
+                        alert('Explore Courses catalog is currently locked.');
+                      } else {
+                        setSidebarOpen(false);
+                      }
+                    }}
                     className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                       isActive ? activeGrad : inactiveGrad
                     }`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 mr-3 ${isActive ? 'text-accent-grape' : ''}`} />
                     <span>{item.name}</span>
+                    {item.locked && (
+                      <Lock className="w-3.5 h-3.5 text-text-muted/50 shrink-0 ml-auto" />
+                    )}
                   </Link>
                 );
               })}
@@ -229,11 +240,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             return (
               <Link
                 key={item.name}
-                href={item.href}
+                href={item.locked ? '#' : item.href}
+                onClick={(e) => {
+                  if (item.locked) {
+                    e.preventDefault();
+                    alert('Explore Courses catalog is currently locked.');
+                  }
+                }}
                 className={`flex items-center py-2.5 rounded-xl text-[13px] font-semibold transition-all group ${
                   collapsed ? 'justify-center px-0' : 'px-4'
                 } ${isActive ? activeGrad : inactiveGrad}`}
-                title={collapsed ? item.name : undefined}
+                title={collapsed ? (item.locked ? `${item.name} (Locked)` : item.name) : undefined}
               >
                 <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${
                   isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
@@ -242,10 +259,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <motion.span 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="ml-3 truncate"
+                    className="ml-3 truncate animate-fade-in"
                   >
                     {item.name}
                   </motion.span>
+                )}
+                {item.locked && !collapsed && (
+                  <Lock className="w-3.5 h-3.5 text-text-muted/50 shrink-0 ml-auto group-hover:text-foreground/80 transition-colors" />
                 )}
               </Link>
             );

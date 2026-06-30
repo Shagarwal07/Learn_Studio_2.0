@@ -12,6 +12,11 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "LearnStudio 2.0 — Production Learning Platform",
   description: "An advanced, AI-powered Learning Management System with interactive courses, doubt solving, and personalized recommendations.",
+  icons: {
+    icon: "/images/logo.png",
+    shortcut: "/images/logo.png",
+    apple: "/images/logo.png",
+  }
 };
 
 export default function RootLayout({
