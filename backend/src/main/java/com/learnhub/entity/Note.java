@@ -59,4 +59,16 @@ public class Note extends BaseEntity {
 
     @Builder.Default
     private Boolean aiEnabled = true;
+
+    @Column(name = "original_filename")
+    private String originalFilename;
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    @Column(name = "resource_type")
+    private String resourceType;
+
+    @Column(name = "secure_url", length = 1024)
+    private String secureUrl;
 }

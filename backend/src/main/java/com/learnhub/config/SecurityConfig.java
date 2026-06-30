@@ -18,6 +18,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.config.Customizer;
 
 @Configuration
 @EnableWebSecurity
@@ -31,13 +35,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                        .cors(Customizer.withDefaults())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Allow ALL preflight OPTIONS requests
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Public endpoints
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/health").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/courses/**").permitAll()
                 // Everything else needs JWT
                 .anyRequest().authenticated()
@@ -57,14 +61,24 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource(@Value("${CORS_ALLOWED_ORIGINS:}") String allowedOrigins) {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${CORS_ALLOWED_ORIGINS:}") String allowedOrigins,
+            @Value("${spring.profiles.active:dev}") String activeProfile) {
         CorsConfiguration config = new CorsConfiguration();
         if (!allowedOrigins.isBlank()) {
             List<String> origins = Arrays.stream(allowedOrigins.split(",")).map(String::trim).collect(Collectors.toList());
             config.setAllowedOrigins(origins);
         } else {
-            // Default to allow all in local development; will be overridden in production
-            config.setAllowedOriginPatterns(List.of("*").toString());
+            // No explicit origins provided
+            if ("dev".equalsIgnoreCase(activeProfile)) {
+                // Allow localhost for development only
+                config.setAllowedOrigins(List.of(
+                    "http://localhost:3000", "http://localhost:3001",
+                    "http://127.0.0.1:3000", "http://127.0.0.1:3001"));
+            } else {
+                // In production, disallow all if no origins are set
+                throw new IllegalStateException("CORS_ALLOWED_ORIGINS must be set in production");
+            }
         }
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
         config.setAllowedHeaders(List.of("*"));

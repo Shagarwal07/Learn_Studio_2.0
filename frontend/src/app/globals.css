@@ -5,16 +5,59 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --bg-secondary: #f1f5f9;
+  --card-bg: #ffffff;
+  --surface-bg: #f8fafc;
+  --border-color: rgba(15, 23, 42, 0.08);
+  
+  --accent-grape: #963484;
+  --primary-blue: #3066BE;
+  --secondary-blue: #60AFFF;
+  --accent-blue: #28C2FF;
+  --highlight-cyan: #2AF5FF;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
 }
 
 .dark {
-  --background: #090d16;
-  --foreground: #f8fafc;
+  --background: #070B16;
+  --foreground: #FFFFFF;
+  --bg-secondary: #101827;
+  --card-bg: #141C2F;
+  --surface-bg: #1A2338;
+  --border-color: rgba(255, 255, 255, 0.08);
+  
+  --accent-grape: #963484;
+  --primary-blue: #3066BE;
+  --secondary-blue: #60AFFF;
+  --accent-blue: #28C2FF;
+  --highlight-cyan: #2AF5FF;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #B5BDD1;
+  --text-muted: #7B8496;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-card-bg: var(--card-bg);
+  --color-surface-bg: var(--surface-bg);
+  --color-border-color: var(--border-color);
+  
+  --color-accent-grape: var(--accent-grape);
+  --color-primary-blue: var(--primary-blue);
+  --color-secondary-blue: var(--secondary-blue);
+  --color-accent-blue: var(--accent-blue);
+  --color-highlight-cyan: var(--highlight-cyan);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  
   --font-sans: var(--font-outfit), system-ui, sans-serif;
 }
 
@@ -23,4 +66,86 @@ body {
   color: var(--color-foreground);
   font-family: var(--font-sans);
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
 }
+
+/* Custom Premium Glassmorphism Cards */
+.glass-card {
+  background: rgba(20, 28, 47, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.04);
+}
+
+/* Premium Card Hover Lift & Glow */
+.hover-lift {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -15px rgba(150, 52, 132, 0.12), 0 0 25px -5px rgba(48, 102, 190, 0.08);
+  border-color: rgba(150, 52, 132, 0.3);
+}
+
+/* Glowing Primary Buttons */
+.btn-premium {
+  background: linear-gradient(135deg, var(--accent-grape) 0%, var(--primary-blue) 100%);
+  box-shadow: 0 4px 20px -5px rgba(150, 52, 132, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-premium:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px -3px rgba(150, 52, 132, 0.5), 0 0 15px rgba(48, 102, 190, 0.25);
+}
+
+.btn-premium:active:not(:disabled) {
+  transform: translateY(0px) scale(0.98);
+}
+
+/* Glowing focus states for inputs */
+.input-premium {
+  transition: all 0.25s ease-in-out;
+  background: rgba(20, 28, 47, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.light .input-premium {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.input-premium:focus {
+  border-color: var(--accent-grape);
+  box-shadow: 0 0 0 3px rgba(150, 52, 132, 0.12), 0 0 10px rgba(150, 52, 132, 0.08);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(123, 132, 150, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 52, 132, 0.4);
+}
+

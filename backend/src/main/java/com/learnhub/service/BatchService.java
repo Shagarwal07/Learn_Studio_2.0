@@ -6,6 +6,10 @@ import com.learnhub.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.InputStream;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,6 +26,7 @@ public class BatchService {
     private final NoteRepository noteRepository;
     private final HomeworkRepository homeworkRepository;
     private final AnnouncementRepository announcementRepository;
+    private final CloudinaryService cloudinaryService;
 
     // ────────────────────────────────────────────────────────────────────────
     // BATCH CRUD OPERATIONS
@@ -305,26 +310,66 @@ public class BatchService {
     // BATCH-WISE NOTES, HOMEWORKS, AND ANNOUNCEMENTS
     // ────────────────────────────────────────────────────────────────────────
 
-    public NoteDTO createBatchNote(Long batchId, NoteDTO dto, String email) {
+    @Transactional
+    public NoteDTO createBatchNote(Long batchId, String title, String description, String subjectName, MultipartFile file, String email) {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        Note note = Note.builder()
-                .title(dto.getTitle())
-                .description(dto.getDescription())
-                .batch(batch)
-                .subjectName(dto.getSubjectName())
-                .fileUrl(dto.getFileUrl())
-                .publicId(dto.getPublicId())
-                .uploadedBy(creator)
-                .isVisible(dto.getIsVisible() != null ? dto.getIsVisible() : true)
-                .aiEnabled(dto.getAiEnabled() != null ? dto.getAiEnabled() : true)
-                .build();
+        System.out.println("Starting Cloudinary upload for batch note: " + title);
+        try {
+            // 1. Upload to Cloudinary
+            @SuppressWarnings("rawtypes")
+            Map uploadResult = cloudinaryService.uploadFileRaw(file, "notes");
+            String secureUrl = uploadResult.get("secure_url").toString();
+            String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
+            String resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
 
-        Note saved = noteRepository.save(note);
-        return convertNoteToDTO(saved);
+            System.out.println("Cloudinary upload success for batch note: " + title + ", publicId: " + publicId);
+
+            // 2. Extract Text from PDF using PDFBox
+            String extractedText = "";
+            try (InputStream is = file.getInputStream()) {
+                extractedText = extractTextFromPdf(is);
+            } catch (Exception e) {
+                System.err.println("Could not extract PDF text for batch note: " + e.getMessage());
+            }
+
+            // 3. Build & Save Entity
+            Note note = Note.builder()
+                    .title(title)
+                    .description(description)
+                    .batch(batch)
+                    .subjectName(subjectName)
+                    .fileUrl(secureUrl)
+                    .publicId(publicId)
+                    .uploadedBy(creator)
+                    .isVisible(true)
+                    .aiEnabled(true)
+                    .extractedText(extractedText)
+                    .originalFilename(file.getOriginalFilename())
+                    .fileSize(file.getSize())
+                    .resourceType(resourceType)
+                    .secureUrl(secureUrl)
+                    .build();
+
+            Note saved = noteRepository.save(note);
+            return convertNoteToDTO(saved);
+        } catch (Exception e) {
+            System.err.println("Cloudinary upload failed for batch note: " + title + " - " + e.getMessage());
+            throw new RuntimeException("Note upload failed: " + e.getMessage(), e);
+        }
+    }
+
+    private String extractTextFromPdf(InputStream inputStream) {
+        try (PDDocument document = PDDocument.load(inputStream)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            return stripper.getText(document);
+        } catch (Exception e) {
+            System.err.println("PDFBox text extraction failed: " + e.getMessage());
+            return "";
+        }
     }
 
     public List<NoteDTO> getBatchNotes(Long batchId) {
@@ -441,6 +486,10 @@ public class BatchService {
                 .isVisible(note.getIsVisible())
                 .aiEnabled(note.getAiEnabled())
                 .createdAt(note.getCreatedAt())
+                .originalFilename(note.getOriginalFilename())
+                .fileSize(note.getFileSize())
+                .resourceType(note.getResourceType())
+                .secureUrl(note.getSecureUrl())
                 .build();
     }
 

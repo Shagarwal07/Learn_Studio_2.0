@@ -50,11 +50,15 @@ public class NoteService {
         var lesson = lessonId != null ? lessonRepository.findById(lessonId).orElse(null) : null;
 
         try {
+            System.out.println("Starting Cloudinary upload for course note: " + title);
             // 1. Upload to Cloudinary
             @SuppressWarnings("rawtypes")
             Map uploadResult = cloudinaryService.uploadFileRaw(file, "notes");
             String secureUrl = uploadResult.get("secure_url").toString();
             String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
+            String resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
+
+            System.out.println("Cloudinary upload success for course note: " + title + ", publicId: " + publicId);
 
             // 2. Extract Text from PDF using PDFBox
             String extractedText = "";
@@ -76,10 +80,15 @@ public class NoteService {
                     .isVisible(true)
                     .extractedText(extractedText)
                     .aiEnabled(true)
+                    .originalFilename(file.getOriginalFilename())
+                    .fileSize(file.getSize())
+                    .resourceType(resourceType)
+                    .secureUrl(secureUrl)
                     .build();
 
             return toDTO(noteRepository.save(note));
         } catch (Exception e) {
+            System.err.println("Cloudinary upload failed for course note: " + title + " - " + e.getMessage());
             throw new RuntimeException("Note upload failed: " + e.getMessage(), e);
         }
     }
@@ -165,8 +174,27 @@ public class NoteService {
 
         // Fetch PDF from Cloudinary URL, apply watermark and protection, and return bytes
         try {
-            URL url = new URL(note.getFileUrl());
-            try (InputStream is = url.openStream()) {
+            byte[] pdfBytes;
+            if (note.getPublicId() != null && !note.getPublicId().isBlank()) {
+                // Extract version from fileUrl if available (e.g. v1782482454)
+                String version = null;
+                if (note.getFileUrl() != null) {
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/v(\\d+)/");
+                    java.util.regex.Matcher matcher = pattern.matcher(note.getFileUrl());
+                    if (matcher.find()) {
+                        version = matcher.group(1);
+                    }
+                }
+                pdfBytes = cloudinaryService.downloadFile(note.getPublicId(), version);
+            } else if (note.getFileUrl() != null && !note.getFileUrl().isBlank()) {
+                URL url = new URL(note.getFileUrl());
+                try (InputStream is = url.openStream()) {
+                    pdfBytes = is.readAllBytes();
+                }
+            } else {
+                throw new RuntimeException("No file URL or public ID available for this note");
+            }
+            try (InputStream is = new java.io.ByteArrayInputStream(pdfBytes)) {
                 return watermarkAndProtectPdf(is, user, ipAddress);
             }
         } catch (Exception e) {
@@ -371,6 +399,10 @@ public class NoteService {
                 .isVisible(note.getIsVisible())
                 .aiEnabled(note.getAiEnabled())
                 .createdAt(note.getCreatedAt())
+                .originalFilename(note.getOriginalFilename())
+                .fileSize(note.getFileSize())
+                .resourceType(note.getResourceType())
+                .secureUrl(note.getSecureUrl())
                 .build();
     }
 }

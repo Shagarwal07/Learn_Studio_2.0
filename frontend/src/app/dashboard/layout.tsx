@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProfileDropdown from '@/components/ProfileDropdown';
+import ThemeToggle from '@/components/ThemeToggle';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Grid, 
   PlayCircle, 
@@ -53,12 +55,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading || !user || !mounted) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground transition-colors duration-300">
         <div className="relative">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
-          <div className="absolute inset-0 blur-md bg-indigo-500/20 rounded-full animate-pulse" />
+          <Loader2 className="w-12 h-12 animate-spin text-accent-grape" />
+          <div className="absolute inset-0 blur-md bg-accent-grape/20 rounded-full animate-pulse" />
         </div>
-        <p className="mt-4 text-slate-400 font-medium text-sm">Verifying session...</p>
+        <p className="mt-4 text-text-secondary font-medium text-sm">Verifying session.</p>
       </div>
     );
   }
@@ -125,43 +127,102 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return 'LearnStudio';
   };
 
+  const activeGrad = 'bg-accent-grape/10 text-accent-grape border-l-[3px] border-accent-grape dark:bg-gradient-to-r dark:from-accent-grape/15 dark:to-primary-blue/5 dark:text-white shadow-[inset_0_0_8px_rgba(150,52,132,0.08)]';
+  const inactiveGrad = 'text-text-secondary hover:text-foreground hover:bg-white/5 border-l-[3px] border-transparent';
+
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+    <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300">
       
       {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-slate-955/40 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-slate-955/60 backdrop-blur-md lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Sidebar Drawer */}
-      <aside className={`fixed inset-y-0 left-0 z-50 ${
-        collapsed ? 'lg:w-20' : 'lg:w-60'
-      } bg-slate-900 border-r border-slate-800 text-white transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:flex lg:flex-col ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        {/* Brand */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-slate-800">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-base overflow-hidden">
-            <div className="w-7 h-7 bg-violet-600 rounded-lg flex items-center justify-center text-white shrink-0">
-              <BookOpen className="w-3.5 h-3.5" />
+      {/* Sidebar Drawer (Mobile & Tablet) */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.aside 
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-y-0 left-0 z-50 w-64 bg-bg-secondary border-r border-border-color text-foreground flex flex-col lg:hidden"
+          >
+            {/* Mobile Brand Area */}
+            <div className="h-16 flex items-center justify-between px-5 border-b border-border-color">
+              <Link href="/dashboard" className="flex items-center gap-2.5 font-bold text-base">
+                <div className="w-8 h-8 bg-gradient-to-br from-accent-grape to-primary-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-accent-grape/30">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <span className="tracking-tight text-white font-extrabold">Learn<span className="text-accent-grape">Studio</span></span>
+              </Link>
+              <button 
+                onClick={() => setSidebarOpen(false)}
+                className="p-2 hover:bg-white/5 rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Mobile Navigation */}
+            <nav className="flex-1 px-3 py-5 space-y-1.5 overflow-y-auto">
+              {menuItems.map((item) => {
+                const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                      isActive ? activeGrad : inactiveGrad
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 mr-3 ${isActive ? 'text-accent-grape' : ''}`} />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar (Persistent with Framer Motion Width Animation) */}
+      <motion.aside 
+        animate={{ width: collapsed ? 80 : 260 }}
+        transition={{ type: 'spring', damping: 24, stiffness: 180 }}
+        className="hidden lg:flex lg:flex-col lg:static z-35 bg-bg-secondary border-r border-border-color shrink-0 overflow-hidden"
+      >
+        {/* Brand Logo */}
+        <div className="h-16 flex items-center px-5 border-b border-border-color overflow-hidden">
+          <Link href="/dashboard" className="flex items-center gap-3 font-bold text-base w-full shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-accent-grape to-primary-blue rounded-xl flex items-center justify-center text-white shadow-lg shadow-accent-grape/30">
+              <BookOpen className="w-4 h-4" />
             </div>
             {!collapsed && (
-              <span className="animate-in fade-in duration-300 tracking-tight">Learn<span className="text-violet-400">Studio</span></span>
+              <motion.span 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="tracking-tight text-white font-black text-lg"
+              >
+                Learn<span className="text-accent-grape">Studio</span>
+              </motion.span>
             )}
           </Link>
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto overflow-x-hidden scrollbar-thin">
           {menuItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
@@ -169,59 +230,64 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center ${
-                  collapsed ? 'justify-center px-2' : 'px-3'
-                } py-2 rounded-lg text-xs font-medium transition-all ${
-                  isActive 
-                    ? 'bg-violet-600 text-slate-100 shadow-sm shadow-violet-500/10' 
-                    : 'text-slate-400 hover:bg-slate-850/60 hover:text-slate-200'
-                }`}
+                className={`flex items-center py-2.5 rounded-xl text-[13px] font-semibold transition-all group ${
+                  collapsed ? 'justify-center px-0' : 'px-4'
+                } ${isActive ? activeGrad : inactiveGrad}`}
                 title={collapsed ? item.name : undefined}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${
+                  isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
+                }`} />
                 {!collapsed && (
-                  <span className="ml-2.5 truncate animate-in fade-in duration-200">{item.name}</span>
+                  <motion.span 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="ml-3 truncate"
+                  >
+                    {item.name}
+                  </motion.span>
                 )}
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom Toggle Collapse Panel (Desktop) */}
-        <div className="hidden lg:block p-3 border-t border-slate-800">
+        {/* Bottom Toggle Collapse Panel */}
+        <div className="p-4 border-t border-border-color">
           <button
             onClick={toggleCollapse}
-            className="w-full flex items-center justify-center p-2 bg-slate-850/40 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer"
+            className="w-full flex items-center justify-center p-2.5 bg-background hover:bg-white/5 border border-border-color rounded-xl text-text-secondary hover:text-foreground transition-all cursor-pointer shadow-sm"
           >
-            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-150 dark:border-slate-800/80 flex items-center justify-between px-6 lg:px-8 transition-colors duration-200">
+        <header className="h-16 bg-bg-secondary/70 backdrop-blur-md border-b border-border-color flex items-center justify-between px-6 lg:px-8 z-30 transition-colors duration-200">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-slate-105 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+              className="lg:hidden p-2.5 hover:bg-white/5 rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-sm font-bold tracking-tight text-white uppercase">
               {getPageTitle()}
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <div className="w-[1px] h-5 bg-border-color" />
             <ProfileDropdown />
           </div>
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-y-auto p-5 lg:p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-background transition-colors duration-200 scrollbar-thin">
           {children}
         </main>
 

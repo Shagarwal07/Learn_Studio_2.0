@@ -664,27 +664,29 @@ export default function InstructorBatchesPage() {
     try {
       const formData = new FormData();
       formData.append('file', notePdfFile);
-      formData.append('folder', 'notes');
+      formData.append('title', noteTitle.trim());
+      formData.append('description', noteDescription.trim());
+      formData.append('subjectName', noteSubject);
 
-      const uploadResponse = await api.post('/media/upload', formData, {
+      const response = await api.post(`/instructor/batches/${selectedBatchId}/notes`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const secureUrl = uploadResponse.data?.data?.url;
-      if (!secureUrl) throw new Error('Upload server failed to return secure URL.');
-
-      saveNoteMutation.mutate({
-        title: noteTitle.trim(),
-        description: noteDescription.trim(),
-        subjectName: noteSubject,
-        fileUrl: secureUrl,
-        publicId: 'batch_note_pdf',
-        isVisible: true,
-        aiEnabled: true
-      });
+      if (response.data.success) {
+        refetchNotes();
+        setNoteTitle('');
+        setNoteDescription('');
+        setNotePdfFile(null);
+        if (noteFileInputRef.current) noteFileInputRef.current.value = '';
+        setNoteFormSuccess('Study guide PDF uploaded and secure-mapped successfully.');
+        setNoteFormError('');
+        setTimeout(() => setNoteFormSuccess(''), 4000);
+      } else {
+        throw new Error(response.data.message || 'Note upload failed.');
+      }
 
     } catch (err: any) {
-      setNoteFormError(err.message || 'File upload failed. Please try again.');
+      setNoteFormError(err.response?.data?.message || err.message || 'File upload failed. Please try again.');
     } finally {
       setNoteUploading(false);
     }
@@ -723,6 +725,7 @@ export default function InstructorBatchesPage() {
 
     try {
       let secureUrl = '';
+      let uploadedPublicId: string | null = null;
       if (hwPdfFile) {
         const formData = new FormData();
         formData.append('file', hwPdfFile);
@@ -732,6 +735,7 @@ export default function InstructorBatchesPage() {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         secureUrl = uploadResponse.data?.data?.url || '';
+        uploadedPublicId = uploadResponse.data?.data?.publicId || null;
         if (!secureUrl) throw new Error('Upload server failed to return secure URL.');
       }
 
@@ -740,7 +744,7 @@ export default function InstructorBatchesPage() {
         description: hwDescription.trim(),
         subjectName: hwSubject,
         fileUrl: secureUrl,
-        publicId: secureUrl ? 'homework_attachment_pdf' : null,
+        publicId: uploadedPublicId,
         dueDate: hwDueDate ? `${hwDueDate}T23:59:59` : null,
         isVisible: true
       });
@@ -1626,7 +1630,7 @@ export default function InstructorBatchesPage() {
                                   </div>
 
                                   <a
-                                    href={note.fileUrl}
+                                    href={`/dashboard/notes/view/${note.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white rounded-lg font-bold text-[9px] transition-all shrink-0 cursor-pointer shadow-sm active:scale-95"

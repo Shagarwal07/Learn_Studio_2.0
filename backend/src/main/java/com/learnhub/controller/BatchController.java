@@ -4,8 +4,10 @@ import com.learnhub.dto.*;
 import com.learnhub.service.BatchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import java.security.Principal;
 import java.util.List;
 import java.util.Set;
@@ -130,12 +132,17 @@ public class BatchController {
     // BATCH-WISE NOTES, HOMEWORKS, AND ANNOUNCEMENTS
     // ────────────────────────────────────────────────────────────────────────
 
-    @PostMapping("/instructor/batches/{id}/notes")
+    @PostMapping(value = "/instructor/batches/{id}/notes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN')")
     public ResponseEntity<ApiResponse<NoteDTO>> createBatchNote(
-            @PathVariable Long id, @RequestBody NoteDTO dto, Principal principal) {
-        NoteDTO created = batchService.createBatchNote(id, dto, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(created, "Batch note created successfully"));
+            @PathVariable Long id,
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("subjectName") String subjectName,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        NoteDTO created = batchService.createBatchNote(id, title, description, subjectName, file, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(created, "Batch note uploaded and secure-mapped successfully"));
     }
 
     @GetMapping("/instructor/batches/{id}/notes")

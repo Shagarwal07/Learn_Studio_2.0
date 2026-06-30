@@ -25,4 +25,8 @@ public class NoteDTO {
     private String batchName;
     private String subjectName;
     private LocalDateTime createdAt;
+    private String originalFilename;
+    private Long fileSize;
+    private String resourceType;
+    private String secureUrl;
 }

@@ -32,3 +32,7 @@ backend-run.log
 # Node (if used locally)
 node_modules/
 package-lock.json
+
+# Scratch and test files
+scratch/
+test_note.txt

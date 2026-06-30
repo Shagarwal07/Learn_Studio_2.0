@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Map;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -60,5 +61,44 @@ public class CloudinaryService {
         } catch (IOException e) {
             System.err.println("Failed to delete file from Cloudinary: " + e.getMessage());
         }
+    }
+
+    public byte[] downloadFile(String publicId) throws IOException {
+        return downloadFile(publicId, null);
+    }
+
+    public byte[] downloadFile(String publicId, String version) throws IOException {
+        com.cloudinary.Url urlBuilder = cloudinary.url()
+                .resourceType("image")
+                .type("upload")
+                .format("pdf")
+                .secure(true)
+                .signed(true);
+
+        if (version != null && !version.isBlank()) {
+            urlBuilder.version(version);
+        }
+
+        String signedUrl = urlBuilder.generate(publicId);
+        System.out.println("Downloading PDF from signed URL: " + signedUrl);
+
+        java.net.URL url = new java.net.URL(signedUrl);
+        try (java.io.InputStream is = url.openStream()) {
+            return is.readAllBytes();
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public int getCloudinaryAssetCount() {
+        try {
+            Map result = cloudinary.api().resources(ObjectUtils.asMap("max_results", 500));
+            if (result != null && result.containsKey("resources")) {
+                List resources = (List) result.get("resources");
+                return resources.size();
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch Cloudinary resources: " + e.getMessage());
+        }
+        return -1;
     }
 }
