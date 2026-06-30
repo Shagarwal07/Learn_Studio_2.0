@@ -58,8 +58,12 @@ public class AiController {
             @RequestBody Map<String, Object> body,
             Principal principal) {
         String topic = (String) body.get("topic");
-        Integer score = (Integer) body.get("score");
-        Integer totalQuestions = (Integer) body.get("totalQuestions");
+        
+        Object scoreObj = body.get("score");
+        Integer score = scoreObj instanceof Number ? ((Number) scoreObj).intValue() : 0;
+
+        Object totalObj = body.get("totalQuestions");
+        Integer totalQuestions = totalObj instanceof Number ? ((Number) totalObj).intValue() : 0;
         
         QuizAttemptDTO attempt = aiService.saveQuizAttempt(principal.getName(), topic, score, totalQuestions);
         return ResponseEntity.ok(ApiResponse.success(attempt, "Quiz attempt recorded successfully"));

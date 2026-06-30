@@ -568,21 +568,34 @@ export default function StudentDashboardPage() {
     >
       
       {/* Welcome banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-bg-secondary-dark via-card-dark to-surface-dark p-6 lg:p-10 rounded-3xl border border-border-color shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-r from-bg-secondary-dark via-card-dark to-surface-dark p-6 lg:p-10 rounded-3xl border border-border-color shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-accent-grape/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-10 left-1/3 w-64 h-64 bg-primary-blue/5 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 space-y-3">
+        <div className="relative z-10 space-y-3 max-w-xl">
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-accent-blue bg-accent-blue/10 px-3 py-1 rounded-full border border-accent-blue/25 uppercase tracking-wider">
             Learning Portal Active
           </span>
           <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
             Welcome back, {user?.name}. 👋
           </h2>
-          <p className="text-text-secondary text-xs sm:text-sm max-w-xl leading-relaxed">
+          <p className="text-text-secondary text-xs sm:text-sm leading-relaxed">
             Check your progress, consult the AI assistant to clear doubts, and complete your lessons to earn certificates.
           </p>
         </div>
+
+        {/* Studying Teddy Cartoon Illustration */}
+        <motion.div 
+          animate={{ y: [0, -8, 0] }}
+          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+          className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 shrink-0 mx-auto md:mx-0 select-none hidden sm:block"
+        >
+          <img 
+            src="/images/study-teddy.png" 
+            alt="Studying Teddy Bear"
+            className="w-full h-full object-contain filter drop-shadow-[0_0_20px_rgba(150,52,132,0.3)]" 
+          />
+        </motion.div>
       </div>
 
       {/* PROGRESS & ANALYTICS HEADER */}
