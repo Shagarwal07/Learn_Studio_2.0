@@ -34,8 +34,35 @@ public class GoogleDriveConfig {
             System.out.println("Loading Google Drive credentials from GOOGLE_DRIVE_CREDENTIALS_JSON environment variable.");
             credentialsStream = new ByteArrayInputStream(rawCredentialsJson.getBytes(StandardCharsets.UTF_8));
         } else {
-            System.out.println("Loading Google Drive credentials from file path: " + credentialsPath);
-            credentialsStream = new FileInputStream(credentialsPath);
+            java.io.File file = new java.io.File(credentialsPath);
+            if (!file.exists()) {
+                System.out.println("Credentials file not found at path: " + credentialsPath + ". Trying fallback search paths...");
+                java.util.List<String> fallbacks = java.util.List.of(
+                    "resources/google-credentials.json",
+                    "../resources/google-credentials.json",
+                    "./resources/google-credentials.json",
+                    "google-credentials.json"
+                );
+                for (String path : fallbacks) {
+                    java.io.File f = new java.io.File(path);
+                    if (f.exists()) {
+                        file = f;
+                        System.out.println("Found Google Drive credentials at: " + f.getAbsolutePath());
+                        break;
+                    }
+                }
+            }
+
+            if (!file.exists()) {
+                System.err.println("======================================================================");
+                System.err.println("⚠️ WARNING: Google Drive credentials file NOT FOUND.");
+                System.err.println("Google Drive Synchronization features will be disabled.");
+                System.err.println("======================================================================");
+                return null;
+            }
+
+            System.out.println("Loading Google Drive credentials from file path: " + file.getAbsolutePath());
+            credentialsStream = new FileInputStream(file);
         }
 
         GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream)

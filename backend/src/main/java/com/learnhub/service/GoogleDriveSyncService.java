@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class GoogleDriveSyncService {
 
     private final Drive googleDrive;
@@ -32,6 +31,19 @@ public class GoogleDriveSyncService {
     private final NoteRepository noteRepository;
     private final HomeworkRepository homeworkRepository;
     private final UserRepository userRepository;
+
+    public GoogleDriveSyncService(
+            @org.springframework.beans.factory.annotation.Autowired(required = false) Drive googleDrive,
+            BatchRepository batchRepository,
+            NoteRepository noteRepository,
+            HomeworkRepository homeworkRepository,
+            UserRepository userRepository) {
+        this.googleDrive = googleDrive;
+        this.batchRepository = batchRepository;
+        this.noteRepository = noteRepository;
+        this.homeworkRepository = homeworkRepository;
+        this.userRepository = userRepository;
+    }
 
     @Value("${google.drive.root.folder.id:}")
     private String rootFolderId;
@@ -55,6 +67,10 @@ public class GoogleDriveSyncService {
      */
     @Transactional
     public void syncAll(String folderId) throws Exception {
+        if (googleDrive == null) {
+            throw new IllegalStateException("Google Drive synchronization is disabled because Google Drive credentials were not found at startup.");
+        }
+
         String parentId = (folderId != null && !folderId.isEmpty()) ? folderId 
                 : ((rootFolderId != null && !rootFolderId.isEmpty()) ? rootFolderId : "root");
 
