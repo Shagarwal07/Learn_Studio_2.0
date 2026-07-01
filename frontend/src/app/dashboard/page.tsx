@@ -70,12 +70,12 @@ function OverallProgressDonut({ courses }: { courses: EnrolledCourse[] }) {
   const notStarted = courses.filter(c => c.progress === 0).length;
 
   // Compute percentages
-  const completedPct = total ? Math.round((completed / total) * 100) : 78;
-  const inProgressPct = total ? Math.round((inProgress / total) * 100) : 15;
-  const notStartedPct = total ? Math.round((notStarted / total) * 100) : 7;
+  const completedPct = total ? Math.round((completed / total) * 100) : 0;
+  const inProgressPct = total ? Math.round((inProgress / total) * 100) : 0;
+  const notStartedPct = total ? Math.round((notStarted / total) * 100) : 0;
 
   // Average progress across all courses
-  const avgProgress = total ? Math.round(courses.reduce((sum, c) => sum + c.progress, 0) / total) : 78;
+  const avgProgress = total ? Math.round(courses.reduce((sum, c) => sum + c.progress, 0) / total) : 0;
 
   // SVG parameters
   const radius = 45;
@@ -192,26 +192,20 @@ function OverallProgressDonut({ courses }: { courses: EnrolledCourse[] }) {
 
 // Vector Line Chart with Gradient fill under curve for Quiz scores
 function QuizPerformanceChart({ attempts }: { attempts: any[] }) {
-  const dataPoints = attempts.length >= 2 
+  const hasData = attempts && attempts.length >= 2;
+  const dataPoints = hasData
     ? attempts.map((a, idx) => ({
         label: new Date(a.attemptedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         score: Math.round((a.score / a.totalQuestions) * 100)
       })).slice(-6)
-    : [
-        { label: 'May 20', score: 60 },
-        { label: 'May 21', score: 75 },
-        { label: 'May 22', score: 70 },
-        { label: 'May 23', score: 82 },
-        { label: 'May 24', score: 80 },
-        { label: 'May 25', score: 90 }
-      ];
+    : [];
 
   const width = 320;
   const height = 150;
   const padding = 20;
 
   const points = dataPoints.map((d, idx) => {
-    const x = padding + (idx * (width - 2 * padding)) / (dataPoints.length - 1);
+    const x = padding + (idx * (width - 2 * padding)) / Math.max(dataPoints.length - 1, 1);
     const y = height - padding - (d.score * (height - 2 * padding)) / 100;
     return { x, y, score: d.score, label: d.label };
   });
@@ -241,80 +235,91 @@ function QuizPerformanceChart({ attempts }: { attempts: any[] }) {
           <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Quiz Performance</h4>
           <p className="text-[10px] text-text-muted mt-0.5">Average score over recent attempts</p>
         </div>
-        {attempts.length < 2 && (
+        {!hasData && (
           <span className="text-[8px] bg-accent-grape/10 text-accent-grape border border-accent-grape/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
-            Demo Trend
+            Empty
           </span>
         )}
       </div>
 
-      <div className="relative w-full h-40 mt-4 flex items-center justify-center">
-        <svg className="w-full h-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#963484" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#3066BE" stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#963484" />
-              <stop offset="100%" stopColor="#60AFFF" />
-            </linearGradient>
-          </defs>
+      {hasData ? (
+        <>
+          <div className="relative w-full h-40 mt-4 flex items-center justify-center">
+            <svg className="w-full h-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#963484" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#3066BE" stopOpacity="0.0" />
+                </linearGradient>
+                <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#963484" />
+                  <stop offset="100%" stopColor="#60AFFF" />
+                </linearGradient>
+              </defs>
 
-          {/* Grid Lines */}
-          <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-          <line x1={padding} y1={height/2} x2={width - padding} y2={height/2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              {/* Grid Lines */}
+              <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+              <line x1={padding} y1={height/2} x2={width - padding} y2={height/2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+              <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
 
-          {/* Fill area under curve */}
-          {areaPath && (
-            <path d={areaPath} fill="url(#chartGradient)" />
-          )}
+              {/* Fill area under curve */}
+              {areaPath && (
+                <path d={areaPath} fill="url(#chartGradient)" />
+              )}
 
-          {/* Vector bezier path */}
-          {dPath && (
-            <path
-              d={dPath}
-              fill="none"
-              stroke="url(#lineGradient)"
-              strokeWidth="3"
-              strokeLinecap="round"
-              style={{ filter: 'drop-shadow(0 4px 8px rgba(150,52,132,0.3))' }}
-            />
-          )}
+              {/* Vector bezier path */}
+              {dPath && (
+                <path
+                  d={dPath}
+                  fill="none"
+                  stroke="url(#lineGradient)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  style={{ filter: 'drop-shadow(0 4px 8px rgba(150,52,132,0.3))' }}
+                />
+              )}
 
-          {/* Nodes */}
-          {points.map((p, idx) => (
-            <g key={idx} className="group cursor-pointer">
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r="5"
-                className="fill-background stroke-secondary-blue"
-                strokeWidth="2"
-              />
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r="2"
-                className="fill-accent-grape"
-              />
-              <title>{`${p.label}: ${p.score}%`}</title>
-            </g>
-          ))}
-        </svg>
-      </div>
+              {/* Nodes */}
+              {points.map((p, idx) => (
+                <g key={idx} className="group cursor-pointer">
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r="5"
+                    className="fill-background stroke-secondary-blue"
+                    strokeWidth="2"
+                  />
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r="2"
+                    className="fill-accent-grape"
+                  />
+                  <title>{`${p.label}: ${p.score}%`}</title>
+                </g>
+              ))}
+            </svg>
+          </div>
 
-      <div className="flex justify-between text-[9px] font-bold text-text-muted uppercase tracking-wider mt-2 px-1">
-        {dataPoints.map((d, idx) => (
-          <span key={idx}>{d.label}</span>
-        ))}
-      </div>
+          <div className="flex justify-between text-[9px] font-bold text-text-muted uppercase tracking-wider mt-2 px-1">
+            {dataPoints.map((d, idx) => (
+              <span key={idx}>{d.label}</span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="py-8 flex flex-col items-center justify-center text-center space-y-2 mt-4">
+          <span className="text-2xl">⚡</span>
+          <p className="text-[11px] font-bold text-text-muted">No Quiz Attempts Yet</p>
+          <p className="text-[9px] text-text-muted/65 max-w-[180px]">
+            Start practicing quizzes inside the "Study Assistant" tab to view metrics!
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-// Subject-Wise Progress mapping to Enrolled Courses
 function SubjectPerformance({ courses }: { courses: EnrolledCourse[] }) {
   const subjects = courses.length > 0
     ? courses.map((c, idx) => {
@@ -332,13 +337,7 @@ function SubjectPerformance({ courses }: { courses: EnrolledCourse[] }) {
           color
         };
       }).slice(0, 5)
-    : [
-        { title: 'Mathematics', progress: 85, color: { bar: 'bg-success', glow: 'shadow-[0_0_10px_rgba(34,197,94,0.35)]' } },
-        { title: 'Physics', progress: 72, color: { bar: 'bg-primary-blue', glow: 'shadow-[0_0_10px_rgba(48,102,190,0.35)]' } },
-        { title: 'Chemistry', progress: 60, color: { bar: 'bg-warning', glow: 'shadow-[0_0_10px_rgba(234,179,8,0.35)]' } },
-        { title: 'English', progress: 90, color: { bar: 'bg-accent-grape', glow: 'shadow-[0_0_10px_rgba(150,52,132,0.35)]' } },
-        { title: 'Computer Science', progress: 45, color: { bar: 'bg-error', glow: 'shadow-[0_0_10px_rgba(239,68,68,0.35)]' } }
-      ];
+    : [];
 
   return (
     <div className="p-6 bg-card-bg/25 dark:bg-card-bg/10 rounded-3xl border border-border-color h-full flex flex-col justify-between">
@@ -348,20 +347,30 @@ function SubjectPerformance({ courses }: { courses: EnrolledCourse[] }) {
       </div>
 
       <div className="space-y-4 mt-6">
-        {subjects.map((s, idx) => (
-          <div key={idx} className="space-y-1.5">
-            <div className="flex justify-between text-[10px] font-bold text-text-secondary">
-              <span className="truncate max-w-[210px] text-white font-black">{s.title}</span>
-              <span className="text-white">{s.progress}%</span>
+        {subjects.length > 0 ? (
+          subjects.map((s, idx) => (
+            <div key={idx} className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-bold text-text-secondary">
+                <span className="truncate max-w-[210px] text-white font-black">{s.title}</span>
+                <span className="text-white">{s.progress}%</span>
+              </div>
+              <div className="w-full bg-bg-secondary-dark h-2 rounded-full overflow-hidden border border-border-color">
+                <div
+                  className={`${s.color.bar} h-full rounded-full transition-all duration-500 ${s.color.glow}`}
+                  style={{ width: `${s.progress}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-bg-secondary-dark h-2 rounded-full overflow-hidden border border-border-color">
-              <div
-                className={`${s.color.bar} h-full rounded-full transition-all duration-500 ${s.color.glow}`}
-                style={{ width: `${s.progress}%` }}
-              />
-            </div>
+          ))
+        ) : (
+          <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+            <span className="text-2xl">📚</span>
+            <p className="text-[11px] font-bold text-text-muted">No Enrolled Courses</p>
+            <p className="text-[9px] text-text-muted/65 max-w-[180px]">
+              Offline study materials and batches are managed directly under notes and homework sections.
+            </p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -379,15 +388,15 @@ function StatsRow({
   
   const avgScore = totalQuizzes 
     ? Math.round(quizAttempts.reduce((sum, a) => sum + ((a.score / a.totalQuestions) * 100), 0) / totalQuizzes) 
-    : 72;
+    : 0;
 
   const correctAnswers = totalQuizzes 
     ? quizAttempts.reduce((sum, a) => sum + a.score, 0) 
-    : 342;
+    : 0;
 
   const currentStreak = streakData 
     ? Math.max(streakData.currentOfflineStreak || 0, streakData.currentOnlineStreak || 0) 
-    : 12;
+    : 0;
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -395,7 +404,7 @@ function StatsRow({
       <div className="glass-card hover-lift p-6 rounded-3xl space-y-2">
         <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Total Quizzes</p>
         <h3 className="text-3xl font-black text-white">
-          <AnimatedCounter value={totalQuizzes || 24} />
+          <AnimatedCounter value={totalQuizzes} />
         </h3>
         <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
           <span>↗ 12%</span> <span className="text-text-muted font-semibold">vs last week</span>
