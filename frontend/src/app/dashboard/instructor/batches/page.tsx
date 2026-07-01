@@ -333,7 +333,8 @@ export default function InstructorBatchesPage() {
     queryKey: ['batch-schedules-workspace', selectedBatchId],
     queryFn: async () => {
       if (!selectedBatchId) return [];
-      const response = await api.get('/instructor/schedules');
+      const url = user?.role === 'ADMIN' ? '/admin/schedules' : '/instructor/schedules';
+      const response = await api.get(url);
       const allEvents: ScheduleEvent[] = response.data.success ? response.data.data : [];
       return allEvents.filter(e => e.batchId === selectedBatchId);
     },
@@ -627,6 +628,20 @@ export default function InstructorBatchesPage() {
     },
     onError: (err: any) => {
       alert(err.response?.data?.message || 'Failed to delete homework.');
+    }
+  });
+
+  // Delete Announcement Mutation
+  const deleteAnnouncementMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/announcements/${id}`);
+    },
+    onSuccess: () => {
+      refetchAnnouncements();
+      alert('Announcement deleted successfully.');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete announcement.');
     }
   });
 
@@ -2294,9 +2309,20 @@ export default function InstructorBatchesPage() {
                                 <h4 className="text-xs font-bold text-slate-200">
                                   {ann.title}
                                 </h4>
-                                <span className="px-2 py-0.5 text-[8px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/15 rounded-full uppercase tracking-wider shrink-0">
-                                  Pinned Alert
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 text-[8px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/15 rounded-full uppercase tracking-wider shrink-0">
+                                    Pinned Alert
+                                  </span>
+                                  {(user?.role === 'ADMIN' || user?.role === 'INSTRUCTOR') && (
+                                    <button
+                                      onClick={() => { if (confirm('Delete announcement?')) deleteAnnouncementMutation.mutate(ann.id); }}
+                                      className="p-1 bg-slate-905 border border-slate-800 text-slate-400 hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
+                                      title="Delete Announcement"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <p className="text-xs text-slate-405 leading-relaxed">
                                 {ann.message}

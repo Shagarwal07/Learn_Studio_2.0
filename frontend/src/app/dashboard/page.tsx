@@ -908,19 +908,30 @@ function InstructorDashboardView() {
     }
   });
 
+  // Fetch all students to count total students in the database
+  const { data: allStudentsList = [], isLoading: isAllStudentsLoading } = useQuery<any[]>({
+    queryKey: ['all-students-count-dashboard'],
+    enabled: user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN',
+    queryFn: async () => {
+      const response = await api.get('/instructor/attendance/students');
+      return response.data.success ? response.data.data : [];
+    }
+  });
+
   // 2. Fetch schedules
   const { data: schedules = [], isLoading: isSchedulesLoading } = useQuery<any[]>({
     queryKey: ['instructor-schedules-dashboard'],
     enabled: user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN',
     queryFn: async () => {
-      const response = await api.get('/instructor/schedules');
+      const url = user?.role === 'ADMIN' ? '/admin/schedules' : '/instructor/schedules';
+      const response = await api.get(url);
       return response.data.success ? response.data.data : [];
     }
   });
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todaySchedules = schedules.filter(s => s.eventDate === todayStr);
-  const totalStudents = batches.reduce((acc, b) => acc + (b.studentCount || 0), 0);
+  const totalStudents = allStudentsList.length;
 
   return (
     <motion.div 
