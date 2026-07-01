@@ -370,6 +370,9 @@ public class NoteService {
             }
         }
 
+        // Delete child view logs first to maintain referential integrity
+        noteViewLogRepository.deleteAll(noteViewLogRepository.findByNoteId(noteId));
+
         noteRepository.delete(note);
     }
 

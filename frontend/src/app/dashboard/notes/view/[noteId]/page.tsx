@@ -26,6 +26,9 @@ interface NoteDTO {
   courseTitle: string;
   lessonTitle: string | null;
   aiEnabled: boolean;
+  batchId: number | null;
+  batchName: string | null;
+  subjectName: string | null;
 }
 
 interface ChatMessage {
@@ -152,8 +155,17 @@ export default function NoteViewPage() {
             {title}
           </h2>
           <p className="text-xs sm:text-sm text-text-secondary">
-            Course: <strong className="text-white font-bold">{courseTitle}</strong>
-            {noteMetadata?.lessonTitle && ` | Lesson: ${noteMetadata.lessonTitle}`}
+            {noteMetadata?.batchName ? (
+              <>
+                Offline Batch: <strong className="text-white font-bold">{noteMetadata.batchName}</strong>
+                {noteMetadata.subjectName && ` | Subject: ${noteMetadata.subjectName}`}
+              </>
+            ) : (
+              <>
+                Course: <strong className="text-white font-bold">{courseTitle}</strong>
+                {noteMetadata?.lessonTitle && ` | Lesson: ${noteMetadata.lessonTitle}`}
+              </>
+            )}
           </p>
         </div>
       </div>

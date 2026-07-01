@@ -81,6 +81,9 @@ public class HomeworkService {
             }
         }
 
+        // Delete student submissions first to maintain referential integrity
+        homeworkSubmissionRepository.deleteAll(homeworkSubmissionRepository.findByHomeworkId(homeworkId));
+
         homeworkRepository.delete(homework);
     }
 

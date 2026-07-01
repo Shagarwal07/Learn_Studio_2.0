@@ -9,6 +9,8 @@ import com.learnhub.repository.BatchRepository;
 import com.learnhub.repository.HomeworkRepository;
 import com.learnhub.repository.NoteRepository;
 import com.learnhub.repository.UserRepository;
+import com.learnhub.repository.NoteViewLogRepository;
+import com.learnhub.repository.HomeworkSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -33,18 +35,24 @@ public class GoogleDriveSyncService {
     private final NoteRepository noteRepository;
     private final HomeworkRepository homeworkRepository;
     private final UserRepository userRepository;
+    private final NoteViewLogRepository noteViewLogRepository;
+    private final HomeworkSubmissionRepository homeworkSubmissionRepository;
 
     public GoogleDriveSyncService(
             @org.springframework.beans.factory.annotation.Autowired(required = false) Drive googleDrive,
             BatchRepository batchRepository,
             NoteRepository noteRepository,
             HomeworkRepository homeworkRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            NoteViewLogRepository noteViewLogRepository,
+            HomeworkSubmissionRepository homeworkSubmissionRepository) {
         this.googleDrive = googleDrive;
         this.batchRepository = batchRepository;
         this.noteRepository = noteRepository;
         this.homeworkRepository = homeworkRepository;
         this.userRepository = userRepository;
+        this.noteViewLogRepository = noteViewLogRepository;
+        this.homeworkSubmissionRepository = homeworkSubmissionRepository;
     }
 
     @Value("${google.drive.root.folder.id:}")
@@ -183,6 +191,8 @@ public class GoogleDriveSyncService {
             if (note.getPublicId() != null && note.getFileUrl() != null && note.getFileUrl().contains("drive.google.com")) {
                 if (!activeFileIds.contains(note.getPublicId())) {
                     System.out.println("Cleaning up deleted Note from DB: " + note.getTitle());
+                    // Delete child view logs first to avoid constraint violation
+                    noteViewLogRepository.deleteAll(noteViewLogRepository.findByNoteId(note.getId()));
                     noteRepository.delete(note);
                 }
             }
@@ -193,6 +203,8 @@ public class GoogleDriveSyncService {
             if (hw.getPublicId() != null && hw.getFileUrl() != null && hw.getFileUrl().contains("drive.google.com")) {
                 if (!activeFileIds.contains(hw.getPublicId())) {
                     System.out.println("Cleaning up deleted Homework from DB: " + hw.getTitle());
+                    // Delete student submissions first to avoid constraint violation
+                    homeworkSubmissionRepository.deleteAll(homeworkSubmissionRepository.findByHomeworkId(hw.getId()));
                     homeworkRepository.delete(hw);
                 }
             }
@@ -278,7 +290,23 @@ public class GoogleDriveSyncService {
             googleDrive.files().delete(fileId).execute();
             System.out.println("Successfully deleted file from Google Drive: " + fileId);
         } catch (Exception e) {
-            System.err.println("Failed to delete file from Google Drive: " + fileId + " - " + e.getMessage());
+            System.err.println("Could not delete file permanently (lack of ownership). Attempting to remove from parent folders... Error: " + e.getMessage());
+            try {
+                com.google.api.services.drive.model.File file = googleDrive.files().get(fileId)
+                        .setFields("parents")
+                        .execute();
+                List<String> parents = file.getParents();
+                if (parents != null && !parents.isEmpty()) {
+                    for (String parent : parents) {
+                        googleDrive.files().update(fileId, null)
+                                .setRemoveParents(parent)
+                                .execute();
+                    }
+                    System.out.println("Successfully unparented/removed file from folders: " + fileId);
+                }
+            } catch (Exception ex) {
+                System.err.println("Failed to remove file parents: " + ex.getMessage());
+            }
         }
     }
 
