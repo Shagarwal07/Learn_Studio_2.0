@@ -50,12 +50,15 @@ export default function HomeworkCoursesPage() {
   const [activeTab, setActiveTab] = useState<'BATCH' | 'COURSES'>('BATCH');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
+  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+
   const deleteMutation = useMutation({
     mutationFn: async (homeworkId: number) => {
       await api.delete(`/instructor/homework/${homeworkId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-batch-homework'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-homeworks'] });
       alert('Homework deleted successfully!');
     },
     onError: (err: any) => {
@@ -78,17 +81,38 @@ export default function HomeworkCoursesPage() {
     },
   });
 
-  // 2. Fetch student's batch homework (offline)
-  const { data: batchHomeworks = [], isLoading: isBatchHomeworksLoading } = useQuery<HomeworkDTO[]>({
-    queryKey: ['student-batch-homework'],
+  // Fetch all batches if instructor/admin
+  const { data: batches = [] } = useQuery<any[]>({
+    queryKey: ['admin-homework-batches-list'],
+    enabled: isInstructorOrAdmin,
     queryFn: async () => {
-      const response = await api.get('/student/batch/homework');
+      const response = await api.get('/instructor/batches');
       return response.data.success ? response.data.data : [];
+    }
+  });
+
+  React.useEffect(() => {
+    if (isInstructorOrAdmin && batches.length > 0 && !selectedBatchId) {
+      setSelectedBatchId(String(batches[0].id));
+    }
+  }, [batches, isInstructorOrAdmin, selectedBatchId]);
+
+  // 2. Fetch batch homework (offline) - dynamically based on user role
+  const { data: batchHomeworks = [], isLoading: isBatchHomeworksLoading } = useQuery<HomeworkDTO[]>({
+    queryKey: ['batch-homeworks', isInstructorOrAdmin, selectedBatchId],
+    queryFn: async () => {
+      if (isInstructorOrAdmin) {
+        if (!selectedBatchId) return [];
+        const response = await api.get(`/instructor/batches/${selectedBatchId}/homework`);
+        return response.data.success ? response.data.data : [];
+      } else {
+        const response = await api.get('/student/batch/homework');
+        return response.data.success ? response.data.data : [];
+      }
     },
   });
 
   const isLoading = isCoursesLoading || isBatchHomeworksLoading;
-  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
 
   // Filter courses
   const filteredCourses = courses.filter(c => 
@@ -140,7 +164,7 @@ export default function HomeworkCoursesPage() {
       </div>
 
       {/* Tabs Switcher (Only show if student belongs to a batch or is instructor) */}
-      {(!isInstructorOrAdmin && batchHomeworks.length > 0) && (
+      {(isInstructorOrAdmin || batchHomeworks.length > 0) && (
         <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-850 pb-px">
           <button
             onClick={() => {
@@ -272,13 +296,31 @@ export default function HomeworkCoursesPage() {
             </div>
           )}
         </div>
-      ) : activeTab === 'BATCH' && !isInstructorOrAdmin ? (
+      ) : activeTab === 'BATCH' ? (
         
         /* CASE B: Batch Academic Subjects folders grid */
         <div className="space-y-4 animate-in fade-in duration-200">
-          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-            Academic Subject Task Folders
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+              Academic Subject Task Folders
+            </h3>
+            {isInstructorOrAdmin && batches.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-450 dark:text-slate-500 font-medium">Select Batch:</span>
+                <select
+                  value={selectedBatchId}
+                  onChange={(e) => setSelectedBatchId(e.target.value)}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                >
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {ACADEMIC_SUBJECTS.map((subject) => {

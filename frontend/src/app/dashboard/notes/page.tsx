@@ -48,12 +48,15 @@ export default function NotesCoursesPage() {
   const [activeTab, setActiveTab] = useState<'BATCH' | 'COURSES'>('BATCH');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
+  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+
   const deleteMutation = useMutation({
     mutationFn: async (noteId: number) => {
       await api.delete(`/instructor/notes/${noteId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-batch-notes'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-notes'] });
       alert('Note deleted successfully!');
     },
     onError: (err: any) => {
@@ -76,17 +79,38 @@ export default function NotesCoursesPage() {
     },
   });
 
-  // 2. Fetch student's batch notes (offline)
-  const { data: batchNotes = [], isLoading: isBatchNotesLoading } = useQuery<NoteDTO[]>({
-    queryKey: ['student-batch-notes'],
+  // Fetch all batches if instructor/admin
+  const { data: batches = [] } = useQuery<any[]>({
+    queryKey: ['admin-notes-batches-list'],
+    enabled: isInstructorOrAdmin,
     queryFn: async () => {
-      const response = await api.get('/student/batch/notes');
+      const response = await api.get('/instructor/batches');
       return response.data.success ? response.data.data : [];
+    }
+  });
+
+  React.useEffect(() => {
+    if (isInstructorOrAdmin && batches.length > 0 && !selectedBatchId) {
+      setSelectedBatchId(String(batches[0].id));
+    }
+  }, [batches, isInstructorOrAdmin, selectedBatchId]);
+
+  // 2. Fetch batch notes (offline) - dynamically based on user role
+  const { data: batchNotes = [], isLoading: isBatchNotesLoading } = useQuery<NoteDTO[]>({
+    queryKey: ['batch-notes', isInstructorOrAdmin, selectedBatchId],
+    queryFn: async () => {
+      if (isInstructorOrAdmin) {
+        if (!selectedBatchId) return [];
+        const response = await api.get(`/instructor/batches/${selectedBatchId}/notes`);
+        return response.data.success ? response.data.data : [];
+      } else {
+        const response = await api.get('/student/batch/notes');
+        return response.data.success ? response.data.data : [];
+      }
     },
   });
 
   const isLoading = isCoursesLoading || isBatchNotesLoading;
-  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
 
   // Filter courses
   const filteredCourses = courses.filter(c => 
@@ -154,7 +178,7 @@ export default function NotesCoursesPage() {
       </div>
 
       {/* Tabs Switcher (Only show if student belongs to a batch or is instructor) */}
-      {(!isInstructorOrAdmin && batchNotes.length > 0) && (
+      {(isInstructorOrAdmin || batchNotes.length > 0) && (
         <div className="flex items-center gap-2 border-b border-border-color pb-px">
           <button
             onClick={() => {
@@ -276,7 +300,7 @@ export default function NotesCoursesPage() {
             </div>
           )}
         </motion.div>
-      ) : activeTab === 'BATCH' && !isInstructorOrAdmin ? (
+      ) : activeTab === 'BATCH' ? (
         
         /* CASE B: Batch Academic Subjects folders grid */
         <motion.div 
@@ -284,9 +308,27 @@ export default function NotesCoursesPage() {
           animate={{ opacity: 1 }}
           className="space-y-4"
         >
-          <h3 className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-            Academic Subject Vaults
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h3 className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
+              Academic Subject Vaults
+            </h3>
+            {isInstructorOrAdmin && batches.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-secondary font-medium">Select Batch:</span>
+                <select
+                  value={selectedBatchId}
+                  onChange={(e) => setSelectedBatchId(e.target.value)}
+                  className="bg-white/5 border border-border-color rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent-grape"
+                >
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id} className="bg-slate-900 text-white">
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {ACADEMIC_SUBJECTS.map((subject) => {
