@@ -217,7 +217,24 @@ public class GoogleDriveSyncService {
 
         for (var file : files) {
             activeFileIds.add(file.getId());
-            if (noteRepository.existsByPublicId(file.getId())) {
+            Optional<Note> existingNoteOpt = noteRepository.findByPublicId(file.getId());
+            if (existingNoteOpt.isPresent()) {
+                Note existingNote = existingNoteOpt.get();
+                boolean changed = false;
+                String currentTitle = removeFileExtension(file.getName());
+                if (!currentTitle.equals(existingNote.getTitle())) {
+                    existingNote.setTitle(currentTitle);
+                    existingNote.setOriginalFilename(file.getName());
+                    changed = true;
+                }
+                if (file.getSize() != null && !file.getSize().equals(existingNote.getFileSize())) {
+                    existingNote.setFileSize(file.getSize());
+                    changed = true;
+                }
+                if (changed) {
+                    noteRepository.save(existingNote);
+                    System.out.println("      Updated existing Note details: " + file.getName());
+                }
                 continue;
             }
 
@@ -259,7 +276,19 @@ public class GoogleDriveSyncService {
 
         for (var file : files) {
             activeFileIds.add(file.getId());
-            if (homeworkRepository.existsByPublicId(file.getId())) {
+            Optional<Homework> existingHwOpt = homeworkRepository.findByPublicId(file.getId());
+            if (existingHwOpt.isPresent()) {
+                Homework existingHw = existingHwOpt.get();
+                boolean changed = false;
+                String currentTitle = removeFileExtension(file.getName());
+                if (!currentTitle.equals(existingHw.getTitle())) {
+                    existingHw.setTitle(currentTitle);
+                    changed = true;
+                }
+                if (changed) {
+                    homeworkRepository.save(existingHw);
+                    System.out.println("      Updated existing Homework details: " + file.getName());
+                }
                 continue;
             }
 
@@ -375,20 +404,22 @@ public class GoogleDriveSyncService {
 
     private List<com.google.api.services.drive.model.File> getFoldersInParent(String parentId) throws Exception {
         String q = String.format("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", parentId);
-        return googleDrive.files().list()
+        List<com.google.api.services.drive.model.File> files = googleDrive.files().list()
                 .setQ(q)
                 .setFields("files(id, name)")
                 .execute()
                 .getFiles();
+        return files != null ? files : new java.util.ArrayList<>();
     }
 
     private List<com.google.api.services.drive.model.File> getFilesInParent(String parentId) throws Exception {
         String q = String.format("'%s' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false", parentId);
-        return googleDrive.files().list()
+        List<com.google.api.services.drive.model.File> files = googleDrive.files().list()
                 .setQ(q)
                 .setFields("files(id, name, size)")
                 .execute()
                 .getFiles();
+        return files != null ? files : new java.util.ArrayList<>();
     }
 
     private String extractTextFromDriveFile(String fileId) {
