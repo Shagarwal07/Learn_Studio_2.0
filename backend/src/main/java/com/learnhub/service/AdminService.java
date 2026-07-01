@@ -247,34 +247,126 @@ public class AdminService {
         return sb.toString();
     }
 
+    private String generateStudentPassword(String name, Set<String> batchPasswords) {
+        String cleanName = name.toLowerCase().replaceAll("[^a-zA-Z0-9]", "");
+        if (cleanName.isEmpty()) {
+            cleanName = "student";
+        }
+        Random random = new Random();
+        String pwd;
+        do {
+            int number = 1000 + random.nextInt(9000); // 4-digit unique number
+            pwd = cleanName + "@" + number;
+        } while (batchPasswords.contains(pwd));
+        batchPasswords.add(pwd);
+        return pwd;
+    }
+
     // Sync database from a CSV input stream and return sync statistics
     public Map<String, Object> importUsersFromCsvContent(java.io.InputStream inputStream, boolean deleteUnfound) {
         int createdCount = 0;
         int updatedCount = 0;
+        int failedCount = 0;
         Set<String> csvEmails = new HashSet<>();
+        Set<String> generatedPasswords = new HashSet<>();
+        List<Map<String, Object>> failedRows = new ArrayList<>();
 
         try (BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8))) {
-            String header = reader.readLine(); // Skip header
+            String headerLine = reader.readLine(); 
+            if (headerLine == null) {
+                throw new RuntimeException("CSV file is empty");
+            }
+            
+            String[] headers = headerLine.split(",");
+            int nameIdx = -1;
+            int emailIdx = -1;
+            int passwordIdx = -1;
+            int roleIdx = -1;
+            int batchIdx = -1;
+
+            for (int i = 0; i < headers.length; i++) {
+                String h = headers[i].trim().toLowerCase();
+                if (h.equals("name")) nameIdx = i;
+                else if (h.equals("email")) emailIdx = i;
+                else if (h.equals("password")) passwordIdx = i;
+                else if (h.equals("role")) roleIdx = i;
+                else if (h.equals("batchname") || h.equals("batch")) batchIdx = i;
+            }
+
+            if (nameIdx == -1 || emailIdx == -1) {
+                throw new RuntimeException("Missing required headers: 'name' and 'email' must be present.");
+            }
+
             String line;
+            int rowNumber = 1; // Header is row 1
             while ((line = reader.readLine()) != null) {
+                rowNumber++;
                 if (line.trim().isBlank()) continue;
                 String[] parts = line.split(",", -1);
-                if (parts.length < 5) continue;
 
-                String name = unescapeCsv(parts[1].trim());
-                String email = unescapeCsv(parts[2].trim()).toLowerCase();
-                String password = parts[3].trim();
-                String roleStr = parts[4].trim().toUpperCase();
-                String batchName = parts.length >= 6 ? unescapeCsv(parts[5].trim()) : "";
+                String name = parts.length > nameIdx ? unescapeCsv(parts[nameIdx].trim()) : "";
+                String email = parts.length > emailIdx ? unescapeCsv(parts[emailIdx].trim()).toLowerCase() : "";
+                String password = (passwordIdx != -1 && parts.length > passwordIdx) ? parts[passwordIdx].trim() : "";
+                String roleStr = (roleIdx != -1 && parts.length > roleIdx) ? parts[roleIdx].trim().toUpperCase() : "";
+                String batchName = (batchIdx != -1 && parts.length > batchIdx) ? unescapeCsv(parts[batchIdx].trim()) : "";
 
-                if (name.isEmpty() || email.isEmpty() || roleStr.isEmpty()) continue;
+                if (name.isEmpty()) {
+                    failedCount++;
+                    Map<String, Object> failedRow = new LinkedHashMap<>();
+                    failedRow.put("rowNumber", rowNumber);
+                    failedRow.put("email", email.isEmpty() ? "[UNKNOWN]" : email);
+                    failedRow.put("reason", "Name is required");
+                    failedRows.add(failedRow);
+                    continue;
+                }
+                if (email.isEmpty()) {
+                    failedCount++;
+                    Map<String, Object> failedRow = new LinkedHashMap<>();
+                    failedRow.put("rowNumber", rowNumber);
+                    failedRow.put("email", "[UNKNOWN]");
+                    failedRow.put("reason", "Email is required");
+                    failedRows.add(failedRow);
+                    continue;
+                }
 
+                if (csvEmails.contains(email)) {
+                    failedCount++;
+                    Map<String, Object> failedRow = new LinkedHashMap<>();
+                    failedRow.put("rowNumber", rowNumber);
+                    failedRow.put("email", email);
+                    failedRow.put("reason", "Duplicate email in CSV: " + email);
+                    failedRows.add(failedRow);
+                    continue;
+                }
                 csvEmails.add(email);
 
-                User.Role role = User.Role.valueOf(roleStr);
+                User.Role role = User.Role.STUDENT;
+                if (!roleStr.isEmpty()) {
+                    try {
+                        role = User.Role.valueOf(roleStr);
+                    } catch (IllegalArgumentException e) {
+                        failedCount++;
+                        Map<String, Object> failedRow = new LinkedHashMap<>();
+                        failedRow.put("rowNumber", rowNumber);
+                        failedRow.put("email", email);
+                        failedRow.put("reason", "Invalid role: " + roleStr);
+                        failedRows.add(failedRow);
+                        continue;
+                    }
+                }
+
                 Batch batch = null;
                 if (role == User.Role.STUDENT && !batchName.isEmpty()) {
-                    batch = batchRepository.findByName(batchName).orElse(null);
+                    batch = batchRepository.findByNameIgnoreCase(batchName).orElse(null);
+                    if (batch == null) {
+                        failedCount++;
+                        Map<String, Object> failedRow = new LinkedHashMap<>();
+                        failedRow.put("rowNumber", rowNumber);
+                        failedRow.put("email", email);
+                        failedRow.put("reason", "Batch '" + batchName + "' not found");
+                        failedRows.add(failedRow);
+                        continue;
+                    }
                 }
 
                 User user = userRepository.findByEmail(email).orElse(null);
@@ -290,13 +382,17 @@ public class AdminService {
                     updatedCount++;
                 } else {
                     // Create new
-                    String plainPassword = (password.isEmpty() || password.equals("[ENCRYPTED]")) ? "LearnStudio123" : password;
+                    String plainPassword = password;
+                    if (plainPassword.isEmpty() || plainPassword.equals("[ENCRYPTED]")) {
+                        plainPassword = generateStudentPassword(name, generatedPasswords);
+                    }
                     User newUser = User.builder()
                             .name(name)
                             .email(email)
                             .password(passwordEncoder.encode(plainPassword))
                             .role(role)
                             .batch(batch)
+                            .active(true)
                             .build();
                     userRepository.save(newUser);
                     createdCount++;
@@ -325,6 +421,9 @@ public class AdminService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("createdCount", createdCount);
         result.put("updatedCount", updatedCount);
+        result.put("successCount", createdCount + updatedCount);
+        result.put("failedCount", failedCount);
+        result.put("failedRows", failedRows);
         result.put("unfoundCount", unfoundUsers.size());
         result.put("deleted", deleteUnfound);
         result.put("unfoundUsers", deleteUnfound ? Collections.emptyList() : unfoundUsers);

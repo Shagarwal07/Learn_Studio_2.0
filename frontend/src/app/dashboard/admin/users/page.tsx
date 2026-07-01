@@ -73,10 +73,16 @@ export default function UserManagementPage() {
   const [syncResult, setSyncResult] = useState<{
     createdCount: number;
     updatedCount: number;
+    successCount: number;
+    failedCount: number;
+    failedRows: { rowNumber: number; email: string; reason: string }[];
     unfoundCount: number;
     unfoundUsers: UserDTO[];
   } | null>(null);
   const [syncFile, setSyncFile] = useState<File | null>(null);
+  
+  const [csvPreviewRows, setCsvPreviewRows] = useState<any[] | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // 1. Fetch all users
   const { data: users = [], isLoading: isUsersLoading } = useQuery<UserDTO[]>({
@@ -237,14 +243,91 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const parseCSVText = (text: string) => {
+    const lines = text.split('\n');
+    if (lines.length === 0) return [];
+    
+    // Parse headers
+    const headerLine = lines[0];
+    const headers = headerLine.split(',').map(h => h.trim().toLowerCase());
+    
+    let nameIdx = -1;
+    let emailIdx = -1;
+    let passwordIdx = -1;
+    let roleIdx = -1;
+    let batchIdx = -1;
+    
+    for (let i = 0; i < headers.length; i++) {
+      const h = headers[i];
+      if (h === 'name') nameIdx = i;
+      else if (h === 'email') emailIdx = i;
+      else if (h === 'password') passwordIdx = i;
+      else if (h === 'role') roleIdx = i;
+      else if (h === 'batchname' || h === 'batch') batchIdx = i;
+    }
+    
+    if (nameIdx === -1 || emailIdx === -1) {
+      throw new Error("CSV template is missing required headers: name, email");
+    }
+    
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const parts = line.split(',');
+      const name = nameIdx !== -1 && parts.length > nameIdx ? parts[nameIdx].trim() : '';
+      const email = emailIdx !== -1 && parts.length > emailIdx ? parts[emailIdx].trim() : '';
+      const password = passwordIdx !== -1 && parts.length > passwordIdx ? parts[passwordIdx].trim() : '';
+      const role = roleIdx !== -1 && parts.length > roleIdx ? parts[roleIdx].trim() : '';
+      const batchName = batchIdx !== -1 && parts.length > batchIdx ? parts[batchIdx].trim() : '';
+      
+      if (!name && !email) continue;
+      rows.push({ name, email, password, role, batchName });
+    }
+    
+    return rows;
+  };
+
+  const handleDownloadTemplate = () => {
+    const csvContent = "name,email,password,batchName,role\nTanisha,tanisha@example.com,,Class X,STUDENT\nManoj,manoj@example.com,secretPass123,Class IX,STUDENT\n";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "student_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSyncFile(file);
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsedRows = parseCSVText(text);
+        setCsvPreviewRows(parsedRows);
+        setShowPreviewModal(true);
+      } catch (err: any) {
+        showToast(err.message || 'Failed to parse CSV preview.', 'error');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const performCsvImport = async () => {
+    if (!syncFile) return;
     setIsSyncing(true);
+    setShowPreviewModal(false);
     
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', syncFile);
     
     try {
       const response = await api.post('/admin/users/import', formData, {
@@ -254,13 +337,15 @@ export default function UserManagementPage() {
         setSyncResult(response.data.data);
         setShowSyncModal(true);
         queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        showToast('CSV Sync processed successfully.', 'success');
       } else {
-        alert('Import failed: ' + response.data.message);
+        showToast('Import failed: ' + response.data.message, 'error');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to import CSV file.');
+      showToast(err.response?.data?.message || 'Failed to import CSV file.', 'error');
     } finally {
       setIsSyncing(false);
+      setCsvPreviewRows(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -346,6 +431,15 @@ export default function UserManagementPage() {
             Export to CSV
           </button>
           
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-205 border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+            title="Download blank Student CSV template"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
+            Download Template
+          </button>
+
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isSyncing}
@@ -810,20 +904,52 @@ export default function UserManagementPage() {
               </div>
 
               <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Successful</p>
+                    <h4 className="text-2xl font-black text-emerald-455">{syncResult.successCount || 0}</h4>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Failed Rows</p>
+                    <h4 className="text-2xl font-black text-rose-455">{syncResult.failedCount || 0}</h4>
+                  </div>
                   <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
                     <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Created</p>
-                    <h4 className="text-2xl font-black text-emerald-400">{syncResult.createdCount}</h4>
+                    <h4 className="text-2xl font-black text-emerald-400">{syncResult.createdCount || 0}</h4>
                   </div>
                   <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
                     <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Updated</p>
-                    <h4 className="text-2xl font-black text-indigo-400">{syncResult.updatedCount}</h4>
-                  </div>
-                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
-                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Unfound (Not in CSV)</p>
-                    <h4 className="text-2xl font-black text-rose-450">{syncResult.unfoundCount}</h4>
+                    <h4 className="text-2xl font-black text-indigo-400">{syncResult.updatedCount || 0}</h4>
                   </div>
                 </div>
+
+                {syncResult.failedRows && syncResult.failedRows.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                      Failed Import Errors
+                    </h4>
+                    <div className="border border-rose-950 rounded-2xl overflow-hidden max-h-48 overflow-y-auto bg-rose-950/20">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-rose-950 border-b border-rose-900/30 text-[10px] font-bold text-rose-350 uppercase tracking-wider">
+                            <th className="p-3">Row #</th>
+                            <th className="p-3">Email</th>
+                            <th className="p-3">Error Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-rose-900/20 text-xs">
+                          {syncResult.failedRows.map((fail, idx) => (
+                            <tr key={idx} className="hover:bg-rose-950/10 transition-all text-rose-200">
+                              <td className="p-3 font-mono font-bold">{fail.rowNumber}</td>
+                              <td className="p-3 font-mono text-slate-350">{fail.email}</td>
+                              <td className="p-3 text-rose-300 font-semibold">{fail.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {syncResult.unfoundUsers && syncResult.unfoundUsers.length > 0 ? (
                   <div className="space-y-3">
@@ -891,7 +1017,7 @@ export default function UserManagementPage() {
                   <div className="bg-slate-950/40 border border-slate-850 p-6 rounded-2xl text-center text-slate-400 space-y-2">
                     <p className="font-bold text-emerald-450">Perfect Sync! 🎉</p>
                     <p className="text-[11px] leading-relaxed">
-                      All users in the uploaded CSV match the current database records. No missing accounts were flagged.
+                      All active users match the uploaded CSV. No missing database records were flagged.
                     </p>
                   </div>
                 )}
@@ -900,9 +1026,102 @@ export default function UserManagementPage() {
               <div className="p-5 border-t border-slate-800 flex justify-end">
                 <button
                   onClick={() => { setShowSyncModal(false); setSyncResult(null); setSyncFile(null); }}
-                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl cursor-pointer"
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-205 border border-slate-700 rounded-xl cursor-pointer font-bold"
                 >
                   Close Report
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CSV PREVIEW MODAL */}
+      <AnimatePresence>
+        {showPreviewModal && csvPreviewRows && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowPreviewModal(false); setCsvPreviewRows(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl relative z-10 text-xs text-white"
+            >
+              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="text-sm font-black text-white flex items-center gap-1.5 font-bold uppercase tracking-wide font-bold uppercase">
+                  <FileSpreadsheet className="w-5 h-5 text-indigo-400" />
+                  Preview CSV Rows ({csvPreviewRows.length})
+                </h3>
+                <button 
+                  onClick={() => { setShowPreviewModal(false); setCsvPreviewRows(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                  className="p-1 text-slate-500 hover:text-white rounded-lg cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="border border-slate-850 rounded-2xl overflow-hidden bg-slate-950/40">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950 border-b border-slate-850 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="p-3">#</th>
+                        <th className="p-3">Name</th>
+                        <th className="p-3">Email</th>
+                        <th className="p-3">Password</th>
+                        <th className="p-3">Batch Name</th>
+                        <th className="p-3">Role</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-850">
+                      {csvPreviewRows.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-white/5 transition-all text-xs">
+                          <td className="p-3 text-slate-500 font-mono">{idx + 2}</td>
+                          <td className="p-3 font-semibold text-white">{row.name}</td>
+                          <td className="p-3 text-slate-350 font-mono">{row.email}</td>
+                          <td className="p-3">
+                            {row.password ? (
+                              <span className="font-mono bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-[10px]">
+                                {row.password}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-indigo-400 italic">
+                                [Auto-Generated]
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-300">{row.batchName || <span className="text-slate-600 italic">N/A</span>}</td>
+                          <td className="p-3">
+                            <span className="inline-block text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-slate-800 text-slate-300">
+                              {row.role || 'STUDENT'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="p-5 border-t border-slate-800 flex justify-end gap-3">
+                <button
+                  onClick={() => { setShowPreviewModal(false); setCsvPreviewRows(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-205 border border-slate-700 rounded-xl cursor-pointer font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={performCsvImport}
+                  className="px-5 py-2.5 bg-gradient-to-r from-accent-grape to-primary-blue hover:opacity-90 text-white rounded-xl cursor-pointer font-bold uppercase tracking-wider"
+                >
+                  Confirm Import
                 </button>
               </div>
             </motion.div>

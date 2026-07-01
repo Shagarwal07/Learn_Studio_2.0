@@ -9,5 +9,6 @@ import java.util.Optional;
 @Repository
 public interface BatchRepository extends JpaRepository<Batch, Long> {
     Optional<Batch> findByName(String name);
+    Optional<Batch> findByNameIgnoreCase(String name);
     List<Batch> findByInstructorId(Long instructorId);
 }
