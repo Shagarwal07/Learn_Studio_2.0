@@ -38,6 +38,7 @@ public class NoteService {
     private final EnrollmentRepository enrollmentRepository;
     private final CloudinaryService cloudinaryService;
     private final AiService aiService;
+    private final GoogleDriveSyncService googleDriveSyncService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.google.api.services.drive.Drive googleDrive;
@@ -360,9 +361,13 @@ public class NoteService {
             throw new RuntimeException("Unauthorized to delete this note");
         }
 
-        // Delete from Cloudinary
+        // Delete from storage
         if (note.getPublicId() != null) {
-            cloudinaryService.deleteFile(note.getPublicId());
+            if (note.getFileUrl() != null && note.getFileUrl().contains("drive.google.com")) {
+                googleDriveSyncService.deleteFileFromDrive(note.getPublicId());
+            } else {
+                cloudinaryService.deleteFile(note.getPublicId());
+            }
         }
 
         noteRepository.delete(note);

@@ -195,6 +195,8 @@ export default function InstructorBatchesPage() {
   const [scheduleStartTime, setScheduleStartTime] = useState('10:00');
   const [scheduleEndTime, setScheduleEndTime] = useState('11:00');
   const [scheduleLocation, setScheduleLocation] = useState('Room 101');
+  const [scheduleDate, setScheduleDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [scheduleIsRecurring, setScheduleIsRecurring] = useState(true);
 
   // Attendance marking states
   const [attendanceSubject, setAttendanceSubject] = useState('');
@@ -713,6 +715,11 @@ export default function InstructorBatchesPage() {
     e.preventDefault();
     if (!batchDetails || !scheduleSubject) return;
 
+    // Derived day of week from the selected date if recurring
+    const selectedDateObj = new Date(scheduleDate);
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const autoDay = weekdays[selectedDateObj.getDay()];
+
     addScheduleMutation.mutate({
       title: `${scheduleSubject} Class`,
       description: `Regular offline lecture for ${batchDetails.name}`,
@@ -720,13 +727,13 @@ export default function InstructorBatchesPage() {
       batchId: batchDetails.id,
       subjectName: scheduleSubject,
       targetRole: 'STUDENT',
-      eventDate: new Date().toISOString().split('T')[0],
+      eventDate: scheduleDate,
       startTime: scheduleStartTime,
       endTime: scheduleEndTime,
       location: scheduleLocation,
       meetingLink: '',
-      isRecurring: true,
-      recurrenceDay: scheduleDay
+      isRecurring: scheduleIsRecurring,
+      recurrenceDay: scheduleIsRecurring ? autoDay : null
     });
   };
 
@@ -1315,17 +1322,28 @@ export default function InstructorBatchesPage() {
                             </select>
                           </div>
 
-                          {/* Day */}
+                          {/* Start / Event Date */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Day of Week *</label>
+                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Date *</label>
+                            <input
+                              type="date"
+                              required
+                              value={scheduleDate}
+                              onChange={(e) => setScheduleDate(e.target.value)}
+                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Is Recurring Select */}
+                          <div className="space-y-1">
+                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Frequency *</label>
                             <select
-                              value={scheduleDay}
-                              onChange={(e) => setScheduleDay(e.target.value)}
+                              value={scheduleIsRecurring ? 'true' : 'false'}
+                              onChange={(e) => setScheduleIsRecurring(e.target.value === 'true')}
                               className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             >
-                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
-                                <option key={d} value={d}>{d}</option>
-                              ))}
+                              <option value="true">Weekly Recurring Class</option>
+                              <option value="false">One-time Class Only</option>
                             </select>
                           </div>
 

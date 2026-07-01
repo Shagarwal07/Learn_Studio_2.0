@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import AdminAttendanceView from './AdminAttendanceView';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -77,7 +79,7 @@ interface StreakResponse {
   lastUpdatedOnline: string | null;
 }
 
-export default function AttendancePage() {
+function StudentAttendanceView() {
   const [activeSubsystem, setActiveSubsystem] = useState<'OFFLINE' | 'ONLINE'>('OFFLINE');
   
   // Filters for Offline
@@ -808,4 +810,14 @@ export default function AttendancePage() {
 
     </div>
   );
+}
+
+export default function AttendancePage() {
+  const { user } = useAuth();
+
+  if (user?.role === 'ADMIN' || user?.role === 'INSTRUCTOR') {
+    return <AdminAttendanceView />;
+  }
+
+  return <StudentAttendanceView />;
 }

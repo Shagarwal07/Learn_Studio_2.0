@@ -90,6 +90,8 @@ public class GoogleDriveSyncService {
                 .findFirst()
                 .orElse(null);
 
+        Set<String> activeFileIds = new HashSet<>();
+
         for (var batchFolder : batchFolders) {
             String batchName = batchFolder.getName();
             Optional<Batch> batchOpt = batchRepository.findByName(batchName);
@@ -168,24 +170,46 @@ public class GoogleDriveSyncService {
                     for (var subjectFolder : subjectFolders) {
                         String subjectName = subjectFolder.getName();
                         System.out.println("  Syncing notes for subject: " + subjectName);
-                        syncNotes(subjectFolder.getId(), batch, subjectName, uploader);
+                        syncNotes(subjectFolder.getId(), batch, subjectName, uploader, activeFileIds);
                     }
                 } else if (typeName.equalsIgnoreCase("Homework") || typeName.equalsIgnoreCase("Assignments")) {
                     for (var subjectFolder : subjectFolders) {
                         String subjectName = subjectFolder.getName();
                         System.out.println("  Syncing homework for subject: " + subjectName);
-                        syncHomework(subjectFolder.getId(), batch, subjectName, uploader);
+                        syncHomework(subjectFolder.getId(), batch, subjectName, uploader, activeFileIds);
                     }
+                }
+            }
+        }
+
+        // Deletion Cleanup: Remove notes and homeworks that no longer exist in Google Drive
+        List<Note> allDbNotes = noteRepository.findAll();
+        for (Note note : allDbNotes) {
+            if (note.getPublicId() != null && note.getFileUrl() != null && note.getFileUrl().contains("drive.google.com")) {
+                if (!activeFileIds.contains(note.getPublicId())) {
+                    System.out.println("Cleaning up deleted Note from DB: " + note.getTitle());
+                    noteRepository.delete(note);
+                }
+            }
+        }
+
+        List<Homework> allDbHomeworks = homeworkRepository.findAll();
+        for (Homework hw : allDbHomeworks) {
+            if (hw.getPublicId() != null && hw.getFileUrl() != null && hw.getFileUrl().contains("drive.google.com")) {
+                if (!activeFileIds.contains(hw.getPublicId())) {
+                    System.out.println("Cleaning up deleted Homework from DB: " + hw.getTitle());
+                    homeworkRepository.delete(hw);
                 }
             }
         }
     }
 
-    private void syncNotes(String parentId, Batch batch, String subjectName, User uploader) throws Exception {
+    private void syncNotes(String parentId, Batch batch, String subjectName, User uploader, Set<String> activeFileIds) throws Exception {
         List<com.google.api.services.drive.model.File> files = getFilesInParent(parentId);
         System.out.println("    Found " + files.size() + " files in Notes folder.");
 
         for (var file : files) {
+            activeFileIds.add(file.getId());
             if (noteRepository.existsByPublicId(file.getId())) {
                 continue;
             }
@@ -222,11 +246,12 @@ public class GoogleDriveSyncService {
         }
     }
 
-    private void syncHomework(String parentId, Batch batch, String subjectName, User creator) throws Exception {
+    private void syncHomework(String parentId, Batch batch, String subjectName, User creator, Set<String> activeFileIds) throws Exception {
         List<com.google.api.services.drive.model.File> files = getFilesInParent(parentId);
         System.out.println("    Found " + files.size() + " files in Homework folder.");
 
         for (var file : files) {
+            activeFileIds.add(file.getId());
             if (homeworkRepository.existsByPublicId(file.getId())) {
                 continue;
             }
@@ -249,6 +274,16 @@ public class GoogleDriveSyncService {
 
             homeworkRepository.save(homework);
             System.out.println("      Successfully saved Homework: " + title);
+        }
+    }
+
+    public void deleteFileFromDrive(String fileId) {
+        if (googleDrive == null || fileId == null || fileId.isBlank()) return;
+        try {
+            googleDrive.files().delete(fileId).execute();
+            System.out.println("Successfully deleted file from Google Drive: " + fileId);
+        } catch (Exception e) {
+            System.err.println("Failed to delete file from Google Drive: " + fileId + " - " + e.getMessage());
         }
     }
 

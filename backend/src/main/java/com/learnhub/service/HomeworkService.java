@@ -25,6 +25,7 @@ public class HomeworkService {
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CloudinaryService cloudinaryService;
+    private final GoogleDriveSyncService googleDriveSyncService;
 
     // ── Instructor APIs ─────────────────────────────────
 
@@ -71,9 +72,13 @@ public class HomeworkService {
             throw new RuntimeException("Unauthorized");
         }
 
-        // Delete from Cloudinary
+        // Delete from storage
         if (homework.getPublicId() != null) {
-            cloudinaryService.deleteFile(homework.getPublicId());
+            if (homework.getFileUrl() != null && homework.getFileUrl().contains("drive.google.com")) {
+                googleDriveSyncService.deleteFileFromDrive(homework.getPublicId());
+            } else {
+                cloudinaryService.deleteFile(homework.getPublicId());
+            }
         }
 
         homeworkRepository.delete(homework);
