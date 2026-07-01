@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> {
     List<QuizAttempt> findByUserId(Long userId);
+    void deleteByUserId(Long userId);
 }

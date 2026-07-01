@@ -36,43 +36,75 @@ public class ScheduleService {
         LocalDate today = LocalDate.now();
         LocalDate end = today.plusDays(6);
 
-        List<ScheduleEvent> events = scheduleEventRepository.findByEventDateBetweenOrderByEventDateAscStartTimeAsc(today, end);
+        // Fetch all events
+        List<ScheduleEvent> allEvents = scheduleEventRepository.findAll();
 
+        List<ScheduleEventDTO> weeklyEvents = new ArrayList<>();
+
+        for (int i = 0; i < 7; i++) {
+            LocalDate d = today.plusDays(i);
+            String dayName = d.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
+
+            for (ScheduleEvent e : allEvents) {
+                if (e.isRecurring()) {
+                    // Check if recurring event start date is on or before d, matches the day, and is not cancelled
+                    if (!e.getEventDate().isAfter(d) && e.getRecurrenceDay() != null 
+                            && e.getRecurrenceDay().equalsIgnoreCase(dayName) && !e.isCancelled()) {
+                        ScheduleEventDTO dto = convertToDTO(e);
+                        dto.setEventDate(d);
+                        weeklyEvents.add(dto);
+                    }
+                } else {
+                    // Check if non-recurring event date matches d
+                    if (e.getEventDate().equals(d)) {
+                        weeklyEvents.add(convertToDTO(e));
+                    }
+                }
+            }
+        }
+
+        // Sort by event date, then start time
+        weeklyEvents.sort(Comparator.comparing(ScheduleEventDTO::getEventDate)
+                .thenComparing(ScheduleEventDTO::getStartTime));
+
+        // Filter based on role
         if (user.getRole() == User.Role.ADMIN) {
-            return events.stream().map(this::convertToDTO).toList();
+            return weeklyEvents;
         }
 
         if (user.getRole() == User.Role.INSTRUCTOR) {
-            return events.stream()
-                    .filter(e -> e.getTargetRole() == ScheduleEvent.TargetRole.INSTRUCTOR 
-                            || e.getTargetRole() == ScheduleEvent.TargetRole.ALL
-                            || (e.getCourse() != null && e.getCourse().getInstructor() != null && e.getCourse().getInstructor().getId().equals(user.getId()))
-                            || e.getCreatedBy().getId().equals(user.getId()))
-                    .map(this::convertToDTO)
+            final Long userId = user.getId();
+            return weeklyEvents.stream()
+                    .filter(e -> "INSTRUCTOR".equalsIgnoreCase(e.getTargetRole()) 
+                            || "ALL".equalsIgnoreCase(e.getTargetRole())
+                            || (e.getInstructorId() != null && e.getInstructorId().equals(userId))
+                            || e.getCreatedById().equals(userId))
                     .toList();
         }
 
         // Student Role: Filter by enrolled courses AND batch events (offline)
-        List<Long> enrolledCourseIds = enrollmentRepository.findByUserId(user.getId()).stream()
+        final Long studentId = user.getId();
+        List<Long> enrolledCourseIds = enrollmentRepository.findByUserId(studentId).stream()
                 .map(enrollment -> enrollment.getCourse().getId())
                 .toList();
 
-        return events.stream()
-                .filter(e -> e.getTargetRole() == ScheduleEvent.TargetRole.STUDENT 
-                        || e.getTargetRole() == ScheduleEvent.TargetRole.ALL)
+        final Long studentBatchId = user.getBatch() != null ? user.getBatch().getId() : null;
+
+        return weeklyEvents.stream()
+                .filter(e -> "STUDENT".equalsIgnoreCase(e.getTargetRole()) 
+                        || "ALL".equalsIgnoreCase(e.getTargetRole()))
                 .filter(e -> {
                     // If course is set, student must be enrolled
-                    if (e.getCourse() != null) {
-                        return enrolledCourseIds.contains(e.getCourse().getId());
+                    if (e.getCourseId() != null) {
+                        return enrolledCourseIds.contains(e.getCourseId());
                     }
                     // If batch is set, student must belong to this batch
-                    if (e.getBatch() != null) {
-                        return user.getBatch() != null && e.getBatch().getId().equals(user.getBatch().getId());
+                    if (e.getBatchId() != null) {
+                        return studentBatchId != null && e.getBatchId().equals(studentBatchId);
                     }
                     // General events
                     return true;
                 })
-                .map(this::convertToDTO)
                 .toList();
     }
 

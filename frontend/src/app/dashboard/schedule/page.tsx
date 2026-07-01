@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import { generateIcsFile } from '@/lib/icsHelper';
 import { 
   Calendar, 
@@ -15,7 +16,8 @@ import {
   FileText, 
   Coffee, 
   Loader2,
-  CalendarCheck
+  CalendarCheck,
+  Trash2
 } from 'lucide-react';
 
 interface ScheduleEvent {
@@ -45,6 +47,8 @@ interface ScheduleEvent {
 }
 
 export default function StudentSchedulePage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -52,6 +56,25 @@ export default function StudentSchedulePage() {
     const date = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${date}`;
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/schedules/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weekly-schedule'] });
+      alert('Event deleted successfully!');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete event');
+    }
+  });
+
+  const handleDeleteEvent = (id: number) => {
+    if (confirm('Are you sure you want to delete this schedule event?')) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   // 1. Fetch 7-day schedule
   const { data: scheduleEvents = [], isLoading, error } = useQuery<ScheduleEvent[]>({
@@ -375,16 +398,29 @@ export default function StudentSchedulePage() {
                       </span>
                     </div>
 
-                    {/* Export to ICS Button */}
-                    {!event.isCancelled && (
-                      <button
-                        onClick={() => handleExportSingle(event)}
-                        className="px-4 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white rounded-xl text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer self-stretch sm:self-auto shadow-sm"
-                      >
-                        <Download className="w-3 h-3" />
-                        Add to Calendar
-                      </button>
-                    )}
+                    <div className="flex flex-col sm:flex-row md:flex-col gap-2 self-stretch sm:self-auto">
+                      {/* Delete Event Button */}
+                      {(user?.role === 'ADMIN' || user?.role === 'INSTRUCTOR') && (
+                        <button
+                          onClick={() => handleDeleteEvent(event.id)}
+                          className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500 hover:text-white border border-rose-550/15 text-rose-500 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer self-stretch sm:self-auto shadow-sm"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Delete Event
+                        </button>
+                      )}
+                      
+                      {/* Export to ICS Button */}
+                      {!event.isCancelled && (
+                        <button
+                          onClick={() => handleExportSingle(event)}
+                          className="px-4 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white rounded-xl text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer self-stretch sm:self-auto shadow-sm"
+                        >
+                          <Download className="w-3 h-3" />
+                          Add to Calendar
+                        </button>
+                      )}
+                    </div>
 
                   </div>
 

@@ -11,4 +11,5 @@ public interface CertificateRepository extends JpaRepository<Certificate, Long> 
     List<Certificate> findByUserId(Long userId);
     Optional<Certificate> findByUserIdAndCourseId(Long userId, Long courseId);
     Optional<Certificate> findByCertificateHash(String certificateHash);
+    void deleteByUserId(Long userId);
 }

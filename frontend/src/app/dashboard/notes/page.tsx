@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { motion } from 'framer-motion';
@@ -16,7 +16,8 @@ import {
   ArrowRight, 
   ChevronLeft,
   Calendar,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 
 interface CourseWithNotes {
@@ -42,9 +43,29 @@ const ACADEMIC_SUBJECTS = ['English', 'Hindi', 'Mathematics', 'Science', 'Social
 
 export default function NotesCoursesPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'BATCH' | 'COURSES'>('BATCH');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (noteId: number) => {
+      await api.delete(`/instructor/notes/${noteId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-batch-notes'] });
+      alert('Note deleted successfully!');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete note');
+    }
+  });
+
+  const handleDeleteNote = (noteId: number) => {
+    if (confirm('Are you sure you want to delete this study note?')) {
+      deleteMutation.mutate(noteId);
+    }
+  };
 
   // 1. Fetch online courses that have notes
   const { data: courses = [], isLoading: isCoursesLoading } = useQuery<CourseWithNotes[]>({
@@ -231,13 +252,24 @@ export default function NotesCoursesPage() {
                       {note.uploadedByName} • {new Date(note.createdAt).toLocaleDateString()}
                     </span>
 
-                    <Link
-                      href={`/dashboard/notes/view/${note.id}`}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-accent-grape hover:to-primary-blue border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      View Secure PDF
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {user?.role === 'ADMIN' && (
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="flex items-center justify-center p-2 text-rose-500 hover:text-rose-600 dark:hover:text-rose-455 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-550/10 hover:border-rose-500 rounded-xl transition-all cursor-pointer shadow-sm"
+                          title="Delete Note"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <Link
+                        href={`/dashboard/notes/view/${note.id}`}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-accent-grape hover:to-primary-blue border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View Secure PDF
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}

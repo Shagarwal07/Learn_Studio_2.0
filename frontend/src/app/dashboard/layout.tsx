@@ -25,7 +25,8 @@ import {
   ChevronRight,
   Calendar,
   ClipboardCheck,
-  Lock
+  Lock,
+  Users
 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -69,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const scheduleHref = user?.role === 'INSTRUCTOR' ? '/dashboard/instructor/schedules' : '/dashboard/schedule';
   const attendanceHref = user?.role === 'INSTRUCTOR' ? '/dashboard/instructor/attendance' : '/dashboard/attendance';
 
-  let menuItems = [];
+  let menuItems: { name: string; href: string; icon: any; locked?: boolean }[] = [];
 
   if (user?.role === 'INSTRUCTOR') {
     menuItems = [
@@ -89,6 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Notes', href: '/dashboard/notes', icon: FileText },
       { name: 'Homework', href: '/dashboard/homework', icon: ClipboardList },
       { name: 'Announcements', href: '/dashboard/announcements', icon: Megaphone },
+      { name: 'Users', href: '/dashboard/admin/users', icon: Users },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ];
   } else {
@@ -110,6 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Map pathname to display title
   const getPageTitle = () => {
     if (pathname === '/dashboard') return 'Dashboard Overview';
+    if (pathname.startsWith('/dashboard/admin/users')) return 'User Administration';
     if (pathname.startsWith('/dashboard/my-courses')) return 'My Courses';
     if (pathname.startsWith('/courses')) return 'Explore Courses';
     if (pathname.startsWith('/dashboard/schedule') || pathname.startsWith('/dashboard/instructor/schedules')) return 'Schedule & Calendar';

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { 
@@ -17,7 +17,8 @@ import {
   Calendar,
   Eye,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Trash2
 } from 'lucide-react';
 
 interface CourseWithHomework {
@@ -44,9 +45,29 @@ const ACADEMIC_SUBJECTS = ['English', 'Hindi', 'Mathematics', 'Science', 'Social
 
 export default function HomeworkCoursesPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'BATCH' | 'COURSES'>('BATCH');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (homeworkId: number) => {
+      await api.delete(`/instructor/homework/${homeworkId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-batch-homework'] });
+      alert('Homework deleted successfully!');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete homework');
+    }
+  });
+
+  const handleDeleteHomework = (homeworkId: number) => {
+    if (confirm('Are you sure you want to delete this homework assignment?')) {
+      deleteMutation.mutate(homeworkId);
+    }
+  };
 
   // 1. Fetch online courses that have homework
   const { data: courses = [], isLoading: isCoursesLoading } = useQuery<CourseWithHomework[]>({
@@ -226,13 +247,24 @@ export default function HomeworkCoursesPage() {
                         </span>
                       </div>
 
-                      <Link
-                        href={`/dashboard/homework/${hw.id}`}
-                        className="flex items-center gap-1 px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60 border border-indigo-100/20 text-indigo-700 dark:text-indigo-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Open Task
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        {user?.role === 'ADMIN' && (
+                          <button
+                            onClick={() => handleDeleteHomework(hw.id)}
+                            className="flex items-center justify-center p-2 text-rose-500 hover:text-rose-600 dark:hover:text-rose-455 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-550/10 hover:border-rose-500 rounded-xl transition-all cursor-pointer shadow-sm"
+                            title="Delete Homework"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <Link
+                          href={`/dashboard/homework/${hw.id}`}
+                          className="flex items-center gap-1 px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/60 border border-indigo-100/20 text-indigo-700 dark:text-indigo-400 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Open Task
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );

@@ -80,6 +80,7 @@ interface NoteDTO {
   subjectName: string;
   fileUrl: string;
   uploadedByName: string;
+  uploadedById: number;
   createdAt: string;
 }
 
@@ -93,6 +94,7 @@ interface HomeworkDTO {
   fileUrl: string;
   dueDate: string;
   createdByName: string;
+  createdById: number;
   createdAt: string;
 }
 
@@ -597,6 +599,34 @@ export default function InstructorBatchesPage() {
     },
     onError: (err: any) => {
       setHwFormError(err.response?.data?.message || 'Failed to save homework in database.');
+    }
+  });
+
+  // Delete Note Mutation
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/instructor/notes/${id}`);
+    },
+    onSuccess: () => {
+      refetchNotes();
+      alert('Study note deleted successfully.');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete note.');
+    }
+  });
+
+  // Delete Homework Mutation
+  const deleteHomeworkMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/instructor/homework/${id}`);
+    },
+    onSuccess: () => {
+      refetchHomeworks();
+      alert('Homework assignment deleted successfully.');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to delete homework.');
     }
   });
 
@@ -1825,14 +1855,25 @@ export default function InstructorBatchesPage() {
                                     </div>
                                   </div>
 
-                                  <a
-                                    href={`/dashboard/notes/view/${note.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white rounded-lg font-bold text-[9px] transition-all shrink-0 cursor-pointer shadow-sm active:scale-95"
-                                  >
-                                    <ExternalLink className="w-3 h-3" /> View PDF
-                                  </a>
+                                  <div className="flex gap-1.5 shrink-0 items-center">
+                                    {(user?.role === 'ADMIN' || note.uploadedById === user?.id) && (
+                                      <button
+                                        onClick={() => { if (confirm('Are you sure you want to delete this study note?')) deleteNoteMutation.mutate(note.id); }}
+                                        className="p-1.5 bg-slate-905 border border-slate-800 text-slate-400 hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
+                                        title="Delete Note"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <a
+                                      href={`/dashboard/notes/view/${note.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-600 hover:text-white rounded-lg font-bold text-[9px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                    >
+                                      <ExternalLink className="w-3 h-3" /> View PDF
+                                    </a>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -2007,16 +2048,27 @@ export default function InstructorBatchesPage() {
                                     </div>
                                   </div>
 
-                                  {hw.fileUrl && (
-                                    <a
-                                      href={hw.fileUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-600 hover:text-white rounded-lg font-bold text-[9px] transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
-                                    >
-                                      <ExternalLink className="w-3 h-3" /> Sheets
-                                    </a>
-                                  )}
+                                  <div className="flex gap-1.5 shrink-0 items-center">
+                                    {(user?.role === 'ADMIN' || hw.createdById === user?.id) && (
+                                      <button
+                                        onClick={() => { if (confirm('Are you sure you want to delete this homework assignment?')) deleteHomeworkMutation.mutate(hw.id); }}
+                                        className="p-1.5 bg-slate-905 border border-slate-800 text-slate-400 hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
+                                        title="Delete Homework"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    {hw.fileUrl && (
+                                      <a
+                                        href={hw.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-600 hover:text-white rounded-lg font-bold text-[9px] transition-all shrink-0 cursor-pointer active:scale-95"
+                                      >
+                                        <ExternalLink className="w-3 h-3" /> Sheets
+                                      </a>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>

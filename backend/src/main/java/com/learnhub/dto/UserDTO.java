@@ -14,4 +14,6 @@ public class UserDTO {
     private String name;
     private String email;
     private String role;
+    private Long batchId;
+    private String batchName;
 }

@@ -14,4 +14,5 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
     List<Note> findByBatchId(Long batchId);
     List<Note> findByBatchIdAndSubjectName(Long batchId, String subjectName);
     boolean existsByPublicId(String publicId);
+    List<Note> findByUploadedById(Long uploadedById);
 }

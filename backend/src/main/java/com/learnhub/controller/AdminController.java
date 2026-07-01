@@ -1,6 +1,8 @@
 package com.learnhub.controller;
 
 import com.learnhub.dto.ApiResponse;
+import com.learnhub.dto.UserDTO;
+import com.learnhub.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +18,70 @@ import java.util.*;
 public class AdminController {
 
     private final DataSource dataSource;
+    private final AdminService adminService;
+
+    // ── User Management CRUD ──
+
+    @GetMapping("/users")
+    public ResponseEntity<ApiResponse<List<UserDTO>>> getAllUsers() {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getAllUsers(), "Users retrieved successfully"));
+    }
+
+    @PostMapping("/users")
+    public ResponseEntity<ApiResponse<UserDTO>> createUser(@RequestBody Map<String, Object> body) {
+        String name = (String) body.get("name");
+        String email = (String) body.get("email");
+        String role = (String) body.get("role");
+        String password = (String) body.get("password");
+        Long batchId = body.get("batchId") != null ? Long.valueOf(body.get("batchId").toString()) : null;
+
+        UserDTO dto = UserDTO.builder()
+                .name(name)
+                .email(email)
+                .role(role)
+                .batchId(batchId)
+                .build();
+
+        UserDTO created = adminService.createUser(dto, password);
+        return ResponseEntity.ok(ApiResponse.success(created, "User created successfully"));
+    }
+
+    @PutMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<UserDTO>> updateUser(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        String name = (String) body.get("name");
+        String email = (String) body.get("email");
+        String role = (String) body.get("role");
+        String password = (String) body.get("password");
+        Long batchId = body.get("batchId") != null ? Long.valueOf(body.get("batchId").toString()) : null;
+
+        UserDTO dto = UserDTO.builder()
+                .name(name)
+                .email(email)
+                .role(role)
+                .batchId(batchId)
+                .build();
+
+        UserDTO updated = adminService.updateUser(id, dto, password);
+        return ResponseEntity.ok(ApiResponse.success(updated, "User updated successfully"));
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+        adminService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
+    }
+
+    @PostMapping("/users/export")
+    public ResponseEntity<ApiResponse<Void>> exportUsers() {
+        adminService.exportUsersToCsv();
+        return ResponseEntity.ok(ApiResponse.success(null, "Users compiled to CSV successfully"));
+    }
+
+    @PostMapping("/users/import")
+    public ResponseEntity<ApiResponse<Void>> importUsers() {
+        adminService.importUsersFromCsv();
+        return ResponseEntity.ok(ApiResponse.success(null, "Users synchronized from CSV successfully"));
+    }
 
     // ── Execute any SQL (SELECT → rows, others → affected rows) ──
     @PostMapping("/sql")
