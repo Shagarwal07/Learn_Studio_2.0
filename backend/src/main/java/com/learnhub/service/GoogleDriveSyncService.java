@@ -96,20 +96,14 @@ public class GoogleDriveSyncService {
             String batchName = batchFolder.getName();
             Optional<Batch> batchOpt = batchRepository.findByName(batchName);
 
-            // Fetch the top-level folders inside the batch folder (expecting Notes and Homework)
-            List<com.google.api.services.drive.model.File> typeFolders = getFoldersInParent(batchFolder.getId());
+            // Fetch the top-level folders inside the batch folder (expecting Subject folders)
+            List<com.google.api.services.drive.model.File> subjectFolders = getFoldersInParent(batchFolder.getId());
 
-            // Collect all subjects under 'Notes' and 'Homework' to assign them if we create/initialize the batch
+            // Collect all subjects to assign them if we create/initialize the batch
             Set<String> subjects = new HashSet<>();
-            for (var typeFolder : typeFolders) {
-                String typeName = typeFolder.getName().trim();
-                if (typeName.equalsIgnoreCase("Notes") || typeName.equalsIgnoreCase("Homework") || typeName.equalsIgnoreCase("Assignments")) {
-                    List<com.google.api.services.drive.model.File> subjectFolders = getFoldersInParent(typeFolder.getId());
-                    if (subjectFolders != null) {
-                        for (var subFolder : subjectFolders) {
-                            subjects.add(subFolder.getName());
-                        }
-                    }
+            if (subjectFolders != null) {
+                for (var subFolder : subjectFolders) {
+                    subjects.add(subFolder.getName());
                 }
             }
 
@@ -160,23 +154,24 @@ public class GoogleDriveSyncService {
             }
 
             System.out.println("Syncing batch: " + batchName);
-            // Now run the sync traversal
-            for (var typeFolder : typeFolders) {
-                String typeName = typeFolder.getName().trim();
-                List<com.google.api.services.drive.model.File> subjectFolders = getFoldersInParent(typeFolder.getId());
-                if (subjectFolders == null) continue;
-
-                if (typeName.equalsIgnoreCase("Notes")) {
-                    for (var subjectFolder : subjectFolders) {
-                        String subjectName = subjectFolder.getName();
-                        System.out.println("  Syncing notes for subject: " + subjectName);
-                        syncNotes(subjectFolder.getId(), batch, subjectName, uploader, activeFileIds);
-                    }
-                } else if (typeName.equalsIgnoreCase("Homework") || typeName.equalsIgnoreCase("Assignments")) {
-                    for (var subjectFolder : subjectFolders) {
-                        String subjectName = subjectFolder.getName();
-                        System.out.println("  Syncing homework for subject: " + subjectName);
-                        syncHomework(subjectFolder.getId(), batch, subjectName, uploader, activeFileIds);
+            // Now run the sync traversal: Batch -> Subject Folder -> Notes & Homework
+            if (subjectFolders != null) {
+                for (var subjectFolder : subjectFolders) {
+                    String subjectName = subjectFolder.getName();
+                    
+                    // Fetch category folders inside the subject folder (expecting Notes, Homework, Assignments)
+                    List<com.google.api.services.drive.model.File> typeFolders = getFoldersInParent(subjectFolder.getId());
+                    if (typeFolders == null) continue;
+                    
+                    for (var typeFolder : typeFolders) {
+                        String typeName = typeFolder.getName().trim();
+                        if (typeName.equalsIgnoreCase("Notes")) {
+                            System.out.println("  Syncing notes for subject: " + subjectName);
+                            syncNotes(typeFolder.getId(), batch, subjectName, uploader, activeFileIds);
+                        } else if (typeName.equalsIgnoreCase("Homework") || typeName.equalsIgnoreCase("Assignments")) {
+                            System.out.println("  Syncing homework for subject: " + subjectName);
+                            syncHomework(typeFolder.getId(), batch, subjectName, uploader, activeFileIds);
+                        }
                     }
                 }
             }
@@ -325,16 +320,16 @@ public class GoogleDriveSyncService {
             // 1. Get/Create Batch folder
             String batchFolderId = getOrCreateFolder(batchName, parentId);
             
-            // 2. Get/Create category folder (e.g. "Notes" or "Homework")
-            String categoryFolderId = getOrCreateFolder(categoryFolder, batchFolderId);
+            // 2. Get/Create Subject folder (e.g. "Science")
+            String subjectFolderId = getOrCreateFolder(subjectName, batchFolderId);
             
-            // 3. Get/Create Subject folder (e.g. "Science")
-            String subjectFolderId = getOrCreateFolder(subjectName, categoryFolderId);
+            // 3. Get/Create category folder (e.g. "Notes" or "Homework") inside the Subject folder
+            String categoryFolderId = getOrCreateFolder(categoryFolder, subjectFolderId);
             
-            // 4. Upload file to Subject folder
+            // 4. Upload file to category folder
             com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
             fileMetadata.setName(fileName);
-            fileMetadata.setParents(Collections.singletonList(subjectFolderId));
+            fileMetadata.setParents(Collections.singletonList(categoryFolderId));
             
             com.google.api.client.http.InputStreamContent mediaContent = new com.google.api.client.http.InputStreamContent(
                     mimeType, new java.io.ByteArrayInputStream(fileBytes));
