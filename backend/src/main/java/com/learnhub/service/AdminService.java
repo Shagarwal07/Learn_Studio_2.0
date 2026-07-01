@@ -30,6 +30,7 @@ public class AdminService {
     private final NoteRepository noteRepository;
     private final AnnouncementRepository announcementRepository;
     private final OnlineActivityLogRepository onlineActivityLogRepository;
+    private final LessonProgressRepository lessonProgressRepository;
     private final PasswordEncoder passwordEncoder;
 
     public List<UserDTO> getAllUsers() {
@@ -101,6 +102,10 @@ public class AdminService {
 
         // 2. Clear relations or delete dependent entities
         if (user.getRole() == User.Role.STUDENT) {
+            List<Enrollment> enrollments = enrollmentRepository.findByUserId(id);
+            for (Enrollment enrollment : enrollments) {
+                lessonProgressRepository.deleteByEnrollmentId(enrollment.getId());
+            }
             enrollmentRepository.deleteByUserId(id);
             certificateRepository.deleteByUserId(id);
             quizAttemptRepository.deleteByUserId(id);
