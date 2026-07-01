@@ -588,7 +588,7 @@ public class AttendanceService {
     }
 
     public List<UserDTO> getStudentsList() {
-        return userRepository.findByRole(User.Role.STUDENT).stream()
+        return userRepository.findByRoleAndActiveTrue(User.Role.STUDENT).stream()
                 .map(u -> UserDTO.builder()
                         .id(u.getId())
                         .name(u.getName())

@@ -55,6 +55,9 @@ public class AuthService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!user.isActive()) {
+            throw new RuntimeException("Account is deactivated");
+        }
         
         String token = jwtUtil.generateToken(user.getEmail());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
@@ -71,6 +74,9 @@ public class AuthService {
             // LOGIN ONLY — user must already exist in DB
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("NOT_REGISTERED"));
+            if (!user.isActive()) {
+                throw new RuntimeException("Account is deactivated");
+            }
 
             String token = jwtUtil.generateToken(user.getEmail());
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());

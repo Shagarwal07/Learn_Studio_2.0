@@ -31,10 +31,14 @@ public class AdminService {
     private final AnnouncementRepository announcementRepository;
     private final OnlineActivityLogRepository onlineActivityLogRepository;
     private final LessonProgressRepository lessonProgressRepository;
+    private final ReviewRepository reviewRepository;
+    private final ReviewHistoryRepository reviewHistoryRepository;
+    private final PaperVersionRepository paperVersionRepository;
+    private final NoteViewLogRepository noteViewLogRepository;
     private final PasswordEncoder passwordEncoder;
 
     public List<UserDTO> getAllUsers() {
-        return userRepository.findAll().stream().map(this::toDTO).toList();
+        return userRepository.findByActiveTrue().stream().map(this::toDTO).toList();
     }
 
     public UserDTO createUser(UserDTO dto, String password) {
@@ -93,9 +97,91 @@ public class AdminService {
         return toDTO(saved);
     }
 
+    private void checkUserDependencies(User user) {
+        Long id = user.getId();
+        
+
+        
+        if (user.getRole() == User.Role.STUDENT) {
+            if (!noteViewLogRepository.findByUserId(id).isEmpty()) {
+                throw new RuntimeException("This user has note view activity history and cannot be deleted. Deactivate them instead.");
+            }
+            if (!quizAttemptRepository.findByUserId(id).isEmpty()) {
+                throw new RuntimeException("This user has quiz attempt records and cannot be deleted. Deactivate them instead.");
+            }
+            if (!attendanceRepository.findByStudentIdOrderByDateDesc(id).isEmpty()) {
+                throw new RuntimeException("This user has attendance logs and cannot be deleted. Deactivate them instead.");
+            }
+            if (!homeworkSubmissionRepository.findByStudentId(id).isEmpty()) {
+                throw new RuntimeException("This user has homework submissions and cannot be deleted. Deactivate them instead.");
+            }
+            if (!onlineActivityLogRepository.findByStudentIdOrderByDateDesc(id).isEmpty()) {
+                throw new RuntimeException("This user has online course activity history and cannot be deleted. Deactivate them instead.");
+            }
+            if (!enrollmentRepository.findByUserId(id).isEmpty()) {
+                throw new RuntimeException("This user is enrolled in courses and cannot be deleted. Deactivate them instead.");
+            }
+            if (!certificateRepository.findByUserId(id).isEmpty()) {
+                throw new RuntimeException("This user has earned certificates and cannot be deleted. Deactivate them instead.");
+            }
+            if (!reviewRepository.findByUserId(id).isEmpty()) {
+                throw new RuntimeException("This user has written course reviews and cannot be deleted. Deactivate them instead.");
+            }
+        }
+        
+        if (user.getRole() == User.Role.INSTRUCTOR || user.getRole() == User.Role.ADMIN) {
+            if (!noteRepository.findByUploadedById(id).isEmpty()) {
+                throw new RuntimeException("This user has uploaded study notes and cannot be deleted. Deactivate them instead.");
+            }
+            if (!homeworkRepository.findByCreatedById(id).isEmpty()) {
+                throw new RuntimeException("This user has created homework tasks and cannot be deleted. Deactivate them instead.");
+            }
+            if (!batchRepository.findByInstructorId(id).isEmpty()) {
+                throw new RuntimeException("This user is assigned to teach batches and cannot be deleted. Deactivate them instead.");
+            }
+            if (!courseRepository.findByInstructorId(id).isEmpty()) {
+                throw new RuntimeException("This user is assigned to teach courses and cannot be deleted. Deactivate them instead.");
+            }
+            if (!scheduleEventRepository.findByInstructorIdOrderByEventDateAscStartTimeAsc(id).isEmpty() ||
+                !scheduleEventRepository.findByCreatedByIdOrderByEventDateAscStartTimeAsc(id).isEmpty()) {
+                throw new RuntimeException("This user is scheduled as an instructor or created events and cannot be deleted. Deactivate them instead.");
+            }
+            if (!announcementRepository.findByCreatedById(id).isEmpty()) {
+                throw new RuntimeException("This user has published announcements and cannot be deleted. Deactivate them instead.");
+            }
+            if (!reviewHistoryRepository.findByReviewedById(id).isEmpty()) {
+                throw new RuntimeException("This user has exam paper review history and cannot be deleted. Deactivate them instead.");
+            }
+            if (!paperVersionRepository.findByChangedById(id).isEmpty()) {
+                throw new RuntimeException("This user has changed exam paper versions and cannot be deleted. Deactivate them instead.");
+            }
+        }
+    }
+
+    @Transactional
+    public UserDTO deactivateUser(Long id, String adminEmail) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+        user.setActive(false);
+        user.setDeletedAt(java.time.LocalDateTime.now());
+        user.setDeletedBy(adminEmail);
+        
+        if (user.getRole() == User.Role.STUDENT) {
+            user.setBatch(null);
+        }
+        
+        refreshTokenRepository.deleteByUserId(id);
+        User saved = userRepository.save(user);
+        return toDTO(saved);
+    }
+
+    @Transactional
     public void deleteUser(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
+
+        // Enforce dependency checks to protect historical academic records in production
+        checkUserDependencies(user);
 
         // 1. Delete refresh tokens
         refreshTokenRepository.deleteByUserId(id);
@@ -147,7 +233,7 @@ public class AdminService {
     public String exportUsersToCsvContent() {
         StringBuilder sb = new StringBuilder();
         sb.append("ID,Name,Email,Password,Role,BatchName\n");
-        for (User u : userRepository.findAll()) {
+        for (User u : userRepository.findByActiveTrue()) {
             String batchName = u.getBatch() != null ? u.getBatch().getName() : "";
             sb.append(String.format("%s,%s,%s,%s,%s,%s\n",
                     u.getId(),
@@ -221,7 +307,7 @@ public class AdminService {
         }
 
         // Identify unfound users (excluding ADMINs to prevent lockouts)
-        List<User> allDbUsers = userRepository.findAll();
+        List<User> allDbUsers = userRepository.findByActiveTrue();
         List<UserDTO> unfoundUsers = new ArrayList<>();
 
         for (User u : allDbUsers) {
@@ -272,6 +358,9 @@ public class AdminService {
                 .role(u.getRole().name())
                 .batchId(u.getBatch() != null ? u.getBatch().getId() : null)
                 .batchName(u.getBatch() != null ? u.getBatch().getName() : null)
+                .active(u.isActive())
+                .deletedAt(u.getDeletedAt() != null ? u.getDeletedAt().toString() : null)
+                .deletedBy(u.getDeletedBy())
                 .build();
     }
 }

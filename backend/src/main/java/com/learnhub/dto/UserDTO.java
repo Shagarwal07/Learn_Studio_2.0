@@ -16,4 +16,7 @@ public class UserDTO {
     private String role;
     private Long batchId;
     private String batchName;
+    private boolean active;
+    private String deletedAt;
+    private String deletedBy;
 }

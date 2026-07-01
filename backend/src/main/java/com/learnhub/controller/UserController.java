@@ -46,8 +46,8 @@ public class UserController {
     @GetMapping("/instructors")
     @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN')")
     public ResponseEntity<ApiResponse<List<UserDTO>>> getInstructors() {
-        List<User> instructors = userRepository.findByRole(User.Role.INSTRUCTOR);
-        List<User> admins = userRepository.findByRole(User.Role.ADMIN);
+        List<User> instructors = userRepository.findByRoleAndActiveTrue(User.Role.INSTRUCTOR);
+        List<User> admins = userRepository.findByRoleAndActiveTrue(User.Role.ADMIN);
         
         List<UserDTO> dtos = new java.util.ArrayList<>();
         

@@ -60,6 +60,14 @@ export default function UserManagementPage() {
   
   const [isSyncing, setIsSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 5000);
+  };
   
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncResult, setSyncResult] = useState<{
@@ -98,10 +106,10 @@ export default function UserManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setShowCreateModal(false);
       resetForm();
-      alert('User created successfully!');
+      showToast('User created successfully!', 'success');
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Failed to create user');
+      showToast(err.response?.data?.message || 'Failed to create user', 'error');
     }
   });
 
@@ -116,10 +124,24 @@ export default function UserManagementPage() {
       setShowEditModal(false);
       setSelectedUser(null);
       resetForm();
-      alert('User updated successfully!');
+      showToast('User updated successfully!', 'success');
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Failed to update user');
+      showToast(err.response?.data?.message || 'Failed to update user', 'error');
+    }
+  });
+
+  // Deactivate User Mutation
+  const deactivateUserMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.patch(`/admin/users/${id}/deactivate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      showToast('User deactivated successfully.', 'success');
+    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.message || 'Failed to deactivate user.', 'error');
     }
   });
 
@@ -130,10 +152,16 @@ export default function UserManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      alert('User account deleted successfully.');
+      showToast('User account deleted successfully.', 'success');
     },
-    onError: (err: any) => {
-      alert(err.response?.data?.message || 'Failed to delete user.');
+    onError: (err: any, id: number) => {
+      const errorMsg = err.response?.data?.message || '';
+      if (errorMsg.includes("Deactivate them instead") || errorMsg.includes("deactivate") || errorMsg.includes("linked")) {
+        deactivateUserMutation.mutate(id);
+        showToast("This user has linked records. User was deactivated instead of permanently deleted.", "warning");
+      } else {
+        showToast(errorMsg || 'Failed to delete user.', 'error');
+      }
     }
   });
 
@@ -485,6 +513,17 @@ export default function UserManagementPage() {
                     title="Edit Credentials & Details"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`CAUTION: Deactivate ${u.name}? This will lock the account but preserve their logs.`)) {
+                        deactivateUserMutation.mutate(u.id);
+                      }
+                    }}
+                    className="p-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-indigo-400 hover:bg-indigo-950/20 rounded-xl transition-all cursor-pointer"
+                    title="Deactivate Account (Soft Delete)"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleDeleteUser(u.id, u.name)}
@@ -868,6 +907,35 @@ export default function UserManagementPage() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl border backdrop-blur-md shadow-2xl max-w-md ${
+              toast.type === 'success'
+                ? 'bg-emerald-950/75 border-emerald-500/35 text-emerald-250'
+                : toast.type === 'warning'
+                ? 'bg-amber-950/75 border-amber-500/35 text-amber-250'
+                : 'bg-rose-950/75 border-rose-500/35 text-rose-250'
+            }`}
+          >
+            <ShieldAlert className={`w-5 h-5 shrink-0 ${
+              toast.type === 'success' ? 'text-emerald-400' : toast.type === 'warning' ? 'text-amber-400' : 'text-rose-400'
+            }`} />
+            <p className="text-xs font-semibold leading-relaxed pr-2">{toast.message}</p>
+            <button 
+              onClick={() => setToast(null)}
+              className="text-slate-450 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 

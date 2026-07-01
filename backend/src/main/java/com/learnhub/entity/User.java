@@ -23,9 +23,18 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String password;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.STUDENT;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean active = true;
+
+    private java.time.LocalDateTime deletedAt;
+    
+    private String deletedBy;
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)

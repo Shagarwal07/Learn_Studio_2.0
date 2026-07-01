@@ -65,6 +65,12 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(updated, "User updated successfully"));
     }
 
+    @PatchMapping("/users/{id}/deactivate")
+    public ResponseEntity<ApiResponse<UserDTO>> deactivateUser(@PathVariable Long id, java.security.Principal principal) {
+        UserDTO deactivated = adminService.deactivateUser(id, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(deactivated, "User deactivated successfully"));
+    }
+
     @DeleteMapping("/users/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         adminService.deleteUser(id);

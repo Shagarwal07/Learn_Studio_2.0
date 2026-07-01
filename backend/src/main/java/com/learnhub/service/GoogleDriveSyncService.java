@@ -109,7 +109,7 @@ public class GoogleDriveSyncService {
         }
 
         // Find a default uploader/creator (Admin or Instructor)
-        User defaultUploader = userRepository.findAll().stream()
+        User defaultUploader = userRepository.findByActiveTrue().stream()
                 .filter(u -> u.getRole() == User.Role.ADMIN || u.getRole() == User.Role.INSTRUCTOR)
                 .findFirst()
                 .orElse(null);

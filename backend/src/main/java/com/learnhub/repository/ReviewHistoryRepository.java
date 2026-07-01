@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface ReviewHistoryRepository extends JpaRepository<ReviewHistory, Long> {
     List<ReviewHistory> findByGeneratedPaperIdOrderByCreatedAtDesc(Long paperId);
+    List<ReviewHistory> findByReviewedById(Long reviewedById);
 }
