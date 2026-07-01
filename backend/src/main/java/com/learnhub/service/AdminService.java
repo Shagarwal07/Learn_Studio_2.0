@@ -9,8 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +29,7 @@ public class AdminService {
     private final ScheduleEventRepository scheduleEventRepository;
     private final NoteRepository noteRepository;
     private final AnnouncementRepository announcementRepository;
+    private final OnlineActivityLogRepository onlineActivityLogRepository;
     private final PasswordEncoder passwordEncoder;
 
     public List<UserDTO> getAllUsers() {
@@ -57,7 +57,6 @@ public class AdminService {
         }
 
         User saved = userRepository.save(user);
-        exportUsersToCsv();
         return toDTO(saved);
     }
 
@@ -90,7 +89,6 @@ public class AdminService {
         }
 
         User saved = userRepository.save(user);
-        exportUsersToCsv();
         return toDTO(saved);
     }
 
@@ -108,6 +106,7 @@ public class AdminService {
             quizAttemptRepository.deleteByUserId(id);
             attendanceRepository.deleteByStudentId(id);
             homeworkSubmissionRepository.deleteByStudentId(id);
+            onlineActivityLogRepository.deleteByStudentId(id);
         } else {
             // Instructor/Admin cleanup - Null out references to avoid FK constraints
             for (Course course : courseRepository.findByInstructorId(id)) {
@@ -137,40 +136,33 @@ public class AdminService {
         }
 
         userRepository.delete(user);
-        exportUsersToCsv();
     }
 
-    // Export current database users to a CSV file in the project workspace
-    public void exportUsersToCsv() {
-        File csvFile = getCsvFile();
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(csvFile)))) {
-            writer.println("ID,Name,Email,Password,Role,BatchName");
-            for (User u : userRepository.findAll()) {
-                String batchName = u.getBatch() != null ? u.getBatch().getName() : "";
-                writer.println(String.format("%s,%s,%s,%s,%s,%s",
-                        u.getId(),
-                        escapeCsv(u.getName()),
-                        escapeCsv(u.getEmail()),
-                        "[ENCRYPTED]",
-                        u.getRole().name(),
-                        escapeCsv(batchName)
-                ));
-            }
-        } catch (IOException e) {
-            System.err.println("Failed to write users CSV file: " + e.getMessage());
+    // Export current database users as CSV String content
+    public String exportUsersToCsvContent() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("ID,Name,Email,Password,Role,BatchName\n");
+        for (User u : userRepository.findAll()) {
+            String batchName = u.getBatch() != null ? u.getBatch().getName() : "";
+            sb.append(String.format("%s,%s,%s,%s,%s,%s\n",
+                    u.getId(),
+                    escapeCsv(u.getName()),
+                    escapeCsv(u.getEmail()),
+                    "[ENCRYPTED]",
+                    u.getRole().name(),
+                    escapeCsv(batchName)
+            ));
         }
+        return sb.toString();
     }
 
-    // Sync database from the users.csv file in the project workspace
-    public void importUsersFromCsv() {
-        File csvFile = getCsvFile();
-        if (!csvFile.exists()) {
-            // If it doesn't exist, build it first
-            exportUsersToCsv();
-            return;
-        }
+    // Sync database from a CSV input stream and return sync statistics
+    public Map<String, Object> importUsersFromCsvContent(java.io.InputStream inputStream, boolean deleteUnfound) {
+        int createdCount = 0;
+        int updatedCount = 0;
+        Set<String> csvEmails = new HashSet<>();
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
+        try (BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8))) {
             String header = reader.readLine(); // Skip header
             String line;
             while ((line = reader.readLine()) != null) {
@@ -178,14 +170,15 @@ public class AdminService {
                 String[] parts = line.split(",", -1);
                 if (parts.length < 5) continue;
 
-                String idStr = parts[0].trim();
                 String name = unescapeCsv(parts[1].trim());
-                String email = unescapeCsv(parts[2].trim());
+                String email = unescapeCsv(parts[2].trim()).toLowerCase();
                 String password = parts[3].trim();
                 String roleStr = parts[4].trim().toUpperCase();
                 String batchName = parts.length >= 6 ? unescapeCsv(parts[5].trim()) : "";
 
                 if (name.isEmpty() || email.isEmpty() || roleStr.isEmpty()) continue;
+
+                csvEmails.add(email);
 
                 User.Role role = User.Role.valueOf(roleStr);
                 Batch batch = null;
@@ -203,6 +196,7 @@ public class AdminService {
                         user.setPassword(passwordEncoder.encode(password));
                     }
                     userRepository.save(user);
+                    updatedCount++;
                 } else {
                     // Create new
                     String plainPassword = (password.isEmpty() || password.equals("[ENCRYPTED]")) ? "LearnStudio123" : password;
@@ -214,22 +208,37 @@ public class AdminService {
                             .batch(batch)
                             .build();
                     userRepository.save(newUser);
+                    createdCount++;
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to import/sync users from CSV: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to parse CSV stream: " + e.getMessage(), e);
         }
 
-        // Re-export to update IDs or reset password labels
-        exportUsersToCsv();
-    }
+        // Identify unfound users (excluding ADMINs to prevent lockouts)
+        List<User> allDbUsers = userRepository.findAll();
+        List<UserDTO> unfoundUsers = new ArrayList<>();
 
-    private File getCsvFile() {
-        File rootDir = new File(".");
-        if (new File(rootDir, "../docker-compose.yml").exists()) {
-            rootDir = new File(rootDir, "..");
+        for (User u : allDbUsers) {
+            if (u.getRole() == User.Role.ADMIN) {
+                continue;
+            }
+            if (!csvEmails.contains(u.getEmail().toLowerCase())) {
+                unfoundUsers.add(toDTO(u));
+                if (deleteUnfound) {
+                    deleteUser(u.getId());
+                }
+            }
         }
-        return new File(rootDir, "users.csv");
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("createdCount", createdCount);
+        result.put("updatedCount", updatedCount);
+        result.put("unfoundCount", unfoundUsers.size());
+        result.put("deleted", deleteUnfound);
+        result.put("unfoundUsers", deleteUnfound ? Collections.emptyList() : unfoundUsers);
+
+        return result;
     }
 
     private String escapeCsv(String val) {

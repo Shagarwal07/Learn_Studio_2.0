@@ -12,4 +12,6 @@ public interface AnnouncementRepository extends JpaRepository<Announcement, Long
     List<Announcement> findByCourseIdAndTargetRoleInOrderByPinnedDescCreatedAtDesc(Long courseId, List<Announcement.TargetRole> targetRoles);
     List<Announcement> findByBatchIdOrderByPinnedDescCreatedAtDesc(Long batchId);
     List<Announcement> findByCreatedById(Long createdById);
+
+    void deleteByBatchId(Long batchId);
 }

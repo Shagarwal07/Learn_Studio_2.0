@@ -14,4 +14,6 @@ public interface ScheduleEventRepository extends JpaRepository<ScheduleEvent, Lo
     List<ScheduleEvent> findByInstructorIdOrderByEventDateAscStartTimeAsc(Long instructorId);
     
     List<ScheduleEvent> findByCreatedByIdOrderByEventDateAscStartTimeAsc(Long createdById);
+
+    void deleteByBatchId(Long batchId);
 }

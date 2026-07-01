@@ -406,9 +406,13 @@ function StatsRow({
         <h3 className="text-3xl font-black text-white">
           <AnimatedCounter value={totalQuizzes} />
         </h3>
-        <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
-          <span>↗ 12%</span> <span className="text-text-muted font-semibold">vs last week</span>
-        </span>
+        {totalQuizzes > 0 ? (
+          <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
+            <span>↗ 12%</span> <span className="text-text-muted font-semibold">vs last week</span>
+          </span>
+        ) : (
+          <span className="text-[10px] font-bold text-text-muted">No attempts yet</span>
+        )}
       </div>
 
       {/* Stat 2: Average Score */}
@@ -417,9 +421,13 @@ function StatsRow({
         <h3 className="text-3xl font-black text-white">
           <AnimatedCounter value={avgScore} />%
         </h3>
-        <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
-          <span>↗ 8%</span> <span className="text-text-muted font-semibold">vs last week</span>
-        </span>
+        {totalQuizzes > 0 ? (
+          <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
+            <span>↗ 8%</span> <span className="text-text-muted font-semibold">vs last week</span>
+          </span>
+        ) : (
+          <span className="text-[10px] font-bold text-text-muted">No attempts yet</span>
+        )}
       </div>
 
       {/* Stat 3: Correct Answers */}
@@ -428,9 +436,13 @@ function StatsRow({
         <h3 className="text-3xl font-black text-white">
           <AnimatedCounter value={correctAnswers} />
         </h3>
-        <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
-          <span>↗ 15%</span> <span className="text-text-muted font-semibold">vs last week</span>
-        </span>
+        {totalQuizzes > 0 ? (
+          <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
+            <span>↗ 15%</span> <span className="text-text-muted font-semibold">vs last week</span>
+          </span>
+        ) : (
+          <span className="text-[10px] font-bold text-text-muted">No attempts yet</span>
+        )}
       </div>
 
       {/* Stat 4: Study Streak */}
@@ -439,9 +451,15 @@ function StatsRow({
         <h3 className="text-3xl font-black text-white">
           <AnimatedCounter value={currentStreak} /> Days
         </h3>
-        <span className="inline-flex items-center text-[10px] font-bold text-accent-grape gap-1">
-          <span>🔥</span> <span className="text-text-muted font-semibold">Keep it up!</span>
-        </span>
+        {currentStreak > 0 ? (
+          <span className="inline-flex items-center text-[10px] font-bold text-accent-grape gap-1">
+            <span>🔥</span> <span className="text-text-muted font-semibold">Keep it up!</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center text-[10px] font-bold text-text-muted gap-1">
+            <span>⚡</span> <span className="font-semibold">No active streak</span>
+          </span>
+        )}
       </div>
     </div>
   );

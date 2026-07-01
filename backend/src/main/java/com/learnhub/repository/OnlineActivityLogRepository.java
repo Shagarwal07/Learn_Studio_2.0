@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface OnlineActivityLogRepository extends JpaRepository<OnlineActivityLog, Long> {
     List<OnlineActivityLog> findByStudentIdOrderByDateDesc(Long studentId);
+
+    void deleteByStudentId(Long studentId);
 }

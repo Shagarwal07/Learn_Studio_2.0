@@ -71,16 +71,27 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully"));
     }
 
-    @PostMapping("/users/export")
-    public ResponseEntity<ApiResponse<Void>> exportUsers() {
-        adminService.exportUsersToCsv();
-        return ResponseEntity.ok(ApiResponse.success(null, "Users compiled to CSV successfully"));
+    @GetMapping("/users/export")
+    public ResponseEntity<byte[]> exportUsers() {
+        String csvContent = adminService.exportUsersToCsvContent();
+        byte[] csvBytes = csvContent.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"users.csv\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType("text/csv"))
+                .body(csvBytes);
     }
 
-    @PostMapping("/users/import")
-    public ResponseEntity<ApiResponse<Void>> importUsers() {
-        adminService.importUsersFromCsv();
-        return ResponseEntity.ok(ApiResponse.success(null, "Users synchronized from CSV successfully"));
+    @PostMapping(value = "/users/import", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> importUsers(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "deleteUnfound", defaultValue = "false") boolean deleteUnfound) {
+        try {
+            Map<String, Object> result = adminService.importUsersFromCsvContent(file.getInputStream(), deleteUnfound);
+            return ResponseEntity.ok(ApiResponse.success(result, "Users synchronized from CSV successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Failed to import/sync users: " + e.getMessage()));
+        }
     }
 
     // ── Execute any SQL (SELECT → rows, others → affected rows) ──

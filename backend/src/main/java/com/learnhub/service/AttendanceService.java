@@ -68,7 +68,19 @@ public class AttendanceService {
         }
 
         // 3. Calculate Overall Rate
-        double overallRate = (offlineRate + onlineRate) / 2.0;
+        double overallRate;
+        boolean hasOffline = offlineTotal > 0;
+        boolean hasOnline = user.getEnrollments() != null && !user.getEnrollments().isEmpty();
+
+        if (hasOffline && hasOnline) {
+            overallRate = (offlineRate + onlineRate) / 2.0;
+        } else if (hasOffline) {
+            overallRate = offlineRate;
+        } else if (hasOnline) {
+            overallRate = onlineRate;
+        } else {
+            overallRate = 0.0;
+        }
 
         // 4. Determine Badge
         String badge = "Critical Attendance";

@@ -9,4 +9,6 @@ import java.util.List;
 public interface TestRepository extends JpaRepository<Test, Long> {
     List<Test> findByBatchId(Long batchId);
     List<Test> findByBatchIdAndSubjectName(Long batchId, String subjectName);
+
+    void deleteByBatchId(Long batchId);
 }

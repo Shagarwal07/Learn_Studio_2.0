@@ -11,6 +11,10 @@ import com.learnhub.repository.NoteRepository;
 import com.learnhub.repository.UserRepository;
 import com.learnhub.repository.NoteViewLogRepository;
 import com.learnhub.repository.HomeworkSubmissionRepository;
+import com.learnhub.repository.ScheduleEventRepository;
+import com.learnhub.repository.TestRepository;
+import com.learnhub.repository.AttendanceRepository;
+import com.learnhub.repository.AnnouncementRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -37,6 +41,10 @@ public class GoogleDriveSyncService {
     private final UserRepository userRepository;
     private final NoteViewLogRepository noteViewLogRepository;
     private final HomeworkSubmissionRepository homeworkSubmissionRepository;
+    private final ScheduleEventRepository scheduleEventRepository;
+    private final TestRepository testRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final AnnouncementRepository announcementRepository;
 
     public GoogleDriveSyncService(
             @org.springframework.beans.factory.annotation.Autowired(required = false) Drive googleDrive,
@@ -45,7 +53,11 @@ public class GoogleDriveSyncService {
             HomeworkRepository homeworkRepository,
             UserRepository userRepository,
             NoteViewLogRepository noteViewLogRepository,
-            HomeworkSubmissionRepository homeworkSubmissionRepository) {
+            HomeworkSubmissionRepository homeworkSubmissionRepository,
+            ScheduleEventRepository scheduleEventRepository,
+            TestRepository testRepository,
+            AttendanceRepository attendanceRepository,
+            AnnouncementRepository announcementRepository) {
         this.googleDrive = googleDrive;
         this.batchRepository = batchRepository;
         this.noteRepository = noteRepository;
@@ -53,6 +65,10 @@ public class GoogleDriveSyncService {
         this.userRepository = userRepository;
         this.noteViewLogRepository = noteViewLogRepository;
         this.homeworkSubmissionRepository = homeworkSubmissionRepository;
+        this.scheduleEventRepository = scheduleEventRepository;
+        this.testRepository = testRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.announcementRepository = announcementRepository;
     }
 
     @Value("${google.drive.root.folder.id:}")
@@ -99,8 +115,10 @@ public class GoogleDriveSyncService {
                 .orElse(null);
 
         Set<String> activeFileIds = new HashSet<>();
+        Set<String> activeBatchNames = new HashSet<>();
 
         for (var batchFolder : batchFolders) {
+            activeBatchNames.add(batchFolder.getName());
             String batchName = batchFolder.getName();
             Optional<Batch> batchOpt = batchRepository.findByName(batchName);
 
@@ -207,6 +225,15 @@ public class GoogleDriveSyncService {
                     homeworkSubmissionRepository.deleteAll(homeworkSubmissionRepository.findByHomeworkId(hw.getId()));
                     homeworkRepository.delete(hw);
                 }
+            }
+        }
+
+        // Deletion Cleanup: Remove batches that no longer exist in Google Drive
+        List<Batch> allDbBatches = batchRepository.findAll();
+        for (Batch batch : allDbBatches) {
+            if (!activeBatchNames.contains(batch.getName())) {
+                System.out.println("Cleaning up deleted Batch from DB: " + batch.getName());
+                deleteBatchSafely(batch);
             }
         }
     }
@@ -439,5 +466,46 @@ public class GoogleDriveSyncService {
             return filename;
         }
         return filename.substring(0, filename.lastIndexOf("."));
+    }
+
+    private void deleteBatchSafely(Batch batch) {
+        Long batchId = batch.getId();
+
+        // 1. Unassign students
+        if (batch.getStudents() != null) {
+            for (User student : batch.getStudents()) {
+                student.setBatch(null);
+                userRepository.save(student);
+            }
+        }
+
+        // 2. Delete notes (with note view logs)
+        List<Note> notes = noteRepository.findByBatchId(batchId);
+        for (Note note : notes) {
+            noteViewLogRepository.deleteAll(noteViewLogRepository.findByNoteId(note.getId()));
+            noteRepository.delete(note);
+        }
+
+        // 3. Delete homeworks (with submissions)
+        List<Homework> homeworks = homeworkRepository.findByBatchId(batchId);
+        for (Homework hw : homeworks) {
+            homeworkSubmissionRepository.deleteAll(homeworkSubmissionRepository.findByHomeworkId(hw.getId()));
+            homeworkRepository.delete(hw);
+        }
+
+        // 4. Delete schedule events
+        scheduleEventRepository.deleteByBatchId(batchId);
+
+        // 5. Delete tests
+        testRepository.deleteByBatchId(batchId);
+
+        // 6. Delete attendances
+        attendanceRepository.deleteByBatchId(batchId);
+
+        // 7. Delete announcements
+        announcementRepository.deleteByBatchId(batchId);
+
+        // 8. Delete batch
+        batchRepository.delete(batch);
     }
 }

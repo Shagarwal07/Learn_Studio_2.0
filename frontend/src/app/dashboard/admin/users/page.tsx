@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,6 +57,16 @@ export default function UserManagementPage() {
   const [formBatchId, setFormBatchId] = useState<string>('');
   
   const [isSyncing, setIsSyncing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    createdCount: number;
+    updatedCount: number;
+    unfoundCount: number;
+    unfoundUsers: UserDTO[];
+  } | null>(null);
+  const [syncFile, setSyncFile] = useState<File | null>(null);
 
   // 1. Fetch all users
   const { data: users = [], isLoading: isUsersLoading } = useQuery<UserDTO[]>({
@@ -180,27 +188,77 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleSyncCSV = async (mode: 'IMPORT' | 'EXPORT') => {
+  const handleExportCSV = async () => {
     setIsSyncing(true);
     try {
-      if (mode === 'IMPORT') {
-        const response = await api.post('/admin/users/import');
-        if (response.data.success) {
-          queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-          alert('Database synchronized successfully from users.csv file!');
-        } else {
-          alert('Import failed: ' + response.data.message);
-        }
+      const response = await api.get('/admin/users/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'users.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert('Export failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSyncFile(file);
+    setIsSyncing(true);
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await api.post('/admin/users/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data.success) {
+        setSyncResult(response.data.data);
+        setShowSyncModal(true);
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       } else {
-        const response = await api.post('/admin/users/export');
-        if (response.data.success) {
-          alert('Database compiled successfully into users.csv at project root!');
-        } else {
-          alert('Export failed: ' + response.data.message);
-        }
+        alert('Import failed: ' + response.data.message);
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'CSV sync operation failed.');
+      alert(err.response?.data?.message || 'Failed to import CSV file.');
+    } finally {
+      setIsSyncing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAllUnfound = async () => {
+    if (!syncFile) return;
+    if (!confirm('Are you absolutely sure you want to delete all unfound users? This will permanently remove their records.')) return;
+    
+    setIsSyncing(true);
+    const formData = new FormData();
+    formData.append('file', syncFile);
+    formData.append('deleteUnfound', 'true');
+    
+    try {
+      const response = await api.post('/admin/users/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data.success) {
+        alert('Successfully synchronized and deleted unfound users!');
+        setShowSyncModal(false);
+        setSyncResult(null);
+        setSyncFile(null);
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      } else {
+        alert('Sync delete failed: ' + response.data.message);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to synchronize with delete.');
     } finally {
       setIsSyncing(false);
     }
@@ -240,21 +298,29 @@ export default function UserManagementPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            accept=".csv" 
+            className="hidden" 
+          />
+          
           <button
-            onClick={() => handleSyncCSV('EXPORT')}
+            onClick={handleExportCSV}
             disabled={isSyncing}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-205 border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
-            title="Compile database into users.csv"
+            title="Export database into users.csv"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
             Export to CSV
           </button>
           
           <button
-            onClick={() => handleSyncCSV('IMPORT')}
+            onClick={() => fileInputRef.current?.click()}
             disabled={isSyncing}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-205 border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
-            title="Import and sync database from users.csv"
+            title="Import and sync database from local CSV file"
           >
             {isSyncing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -666,6 +732,138 @@ export default function UserManagementPage() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* SYNC REPORT MODAL */}
+      <AnimatePresence>
+        {showSyncModal && syncResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowSyncModal(false); setSyncResult(null); setSyncFile(null); }}
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative z-10 text-xs text-white"
+            >
+              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="text-sm font-black text-white flex items-center gap-1.5 font-bold uppercase tracking-wide">
+                  <ShieldAlert className="w-5 h-5 text-indigo-400" />
+                  CSV Sync Report
+                </h3>
+                <button 
+                  onClick={() => { setShowSyncModal(false); setSyncResult(null); setSyncFile(null); }}
+                  className="p-1 text-slate-500 hover:text-white rounded-lg cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Created</p>
+                    <h4 className="text-2xl font-black text-emerald-400">{syncResult.createdCount}</h4>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Updated</p>
+                    <h4 className="text-2xl font-black text-indigo-400">{syncResult.updatedCount}</h4>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Unfound (Not in CSV)</p>
+                    <h4 className="text-2xl font-black text-rose-450">{syncResult.unfoundCount}</h4>
+                  </div>
+                </div>
+
+                {syncResult.unfoundUsers && syncResult.unfoundUsers.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                        Flagged Users (Missing from Uploaded CSV)
+                      </h4>
+                      <button
+                        onClick={handleDeleteAllUnfound}
+                        className="px-3 py-1.5 bg-rose-900/35 hover:bg-rose-900/60 border border-rose-800 text-rose-200 font-bold rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        Delete All {syncResult.unfoundUsers.length} Unfound
+                      </button>
+                    </div>
+
+                    <div className="border border-slate-850 rounded-2xl overflow-hidden max-h-60 overflow-y-auto bg-slate-950/40">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-950 border-b border-slate-850 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th className="p-3">Name</th>
+                            <th className="p-3">Email</th>
+                            <th className="p-3">Role</th>
+                            <th className="p-3">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-850">
+                          {syncResult.unfoundUsers.map(u => (
+                            <tr key={u.id} className="hover:bg-white/5 transition-all text-xs">
+                              <td className="p-3 font-semibold text-white">{u.name}</td>
+                              <td className="p-3 text-slate-350 font-mono">{u.email}</td>
+                              <td className="p-3">
+                                <span className={`inline-block text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                  u.role === 'ADMIN' ? 'bg-indigo-900/20 text-indigo-300 border border-indigo-850/30' :
+                                  u.role === 'INSTRUCTOR' ? 'bg-amber-900/20 text-amber-300 border border-amber-850/30' :
+                                  'bg-emerald-900/20 text-emerald-300 border border-emerald-850/30'
+                                }`}>
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`CAUTION: Delete ${u.name}? This will permanently remove all logs, enrollments, and submissions.`)) {
+                                      deleteUserMutation.mutate(u.id);
+                                      setSyncResult({
+                                        ...syncResult,
+                                        unfoundCount: syncResult.unfoundCount - 1,
+                                        unfoundUsers: syncResult.unfoundUsers.filter(x => x.id !== u.id)
+                                      });
+                                    }
+                                  }}
+                                  className="p-1.5 text-rose-450 hover:text-white bg-rose-500/10 hover:bg-rose-500 rounded-lg transition-all cursor-pointer"
+                                  title="Delete Account"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-950/40 border border-slate-850 p-6 rounded-2xl text-center text-slate-400 space-y-2">
+                    <p className="font-bold text-emerald-450">Perfect Sync! 🎉</p>
+                    <p className="text-[11px] leading-relaxed">
+                      All users in the uploaded CSV match the current database records. No missing accounts were flagged.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 border-t border-slate-800 flex justify-end">
+                <button
+                  onClick={() => { setShowSyncModal(false); setSyncResult(null); setSyncFile(null); }}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl cursor-pointer"
+                >
+                  Close Report
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
