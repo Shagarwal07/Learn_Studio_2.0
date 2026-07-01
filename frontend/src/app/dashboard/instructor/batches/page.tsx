@@ -839,8 +839,8 @@ export default function InstructorBatchesPage() {
 
   const handleHomeworkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatchId || !hwTitle.trim() || !hwSubject) {
-      setHwFormError('Please fill in all mandatory fields.');
+    if (!selectedBatchId || !hwTitle.trim() || !hwSubject || !hwPdfFile) {
+      setHwFormError('Please select a batch, fill in the title, and select a homework PDF file.');
       return;
     }
 
@@ -849,33 +849,32 @@ export default function InstructorBatchesPage() {
     setHwFormSuccess('');
 
     try {
-      let secureUrl = '';
-      let uploadedPublicId: string | null = null;
-      if (hwPdfFile) {
-        const formData = new FormData();
-        formData.append('file', hwPdfFile);
-        formData.append('folder', 'homework');
+      const formData = new FormData();
+      formData.append('file', hwPdfFile);
+      formData.append('title', hwTitle.trim());
+      formData.append('description', hwDescription.trim());
+      formData.append('subjectName', hwSubject);
+      formData.append('dueDate', hwDueDate ? `${hwDueDate}T23:59:59` : '');
 
-        const uploadResponse = await api.post('/media/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        secureUrl = uploadResponse.data?.data?.url || '';
-        uploadedPublicId = uploadResponse.data?.data?.publicId || null;
-        if (!secureUrl) throw new Error('Upload server failed to return secure URL.');
-      }
-
-      saveHomeworkMutation.mutate({
-        title: hwTitle.trim(),
-        description: hwDescription.trim(),
-        subjectName: hwSubject,
-        fileUrl: secureUrl,
-        publicId: uploadedPublicId,
-        dueDate: hwDueDate ? `${hwDueDate}T23:59:59` : null,
-        isVisible: true
+      const response = await api.post(`/instructor/batches/${selectedBatchId}/homework`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      if (response.data.success) {
+        refetchHomeworks();
+        setHwTitle('');
+        setHwDescription('');
+        setHwPdfFile(null);
+        if (hwFileInputRef.current) hwFileInputRef.current.value = '';
+        setHwFormSuccess('Homework assigned and secure-mapped successfully.');
+        setHwFormError('');
+        setTimeout(() => setHwFormSuccess(''), 4000);
+      } else {
+        throw new Error(response.data.message || 'Homework upload failed.');
+      }
+
     } catch (err: any) {
-      setHwFormError(err.message || 'File upload failed. Please try again.');
+      setHwFormError(err.response?.data?.message || err.message || 'File upload failed. Please try again.');
     } finally {
       setHwUploading(false);
     }
@@ -948,22 +947,13 @@ export default function InstructorBatchesPage() {
             </button>
           )}
 
-          {user?.role === 'ADMIN' ? (
+          {user?.role === 'ADMIN' && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/15 cursor-pointer shrink-0 active:scale-95"
             >
               <Plus className="w-4 h-4" />
               Create Academic Batch
-            </button>
-          ) : (
-            <button
-              onClick={() => alert('Academic batch creation is restricted to System Administrators. Instructors can manage operational tasks for assigned batches.')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-slate-500 border border-slate-800/80 rounded-xl text-xs font-bold cursor-not-allowed shrink-0"
-              disabled
-            >
-              <Settings className="w-4 h-4" />
-              Create Batch (Admin Only)
             </button>
           )}
         </div>

@@ -152,11 +152,17 @@ public class BatchController {
         return ResponseEntity.ok(ApiResponse.success(notes, "Batch notes list retrieved successfully"));
     }
 
-    @PostMapping("/instructor/batches/{id}/homework")
+    @PostMapping(value = "/instructor/batches/{id}/homework", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN')")
     public ResponseEntity<ApiResponse<HomeworkDTO>> createBatchHomework(
-            @PathVariable Long id, @RequestBody HomeworkDTO dto, Principal principal) {
-        HomeworkDTO created = batchService.createBatchHomework(id, dto, principal.getName());
+            @PathVariable Long id,
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("subjectName") String subjectName,
+            @RequestParam("dueDate") String dueDate,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
+        HomeworkDTO created = batchService.createBatchHomework(id, title, description, subjectName, dueDate, file, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(created, "Batch homework created successfully"));
     }
 

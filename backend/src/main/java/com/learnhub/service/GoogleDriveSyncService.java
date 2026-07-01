@@ -287,6 +287,69 @@ public class GoogleDriveSyncService {
         }
     }
 
+    private String getOrCreateFolder(String folderName, String parentId) throws Exception {
+        if (googleDrive == null) {
+            throw new IllegalStateException("Google Drive client is not initialized");
+        }
+        String q = String.format("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and name = '%s' and trashed = false", 
+                parentId, folderName.replace("'", "\\'"));
+        List<com.google.api.services.drive.model.File> folders = googleDrive.files().list()
+                .setQ(q)
+                .setFields("files(id, name)")
+                .execute()
+                .getFiles();
+        if (folders != null && !folders.isEmpty()) {
+            return folders.get(0).getId();
+        }
+        
+        com.google.api.services.drive.model.File folderMetadata = new com.google.api.services.drive.model.File();
+        folderMetadata.setName(folderName);
+        folderMetadata.setMimeType("application/vnd.google-apps.folder");
+        if (parentId != null) {
+            folderMetadata.setParents(Collections.singletonList(parentId));
+        }
+        com.google.api.services.drive.model.File createdFolder = googleDrive.files().create(folderMetadata)
+                .setFields("id")
+                .execute();
+        return createdFolder.getId();
+    }
+
+    public String uploadFileToDrive(String batchName, String categoryFolder, String subjectName, String fileName, byte[] fileBytes, String mimeType) {
+        if (googleDrive == null) {
+            System.err.println("Google Drive is disabled, skipping drive upload for: " + fileName);
+            return null;
+        }
+        try {
+            String parentId = (rootFolderId != null && !rootFolderId.isEmpty()) ? rootFolderId : "root";
+            
+            // 1. Get/Create Batch folder
+            String batchFolderId = getOrCreateFolder(batchName, parentId);
+            
+            // 2. Get/Create category folder (e.g. "Notes" or "Homework")
+            String categoryFolderId = getOrCreateFolder(categoryFolder, batchFolderId);
+            
+            // 3. Get/Create Subject folder (e.g. "Science")
+            String subjectFolderId = getOrCreateFolder(subjectName, categoryFolderId);
+            
+            // 4. Upload file to Subject folder
+            com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
+            fileMetadata.setName(fileName);
+            fileMetadata.setParents(Collections.singletonList(subjectFolderId));
+            
+            com.google.api.client.http.InputStreamContent mediaContent = new com.google.api.client.http.InputStreamContent(
+                    mimeType, new java.io.ByteArrayInputStream(fileBytes));
+            
+            com.google.api.services.drive.model.File uploadedFile = googleDrive.files().create(fileMetadata, mediaContent)
+                    .setFields("id, webViewLink")
+                    .execute();
+            
+            return uploadedFile.getId();
+        } catch (Exception e) {
+            System.err.println("Error uploading file to Google Drive: " + e.getMessage());
+            return null;
+        }
+    }
+
     private List<com.google.api.services.drive.model.File> getFoldersInParent(String parentId) throws Exception {
         String q = String.format("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", parentId);
         return googleDrive.files().list()

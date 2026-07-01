@@ -11,6 +11,7 @@ import java.io.InputStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,7 @@ public class BatchService {
     private final HomeworkRepository homeworkRepository;
     private final AnnouncementRepository announcementRepository;
     private final CloudinaryService cloudinaryService;
+    private final GoogleDriveSyncService googleDriveSyncService;
 
     // ────────────────────────────────────────────────────────────────────────
     // BATCH CRUD OPERATIONS
@@ -317,16 +319,45 @@ public class BatchService {
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        System.out.println("Starting Cloudinary upload for batch note: " + title);
+        System.out.println("Starting Google Drive / Cloudinary upload for batch note: " + title);
         try {
-            // 1. Upload to Cloudinary
-            @SuppressWarnings("rawtypes")
-            Map uploadResult = cloudinaryService.uploadFileRaw(file, "notes");
-            String secureUrl = uploadResult.get("secure_url").toString();
-            String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
-            String resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
+            String secureUrl = null;
+            String publicId = null;
+            String resourceType = "pdf";
 
-            System.out.println("Cloudinary upload success for batch note: " + title + ", publicId: " + publicId);
+            // Try uploading to Google Drive first
+            if (googleDriveSyncService != null && file.getOriginalFilename() != null) {
+                try {
+                    byte[] fileBytes = file.getBytes();
+                    String driveFileId = googleDriveSyncService.uploadFileToDrive(
+                            batch.getName(),
+                            "Notes",
+                            subjectName,
+                            file.getOriginalFilename(),
+                            fileBytes,
+                            file.getContentType() != null ? file.getContentType() : "application/pdf"
+                    );
+                    if (driveFileId != null) {
+                        publicId = driveFileId;
+                        secureUrl = String.format("https://drive.google.com/file/d/%s/view?usp=drivesdk", driveFileId);
+                        resourceType = "pdf";
+                        System.out.println("Google Drive upload success for batch note: " + title + ", fileId: " + driveFileId);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Google Drive upload failed for batch note: " + ex.getMessage() + ". Falling back to Cloudinary...");
+                }
+            }
+
+            // Fallback to Cloudinary if not uploaded to Google Drive
+            if (secureUrl == null) {
+                System.out.println("Uploading note to Cloudinary fallback...");
+                @SuppressWarnings("rawtypes")
+                Map uploadResult = cloudinaryService.uploadFileRaw(file, "notes");
+                secureUrl = uploadResult.get("secure_url").toString();
+                publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
+                resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
+                System.out.println("Cloudinary upload success for batch note: " + title + ", publicId: " + publicId);
+            }
 
             // 2. Extract Text from PDF using PDFBox
             String extractedText = "";
@@ -357,7 +388,7 @@ public class BatchService {
             Note saved = noteRepository.save(note);
             return convertNoteToDTO(saved);
         } catch (Exception e) {
-            System.err.println("Cloudinary upload failed for batch note: " + title + " - " + e.getMessage());
+            System.err.println("Upload failed for batch note: " + title + " - " + e.getMessage());
             throw new RuntimeException("Note upload failed: " + e.getMessage(), e);
         }
     }
@@ -372,13 +403,33 @@ public class BatchService {
         }
     }
 
+    private static long lastSyncTime = 0;
+
+    private void triggerBackgroundSync() {
+        long now = System.currentTimeMillis();
+        if (now - lastSyncTime > 120000) { // 2 minutes throttle
+            lastSyncTime = now;
+            new Thread(() -> {
+                try {
+                    System.out.println("Starting background auto-sync of Google Drive...");
+                    googleDriveSyncService.syncAll(null);
+                    System.out.println("Background auto-sync of Google Drive completed.");
+                } catch (Exception e) {
+                    System.err.println("Background auto-sync failed: " + e.getMessage());
+                }
+            }).start();
+        }
+    }
+
     public List<NoteDTO> getBatchNotes(Long batchId) {
+        triggerBackgroundSync();
         return noteRepository.findByBatchId(batchId).stream()
                 .map(this::convertNoteToDTO)
                 .toList();
     }
 
     public List<NoteDTO> getStudentBatchNotes(String email) {
+        triggerBackgroundSync();
         User student = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         if (student.getBatch() == null) {
@@ -389,35 +440,87 @@ public class BatchService {
                 .toList();
     }
 
-    public HomeworkDTO createBatchHomework(Long batchId, HomeworkDTO dto, String email) {
+    public HomeworkDTO createBatchHomework(Long batchId, String title, String description, String subjectName, String dueDateStr, MultipartFile file, String email) {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        Homework homework = Homework.builder()
-                .title(dto.getTitle())
-                .description(dto.getDescription())
-                .batch(batch)
-                .subjectName(dto.getSubjectName())
-                .fileUrl(dto.getFileUrl())
-                .publicId(dto.getPublicId())
-                .dueDate(dto.getDueDate())
-                .createdBy(creator)
-                .isVisible(dto.getIsVisible() != null ? dto.getIsVisible() : true)
-                .build();
+        System.out.println("Starting Google Drive / Cloudinary upload for batch homework: " + title);
+        try {
+            String secureUrl = null;
+            String publicId = null;
 
-        Homework saved = homeworkRepository.save(homework);
-        return convertHomeworkToDTO(saved);
+            // Try uploading to Google Drive first
+            if (googleDriveSyncService != null && file.getOriginalFilename() != null) {
+                try {
+                    byte[] fileBytes = file.getBytes();
+                    String driveFileId = googleDriveSyncService.uploadFileToDrive(
+                            batch.getName(),
+                            "Homework",
+                            subjectName,
+                            file.getOriginalFilename(),
+                            fileBytes,
+                            file.getContentType() != null ? file.getContentType() : "application/pdf"
+                    );
+                    if (driveFileId != null) {
+                        publicId = driveFileId;
+                        secureUrl = String.format("https://drive.google.com/file/d/%s/view?usp=drivesdk", driveFileId);
+                        System.out.println("Google Drive upload success for batch homework: " + title + ", fileId: " + driveFileId);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Google Drive upload failed for batch homework: " + ex.getMessage() + ". Falling back to Cloudinary...");
+                }
+            }
+
+            // Fallback to Cloudinary if not uploaded to Google Drive
+            if (secureUrl == null) {
+                System.out.println("Uploading homework to Cloudinary fallback...");
+                @SuppressWarnings("rawtypes")
+                Map uploadResult = cloudinaryService.uploadFileRaw(file, "homework");
+                secureUrl = uploadResult.get("secure_url").toString();
+                publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
+                System.out.println("Cloudinary upload success for batch homework: " + title + ", publicId: " + publicId);
+            }
+
+            LocalDateTime dueDate = null;
+            if (dueDateStr != null && !dueDateStr.isEmpty()) {
+                try {
+                    dueDate = LocalDateTime.parse(dueDateStr);
+                } catch (Exception parseEx) {
+                    System.err.println("Failed to parse due date: " + dueDateStr + ", error: " + parseEx.getMessage());
+                }
+            }
+
+            Homework homework = Homework.builder()
+                    .title(title)
+                    .description(description)
+                    .batch(batch)
+                    .subjectName(subjectName)
+                    .fileUrl(secureUrl)
+                    .publicId(publicId)
+                    .dueDate(dueDate)
+                    .createdBy(creator)
+                    .isVisible(true)
+                    .build();
+
+            Homework saved = homeworkRepository.save(homework);
+            return convertHomeworkToDTO(saved);
+        } catch (Exception e) {
+            System.err.println("Upload failed for batch homework: " + title + " - " + e.getMessage());
+            throw new RuntimeException("Homework upload failed: " + e.getMessage(), e);
+        }
     }
 
     public List<HomeworkDTO> getBatchHomeworks(Long batchId) {
+        triggerBackgroundSync();
         return homeworkRepository.findByBatchId(batchId).stream()
                 .map(this::convertHomeworkToDTO)
                 .toList();
     }
 
     public List<HomeworkDTO> getStudentBatchHomeworks(String email) {
+        triggerBackgroundSync();
         User student = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         if (student.getBatch() == null) {

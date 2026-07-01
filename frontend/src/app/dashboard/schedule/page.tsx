@@ -159,7 +159,9 @@ export default function StudentSchedulePage() {
     enabled: isAdminOrInstructor,
     queryFn: async () => {
       const response = await api.get('/courses');
-      const data = response.data.success ? response.data.data : [];
+      const data = response.data.success 
+        ? (response.data.data?.content || response.data.data || [])
+        : [];
       if (data.length > 0 && !createCourseId) {
         setCreateCourseId(String(data[0].id));
       }

@@ -1,0 +1,41 @@
+# Implementation Walkthrough - Phase 2: Attendance, Schedules, and Google Drive Sync
+
+We have completed the second phase of changes, aligning the administration panels, schedules, batch date management, and Google Drive sync capabilities. Both codebases have been compile-verified and are fully wired.
+
+## Key Enhancements
+
+### 1. Two-Way Google Drive Deletion Sync & Direct Upload
+- **Google Drive Storage Integration:** 
+  - Notes uploaded in the Batch Management page are uploaded directly to Google Drive in the folder: `Root ➔ [Batch Name] ➔ Notes ➔ [Subject Name] ➔ [Filename.pdf]`.
+  - Homework assignments uploaded in Batch Management are similarly uploaded directly to Google Drive in: `Root ➔ [Batch Name] ➔ Homework ➔ [Subject Name] ➔ [Filename.pdf]`.
+  - Stored files carry their Google Drive file ID as `publicId` and use Drive preview links as their URLs, providing a unified storage scheme.
+- **Two-way Sync & Automatic Background Sync:**
+  - When notes or homework list endpoints are loaded in the dashboard sidebar, the backend triggers an asynchronous, non-blocking Google Drive sync (throttled to a 2-minute cooldown to prevent API overload). This automatically imports any new files teachers drag into Google Drive and cleans up DB records for files deleted from Google Drive.
+  - Deleting a Google Drive synced note or homework in the UI calls the Google Drive API to instantly delete the file from the Google Drive storage.
+
+### 2. Admin & Instructor Attendance Dashboard
+- **Role Routing:** Modifying the main Attendance page (`frontend/src/app/dashboard/attendance/page.tsx`) routes students to their personal metrics page and admins/instructors to the Admin Attendance view.
+- **Batch Rosters Panel:**
+  - Displays quick-glance active batch metrics and overall attendance radial snapshots.
+  - Includes a "Mark New Attendance" sheet where instructors can select a subject, date, and toggle students as Present/Absent with a single submission.
+  - Provides a searchable Attendance Register log list where records can be filtered, edited (toggled Present/Absent), or deleted.
+- **Student Profiles Panel:**
+  - Side panel search to inspect any student's individual attendance, metrics breakdown per subject, and complete logs history (with inline edit/delete overrides).
+
+### 3. Weekly Planner & Batch Future Schedules
+- **Schedule page event creator:** The general Schedule page has been upgraded for Admins and Instructors. They now see a sidebar creator allowing them to schedule Classes, Exams, Assignments, Holidays, or Special lectures mapped to a Batch (offline), Course (online), or General campus-wide audience.
+- **Future Scheduling & Recurrence:** In Batch Management, the class timing creator now includes a starting Date picker and Frequency selector (Weekly Recurring vs. One-Time). Weekly recurring classes automatically compute their recurrence weekday based on the selected date (e.g. scheduling on a Monday sets a weekly Monday recurring lecture).
+
+---
+
+## Storage Layer Responsibilities (Neon DB vs Cloudinary vs Google Drive)
+
+Here is a breakdown of how the three storage entities cooperate:
+
+| Feature / Data Type | Neon PostgreSQL (learndb) | Cloudinary | Google Drive |
+| :--- | :--- | :--- | :--- |
+| **Relational Data & Metadata** | **Primary Store** (All schemas, Users, Batches, Courses, Attendance sheets, Schedules, and file metadata). | *None* | *None* |
+| **Batch Notes & Homework PDFs** | Holds file URL, Google Drive file ID (`publicId`), and parsed text for AI search. | *Backup Fallback* (used only if Google Drive credentials are empty at startup). | **Primary Store** (Dynamic, nested folder hierarchy). |
+| **Student Homework Submissions** | Stores references, grades, and review text. | **Primary Store** (Assigned files and student upload pdfs). | *None* (Kept separate to prevent cluttering official folders). |
+| **Course Lesson Video / Images** | Video URLs, descriptions, lessons metadata. | **Primary Store** (Thumbnails, templates, rich media assets). | *None* |
+| **Two-way Sync & Traversal** | Acts as the query target for UI feeds. | *None* | **Source of Truth** (Local filesystem representation for notes). |
