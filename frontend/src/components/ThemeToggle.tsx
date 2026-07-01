@@ -1,46 +1,38 @@
 'use client';
 
 import React from 'react';
-import { Sun, Moon, Laptop } from 'lucide-react';
+import { Sun, Moon, Laptop, Lock } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
 
   return (
-    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/85 p-1 rounded-xl">
+    <div 
+      className="flex items-center gap-1 bg-slate-150 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 p-1 rounded-xl"
+      title="Theme configuration is locked to System Default by administrator"
+    >
       <button
-        onClick={() => setTheme('light')}
-        title="Light Mode"
-        className={`p-2 rounded-lg transition-all ${
-          theme === 'light'
-            ? 'bg-white dark:bg-slate-700 text-amber-500 shadow-sm'
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-        }`}
+        disabled
+        title="Light Mode (Locked)"
+        className="p-2 rounded-lg text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-40 transition-all"
       >
         <Sun className="w-4 h-4" />
       </button>
       <button
-        onClick={() => setTheme('dark')}
-        title="Dark Mode"
-        className={`p-2 rounded-lg transition-all ${
-          theme === 'dark'
-            ? 'bg-white dark:bg-slate-750 text-indigo-500 shadow-sm'
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-        }`}
+        disabled
+        title="Dark Mode (Locked)"
+        className="p-2 rounded-lg text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-40 transition-all"
       >
         <Moon className="w-4 h-4" />
       </button>
       <button
-        onClick={() => setTheme('system')}
-        title="System Preference"
-        className={`p-2 rounded-lg transition-all ${
-          theme === 'system'
-            ? 'bg-white dark:bg-slate-750 text-teal-500 shadow-sm'
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-        }`}
+        disabled
+        title="System Preference (Locked & Active)"
+        className="p-2 rounded-lg bg-white dark:bg-slate-700 text-teal-500 shadow-sm cursor-not-allowed flex items-center gap-1 transition-all"
       >
         <Laptop className="w-4 h-4" />
+        <Lock className="w-2.5 h-2.5 text-teal-600/70 dark:text-teal-400/70" />
       </button>
     </div>
   );

@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -40,5 +41,37 @@ public class UserController {
     public ResponseEntity<ApiResponse<InstructorAnalyticsDTO>> getInstructorAnalytics(Principal principal) {
         InstructorAnalyticsDTO analytics = courseService.getInstructorAnalytics(principal.getName());
         return ResponseEntity.ok(ApiResponse.success(analytics, "Instructor analytics retrieved successfully"));
+    }
+
+    @GetMapping("/instructors")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN')")
+    public ResponseEntity<ApiResponse<List<UserDTO>>> getInstructors() {
+        List<User> instructors = userRepository.findByRole(User.Role.INSTRUCTOR);
+        List<User> admins = userRepository.findByRole(User.Role.ADMIN);
+        
+        List<UserDTO> dtos = new java.util.ArrayList<>();
+        
+        if (instructors != null) {
+            for (User u : instructors) {
+                dtos.add(UserDTO.builder()
+                        .id(u.getId())
+                        .name(u.getName())
+                        .email(u.getEmail())
+                        .role(u.getRole() != null ? u.getRole().name() : "INSTRUCTOR")
+                        .build());
+            }
+        }
+        if (admins != null) {
+            for (User u : admins) {
+                dtos.add(UserDTO.builder()
+                        .id(u.getId())
+                        .name(u.getName())
+                        .email(u.getEmail())
+                        .role(u.getRole() != null ? u.getRole().name() : "ADMIN")
+                        .build());
+            }
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(dtos, "Instructors retrieved successfully"));
     }
 }

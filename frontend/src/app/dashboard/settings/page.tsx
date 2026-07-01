@@ -50,7 +50,7 @@ export default function SettingsPage() {
                   Global Appearance Theme
                 </h3>
                 <p className="text-xs text-slate-400 max-w-md leading-normal">
-                  Toggle between Light, Dark, or let LearnStudio automatically sync with your operating system.
+                  Locked to default system preference. Your dashboard theme dynamically synchronizes with your operating system settings.
                 </p>
               </div>
               <div className="shrink-0">
@@ -60,8 +60,9 @@ export default function SettingsPage() {
             
             <div className="border-t border-slate-800 my-4" />
             
-            <div className="text-xs text-slate-400">
-              Active configuration: <span className="font-semibold text-violet-400 capitalize">{theme} theme</span>. All layouts will automatically align with this aesthetic token.
+            <div className="text-xs text-slate-400 flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+              Active configuration: <span className="font-semibold text-teal-400 capitalize">System Default (Locked)</span>. All layouts are automatically aligned with your OS preference.
             </div>
           </div>
 

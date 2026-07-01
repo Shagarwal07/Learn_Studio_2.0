@@ -183,6 +183,7 @@ export default function InstructorBatchesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBatchName, setNewBatchName] = useState('');
   const [newBatchLevel, setNewBatchLevel] = useState('Class X');
+  const [newBatchInstructorId, setNewBatchInstructorId] = useState('');
   const [createBatchError, setCreateBatchError] = useState('');
 
   // Tab Form states
@@ -315,6 +316,16 @@ export default function InstructorBatchesPage() {
     }
   });
 
+  // Fetch all instructors (admin only, for batch assignments)
+  const { data: allInstructors = [] } = useQuery<UserDTO[]>({
+    queryKey: ['all-instructors-workspace-assign'],
+    enabled: user?.role === 'ADMIN',
+    queryFn: async () => {
+      const response = await api.get('/users/instructors');
+      return response.data.success ? response.data.data : [];
+    }
+  });
+
   // 4. Fetch schedules for selected batch
   const { data: batchSchedules = [], refetch: refetchSchedules } = useQuery<ScheduleEvent[]>({
     queryKey: ['batch-schedules-workspace', selectedBatchId],
@@ -405,6 +416,7 @@ export default function InstructorBatchesPage() {
       queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
       setShowCreateModal(false);
       setNewBatchName('');
+      setNewBatchInstructorId('');
       setCreateBatchError('');
     },
     onError: (err: any) => {
@@ -421,6 +433,33 @@ export default function InstructorBatchesPage() {
       queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
       setSelectedBatchId(null);
       alert('Batch deleted successfully.');
+    }
+  });
+
+  // Assign Instructor (Admin only)
+  const assignInstructorMutation = useMutation({
+    mutationFn: async (payload: { batchId: number; instructorId: number | null }) => {
+      const currentBatch = batches.find(b => b.id === payload.batchId);
+      if (!currentBatch) throw new Error('Batch not found');
+      
+      const updatePayload = {
+        name: currentBatch.name,
+        level: currentBatch.level,
+        instructorId: payload.instructorId,
+        subjects: currentBatch.subjects,
+        studentCount: currentBatch.studentCount
+      };
+      
+      const response = await api.put(`/instructor/batches/${payload.batchId}`, updatePayload);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-details-workspace', selectedBatchId] });
+      alert('Instructor assigned successfully.');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to assign instructor.');
     }
   });
 
@@ -571,8 +610,12 @@ export default function InstructorBatchesPage() {
     createBatchMutation.mutate({
       name: newBatchName,
       level: newBatchLevel,
-      instructorId: user?.id
+      instructorId: newBatchInstructorId ? parseInt(newBatchInstructorId) : null
     });
+  };
+
+  const handleAssignInstructor = (batchId: number, instructorId: number | null) => {
+    assignInstructorMutation.mutate({ batchId, instructorId });
   };
 
   const handleDeleteBatch = (id: number) => {
@@ -831,24 +874,47 @@ export default function InstructorBatchesPage() {
           </p>
         </div>
         
-        {user?.role === 'ADMIN' ? (
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/15 cursor-pointer shrink-0 active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            Create Academic Batch
-          </button>
-        ) : (
-          <button
-            onClick={() => alert('Academic batch creation is restricted to System Administrators. Instructors can manage operational tasks for assigned batches.')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-slate-500 border border-slate-800/80 rounded-xl text-xs font-bold cursor-not-allowed shrink-0"
-            disabled
-          >
-            <Settings className="w-4 h-4" />
-            Create Batch (Admin Only)
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {user?.role === 'ADMIN' && (
+            <button
+              onClick={handleSyncGoogleDrive}
+              disabled={syncingDrive}
+              type="button"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
+            >
+              {syncingDrive ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Syncing Drive...
+                </>
+              ) : (
+                <>
+                  <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                  Sync Google Drive
+                </>
+              )}
+            </button>
+          )}
+
+          {user?.role === 'ADMIN' ? (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-650/15 cursor-pointer shrink-0 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              Create Academic Batch
+            </button>
+          ) : (
+            <button
+              onClick={() => alert('Academic batch creation is restricted to System Administrators. Instructors can manage operational tasks for assigned batches.')}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-slate-500 border border-slate-800/80 rounded-xl text-xs font-bold cursor-not-allowed shrink-0"
+              disabled
+            >
+              <Settings className="w-4 h-4" />
+              Create Batch (Admin Only)
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Workspace Grid */}
@@ -897,9 +963,12 @@ export default function InstructorBatchesPage() {
                           {b.name}
                         </h4>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        {b.studentCount} Students Assigned
-                      </p>
+                      <div className="text-[10px] text-slate-400 font-medium flex flex-wrap justify-between items-center gap-2">
+                        <span>{b.studentCount} Students</span>
+                        <span>
+                          Teacher: <span className="text-slate-350 font-bold">{b.instructorName || 'Unassigned'}</span>
+                        </span>
+                      </div>
                     </div>
 
                     {user?.role === 'ADMIN' && (
@@ -955,8 +1024,25 @@ export default function InstructorBatchesPage() {
                       {batchDetails.name}
                     </h3>
                   </div>
-                  <p className="text-xs text-slate-400 font-medium">
-                    Instructor (Class Teacher): <span className="font-bold text-indigo-400">{batchDetails.instructor?.name || 'Unassigned'}</span>
+                  <p className="text-xs text-slate-400 font-medium flex items-center gap-2">
+                    <span>Instructor (Class Teacher):</span>
+                    {user?.role === 'ADMIN' ? (
+                      <select
+                        value={batchDetails.instructor?.id || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleAssignInstructor(batchDetails.id, val ? parseInt(val) : null);
+                        }}
+                        className="bg-slate-950 border border-slate-800 text-indigo-400 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      >
+                        <option value="">Unassigned</option>
+                        {allInstructors.map(inst => (
+                          <option key={inst.id} value={inst.id}>{inst.name} ({inst.role})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="font-bold text-indigo-400">{batchDetails.instructor?.name || 'Unassigned'}</span>
+                    )}
                   </p>
                 </div>
 
@@ -2225,6 +2311,21 @@ export default function InstructorBatchesPage() {
                 >
                   {BATCH_LEVELS.map(level => (
                     <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Assign Instructor */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Assign Instructor (Class Teacher)</label>
+                <select
+                  value={newBatchInstructorId}
+                  onChange={(e) => setNewBatchInstructorId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="">Unassigned</option>
+                  {allInstructors.map(inst => (
+                    <option key={inst.id} value={inst.id}>{inst.name} ({inst.role})</option>
                   ))}
                 </select>
               </div>

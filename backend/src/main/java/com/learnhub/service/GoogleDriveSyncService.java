@@ -22,6 +22,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
 
 @Service
 public class GoogleDriveSyncService {
@@ -92,37 +94,87 @@ public class GoogleDriveSyncService {
             String batchName = batchFolder.getName();
             Optional<Batch> batchOpt = batchRepository.findByName(batchName);
 
-            if (batchOpt.isEmpty()) {
-                System.out.println("Google Drive folder '" + batchName + "' has no matching database Batch. Skipping.");
-                continue;
+            // Fetch the top-level folders inside the batch folder (expecting Notes and Homework)
+            List<com.google.api.services.drive.model.File> typeFolders = getFoldersInParent(batchFolder.getId());
+
+            // Collect all subjects under 'Notes' and 'Homework' to assign them if we create/initialize the batch
+            Set<String> subjects = new HashSet<>();
+            for (var typeFolder : typeFolders) {
+                String typeName = typeFolder.getName().trim();
+                if (typeName.equalsIgnoreCase("Notes") || typeName.equalsIgnoreCase("Homework") || typeName.equalsIgnoreCase("Assignments")) {
+                    List<com.google.api.services.drive.model.File> subjectFolders = getFoldersInParent(typeFolder.getId());
+                    if (subjectFolders != null) {
+                        for (var subFolder : subjectFolders) {
+                            subjects.add(subFolder.getName());
+                        }
+                    }
+                }
             }
 
-            Batch batch = batchOpt.get();
-            User uploader = batch.getInstructor() != null ? batch.getInstructor() : defaultUploader;
+            Batch batch;
+            if (batchOpt.isEmpty()) {
+                System.out.println("Google Drive folder '" + batchName + "' has no matching database Batch. Initializing dynamically.");
+                
+                // Determine batch level
+                String level = "Class X";
+                for (String possibleLevel : List.of("Class VIII", "Class IX", "Class X", "Class XI", "Class XII", "Undergraduate", "Postgraduate")) {
+                    if (batchName.toLowerCase().contains(possibleLevel.toLowerCase())) {
+                        level = possibleLevel;
+                        break;
+                    }
+                }
 
+                batch = Batch.builder()
+                        .name(batchName)
+                        .level(level)
+                        .instructor(defaultUploader)
+                        .subjects(subjects)
+                        .build();
+                
+                batch = batchRepository.save(batch);
+                System.out.println("Successfully created batch: " + batchName + " with level " + level + " and subjects " + subjects);
+            } else {
+                batch = batchOpt.get();
+                // Dynamically sync subjects if they changed in Google Drive
+                boolean subjectsChanged = false;
+                if (batch.getSubjects() == null) {
+                    batch.setSubjects(new HashSet<>());
+                }
+                for (String sub : subjects) {
+                    if (!batch.getSubjects().contains(sub)) {
+                        batch.getSubjects().add(sub);
+                        subjectsChanged = true;
+                    }
+                }
+                if (subjectsChanged) {
+                    batch = batchRepository.save(batch);
+                }
+            }
+
+            User uploader = batch.getInstructor() != null ? batch.getInstructor() : defaultUploader;
             if (uploader == null) {
                 System.err.println("No instructor or admin found to assign files for batch: " + batchName);
                 continue;
             }
 
             System.out.println("Syncing batch: " + batchName);
-            List<com.google.api.services.drive.model.File> subjectFolders = getFoldersInParent(batchFolder.getId());
+            // Now run the sync traversal
+            for (var typeFolder : typeFolders) {
+                String typeName = typeFolder.getName().trim();
+                List<com.google.api.services.drive.model.File> subjectFolders = getFoldersInParent(typeFolder.getId());
+                if (subjectFolders == null) continue;
 
-            for (var subjectFolder : subjectFolders) {
-                String subjectName = subjectFolder.getName();
-                System.out.println("  Syncing subject: " + subjectName);
-
-                List<com.google.api.services.drive.model.File> resourceFolders = getFoldersInParent(subjectFolder.getId());
-
-                for (var resourceFolder : resourceFolders) {
-                    String folderName = resourceFolder.getName().trim();
-
-                    if (folderName.equalsIgnoreCase("Notes")) {
-                        syncNotes(resourceFolder.getId(), batch, subjectName, uploader);
-                    } else if (folderName.equalsIgnoreCase("Homework") || folderName.equalsIgnoreCase("Assignments")) {
-                        syncHomework(resourceFolder.getId(), batch, subjectName, uploader);
-                    } else {
-                        System.out.println("    Skipping unknown resource folder: " + folderName);
+                if (typeName.equalsIgnoreCase("Notes")) {
+                    for (var subjectFolder : subjectFolders) {
+                        String subjectName = subjectFolder.getName();
+                        System.out.println("  Syncing notes for subject: " + subjectName);
+                        syncNotes(subjectFolder.getId(), batch, subjectName, uploader);
+                    }
+                } else if (typeName.equalsIgnoreCase("Homework") || typeName.equalsIgnoreCase("Assignments")) {
+                    for (var subjectFolder : subjectFolders) {
+                        String subjectName = subjectFolder.getName();
+                        System.out.println("  Syncing homework for subject: " + subjectName);
+                        syncHomework(subjectFolder.getId(), batch, subjectName, uploader);
                     }
                 }
             }

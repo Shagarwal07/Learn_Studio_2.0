@@ -23,7 +23,8 @@ import {
   ClipboardList,
   Megaphone,
   ArrowUpRight,
-  Zap
+  Zap,
+  Folder
 } from 'lucide-react';
 
 interface EnrolledCourse {
@@ -878,6 +879,24 @@ export default function StudentDashboardPage() {
 
 function InstructorDashboardView() {
   const { user } = useAuth();
+  const [syncingDrive, setSyncingDrive] = useState(false);
+
+  const handleSyncGoogleDrive = async () => {
+    setSyncingDrive(true);
+    try {
+      const response = await api.post('/admin/sync/drive');
+      if (response.data.success) {
+        alert('Google Drive synchronization completed successfully!');
+        window.location.reload();
+      } else {
+        alert(response.data.message || 'Sync failed.');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to sync with Google Drive. Check backend configuration.');
+    } finally {
+      setSyncingDrive(false);
+    }
+  };
 
   // 1. Fetch batches
   const { data: batches = [], isLoading: isBatchesLoading } = useQuery<any[]>({
@@ -1020,6 +1039,24 @@ function InstructorDashboardView() {
               </span>
               <ArrowRight className="w-4 h-4 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </Link>
+
+            {user?.role === 'ADMIN' && (
+              <button
+                onClick={handleSyncGoogleDrive}
+                disabled={syncingDrive}
+                className="w-full flex items-center justify-between p-3 bg-indigo-650/10 hover:bg-indigo-650/20 disabled:opacity-50 border border-indigo-500/20 rounded-xl text-xs font-semibold transition-all text-indigo-300 hover:text-white cursor-pointer group"
+              >
+                <span className="flex items-center gap-2.5">
+                  {syncingDrive ? (
+                    <Loader2 className="w-4.5 h-4.5 animate-spin text-indigo-400" />
+                  ) : (
+                    <Folder className="w-4.5 h-4.5 text-indigo-400" />
+                  )}
+                  {syncingDrive ? 'Syncing Drive...' : 'Sync Google Drive'}
+                </span>
+                <ArrowRight className="w-4 h-4 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+              </button>
+            )}
           </div>
         </div>
 

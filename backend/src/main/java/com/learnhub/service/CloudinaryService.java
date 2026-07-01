@@ -64,14 +64,22 @@ public class CloudinaryService {
     }
 
     public byte[] downloadFile(String publicId) throws IOException {
-        return downloadFile(publicId, null);
+        return downloadFile(publicId, null, "image");
     }
 
     public byte[] downloadFile(String publicId, String version) throws IOException {
+        return downloadFile(publicId, version, "image");
+    }
+
+    public byte[] downloadFile(String publicId, String version, String resourceType) throws IOException {
+        String cleanPublicId = publicId;
+        if (cleanPublicId != null && cleanPublicId.toLowerCase().endsWith(".pdf")) {
+            cleanPublicId = cleanPublicId.substring(0, cleanPublicId.length() - 4);
+        }
+        String rType = (resourceType != null && !resourceType.isBlank()) ? resourceType : "image";
         com.cloudinary.Url urlBuilder = cloudinary.url()
-                .resourceType("image")
+                .resourceType(rType)
                 .type("upload")
-                .format("pdf")
                 .secure(true)
                 .signed(true);
 
@@ -79,12 +87,24 @@ public class CloudinaryService {
             urlBuilder.version(version);
         }
 
-        String signedUrl = urlBuilder.generate(publicId);
+        String signedUrl = urlBuilder.generate(cleanPublicId);
+        System.out.println("Cloudinary Config - Cloud Name: " + cloudinary.config.cloudName + ", Key: " + cloudinary.config.apiKey + ", Secret: " + cloudinary.config.apiSecret);
         System.out.println("Downloading PDF from signed URL: " + signedUrl);
 
         java.net.URL url = new java.net.URL(signedUrl);
-        try (java.io.InputStream is = url.openStream()) {
-            return is.readAllBytes();
+        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        try {
+            try (java.io.InputStream is = conn.getInputStream()) {
+                return is.readAllBytes();
+            }
+        } catch (IOException e) {
+            String cldError = conn.getHeaderField("X-Cld-Error");
+            if (cldError != null) {
+                System.err.println("Cloudinary HTTP download failed with error: " + cldError);
+                throw new IOException("Cloudinary error: " + cldError, e);
+            }
+            throw e;
         }
     }
 

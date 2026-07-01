@@ -12,59 +12,48 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system'); // Default to system preference for initial load
+  // Always lock theme to 'system'
+  const theme: Theme = 'system';
 
   useEffect(() => {
-    // Load theme from localStorage on mount
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      setThemeState(savedTheme);
-    } else {
-      setThemeState('system');
-    }
+    // Override local storage to keep it synchronized with system default
+    localStorage.setItem('theme', 'system');
   }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
 
-    const applyTheme = (targetTheme: Theme) => {
+    const applyTheme = () => {
       root.classList.remove('light', 'dark');
-      if (targetTheme === 'system') {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        root.classList.add(isDark ? 'dark' : 'light');
-      } else {
-        root.classList.add(targetTheme);
-      }
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.add(isDark ? 'dark' : 'light');
     };
 
-    applyTheme(theme);
-    localStorage.setItem('theme', theme);
+    applyTheme();
 
-    // If active theme is 'system', listen to OS theme changes dynamically
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleSystemChange = () => {
-        applyTheme('system');
-      };
+    // Listen to OS theme changes dynamically
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      applyTheme();
+    };
 
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', handleSystemChange);
-      } else {
-        mediaQuery.addListener(handleSystemChange);
-      }
-
-      return () => {
-        if (mediaQuery.removeEventListener) {
-          mediaQuery.removeEventListener('change', handleSystemChange);
-        } else {
-          mediaQuery.removeListener(handleSystemChange);
-        }
-      };
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleSystemChange);
+    } else {
+      mediaQuery.addListener(handleSystemChange);
     }
-  }, [theme]);
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleSystemChange);
+      } else {
+        mediaQuery.removeListener(handleSystemChange);
+      }
+    };
+  }, []);
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
+    // Theme is locked to 'system' for everyone, ignore theme modifications
   };
 
   return (

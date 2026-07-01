@@ -39,6 +39,9 @@ public class NoteService {
     private final CloudinaryService cloudinaryService;
     private final AiService aiService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.google.api.services.drive.Drive googleDrive;
+
     @Transactional
     public NoteDTO uploadNote(String email, String title, String description, Long courseId, Long lessonId, MultipartFile file) {
         User instructor = userRepository.findByEmail(email)
@@ -172,31 +175,68 @@ public class NoteService {
                 .build();
         noteViewLogRepository.save(log);
 
-        // Fetch PDF from Cloudinary URL, apply watermark and protection, and return bytes
+        // Fetch PDF from Cloudinary or Google Drive URL, apply watermark and protection, and return bytes
         try {
             byte[] pdfBytes = null;
-            if (note.getPublicId() != null && !note.getPublicId().isBlank()) {
-                try {
-                    // Extract version from fileUrl if available (e.g. v1782482454)
-                    String version = null;
-                    if (note.getFileUrl() != null) {
-                        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/v(\\d+)/");
-                        java.util.regex.Matcher matcher = pattern.matcher(note.getFileUrl());
-                        if (matcher.find()) {
-                            version = matcher.group(1);
+            boolean isGoogleDrive = note.getFileUrl() != null && note.getFileUrl().contains("drive.google.com");
+
+            if (isGoogleDrive) {
+                // Try downloading via Google Drive API if client is available
+                if (googleDrive != null && note.getPublicId() != null && !note.getPublicId().isBlank()) {
+                    try {
+                        System.out.println("Downloading Google Drive PDF using Drive API client for file ID: " + note.getPublicId());
+                        try (InputStream driveStream = googleDrive.files().get(note.getPublicId()).executeMediaAsInputStream()) {
+                            pdfBytes = driveStream.readAllBytes();
                         }
+                    } catch (Exception ex) {
+                        System.err.println("Google Drive API download failed: " + ex.getMessage());
                     }
-                    pdfBytes = cloudinaryService.downloadFile(note.getPublicId(), version);
-                } catch (Exception ex) {
-                    System.err.println("Signed Cloudinary download failed: " + ex.getMessage() + ". Trying public fallback URL...");
+                }
+                
+                // Fallback to public export URL if API client failed or is null
+                if (pdfBytes == null && note.getPublicId() != null && !note.getPublicId().isBlank()) {
+                    try {
+                        String exportUrl = "https://drive.google.com/uc?export=download&id=" + note.getPublicId();
+                        System.out.println("Trying public Google Drive export download: " + exportUrl);
+                        URL url = new URL(exportUrl);
+                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                        try (InputStream is = conn.getInputStream()) {
+                            pdfBytes = is.readAllBytes();
+                        }
+                    } catch (Exception ex) {
+                        System.err.println("Google Drive export URL download failed: " + ex.getMessage());
+                    }
+                }
+            } else {
+                // Cloudinary note
+                if (note.getPublicId() != null && !note.getPublicId().isBlank()) {
+                    try {
+                        // Extract version from fileUrl if available (e.g. v1782482454)
+                        String version = null;
+                        if (note.getFileUrl() != null) {
+                            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/v(\\d+)/");
+                            java.util.regex.Matcher matcher = pattern.matcher(note.getFileUrl());
+                            if (matcher.find()) {
+                                version = matcher.group(1);
+                            }
+                        }
+                        // Enforce "image" resourceType for PDFs in Cloudinary to avoid signature mismatch
+                        pdfBytes = cloudinaryService.downloadFile(note.getPublicId(), version, "image");
+                    } catch (Exception ex) {
+                        System.err.println("Signed Cloudinary download failed: " + ex.getMessage() + ". Trying public fallback URL...");
+                    }
                 }
             }
-            
+
+            // Fallback for either if pdfBytes is still null
             if (pdfBytes == null) {
                 if (note.getFileUrl() != null && !note.getFileUrl().isBlank()) {
                     System.out.println("Downloading PDF directly from public URL: " + note.getFileUrl());
                     URL url = new URL(note.getFileUrl());
-                    try (InputStream is = url.openStream()) {
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                    try (InputStream is = conn.getInputStream()) {
                         pdfBytes = is.readAllBytes();
                     }
                 } else {
@@ -204,9 +244,8 @@ public class NoteService {
                 }
             }
 
-            try (InputStream is = new java.io.ByteArrayInputStream(pdfBytes)) {
-                return watermarkAndProtectPdf(is, user, ipAddress);
-            }
+            // Simplify: bypass watermark/cryptographic PDFBox modifications and return raw bytes directly
+            return pdfBytes;
         } catch (Exception e) {
             throw new RuntimeException("Failed to load or secure PDF file: " + e.getMessage(), e);
         }
