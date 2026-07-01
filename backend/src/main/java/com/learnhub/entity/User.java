@@ -29,12 +29,15 @@ public class User extends BaseEntity {
     private Role role = Role.STUDENT;
 
     @Builder.Default
-    @Column(nullable = false)
-    private boolean active = true;
+    private Boolean active = true;
 
     private java.time.LocalDateTime deletedAt;
     
     private String deletedBy;
+
+    public boolean isActive() {
+        return active == null ? true : active;
+    }
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
