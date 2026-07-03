@@ -18,4 +18,11 @@ public class GeneratedPaperDTO {
     private Integer version;
     private String fileUrl;
     private LocalDateTime createdAt;
+    private Integer duration;
+    private String testType;
+    private String chapters;
+    private String topics;
+    private String course;
+    private String subject;
+    private String syllabus;
 }

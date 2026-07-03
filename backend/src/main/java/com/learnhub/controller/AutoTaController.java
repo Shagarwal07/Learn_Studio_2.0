@@ -122,6 +122,13 @@ public class AutoTaController {
         return ResponseEntity.ok(ApiResponse.success(result, "Question successfully updated in exam draft"));
     }
 
+    @PutMapping("/papers/{id}")
+    public ResponseEntity<ApiResponse<GeneratedPaperDTO>> updatePaperDraft(
+            @PathVariable Long id, @RequestBody GeneratedPaperDTO dto, Principal principal) {
+        GeneratedPaperDTO result = reviewService.updatePaper(id, dto, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(result, "Exam paper draft successfully updated"));
+    }
+
     @GetMapping("/papers/{id}/versions")
     public ResponseEntity<ApiResponse<List<PaperVersionDTO>>> getPaperVersions(@PathVariable Long id) {
         List<PaperVersion> versions = reviewService.getVersionHistory(id);

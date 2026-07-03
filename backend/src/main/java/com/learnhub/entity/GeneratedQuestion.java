@@ -43,6 +43,21 @@ public class GeneratedQuestion extends BaseEntity {
     @Column(nullable = false)
     private String subject;
 
+    @Column(name = "chapter")
+    private String chapter;
+
+    @Column(name = "topic")
+    private String topic;
+
+    @Column(name = "learning_outcome")
+    private String learningOutcome;
+
+    @Column(name = "section")
+    private String section;
+
+    @Column(name = "question_order")
+    private Integer questionOrder;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer version = 1;

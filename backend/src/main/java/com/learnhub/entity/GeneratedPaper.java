@@ -47,7 +47,19 @@ public class GeneratedPaper extends BaseEntity {
     @Column(name = "file_url")
     private String fileUrl;
 
+    @Column(name = "duration")
+    private Integer duration;
+
+    @Column(name = "test_type")
+    private String testType;
+
+    @Column(name = "chapters", columnDefinition = "TEXT")
+    private String chapters;
+
+    @Column(name = "topics", columnDefinition = "TEXT")
+    private String topics;
+
     public enum Status {
-        DRAFT, UNDER_REVIEW, REVISION_NEEDED, APPROVED, PUBLISHED
+        DRAFT, UNDER_REVIEW, REVISION_NEEDED, REVIEWED, APPROVED, EXPORTED, PUBLISHED
     }
 }

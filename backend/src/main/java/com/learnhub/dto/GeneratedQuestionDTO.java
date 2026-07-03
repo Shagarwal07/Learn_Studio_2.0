@@ -19,4 +19,9 @@ public class GeneratedQuestionDTO {
     private String subject;
     private Integer version;
     private Boolean isApproved;
+    private String chapter;
+    private String topic;
+    private String learningOutcome;
+    private String section;
+    private Integer questionOrder;
 }

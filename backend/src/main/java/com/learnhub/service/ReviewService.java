@@ -22,6 +22,7 @@ public class ReviewService {
     private final ReviewHistoryRepository reviewHistoryRepository;
     private final PaperVersionRepository paperVersionRepository;
     private final UserRepository userRepository;
+    private final ExamRequestRepository examRequestRepository;
     private final TheoryService theoryService;
     private final MathematicsService mathematicsService;
     private final QuestionBankService questionBankService;
@@ -87,6 +88,96 @@ public class ReviewService {
     }
 
     @Transactional
+    public GeneratedPaperDTO updatePaper(Long paperId, GeneratedPaperDTO dto, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        GeneratedPaper paper = paperRepository.findById(paperId)
+                .orElseThrow(() -> new RuntimeException("Paper not found"));
+
+        // Save a version snapshot of the current paper before updating
+        saveVersionSnapshot(paper, user, "Draft edit by teacher");
+
+        // Update paper metadata
+        paper.setTitle(dto.getTitle());
+        paper.setTotalMarks(dto.getTotalMarks());
+        if (dto.getStatus() != null) {
+            paper.setStatus(GeneratedPaper.Status.valueOf(dto.getStatus()));
+        }
+
+        // Update custom metadata fields
+        paper.setDuration(dto.getDuration());
+        paper.setTestType(dto.getTestType());
+        paper.setChapters(dto.getChapters());
+        paper.setTopics(dto.getTopics());
+
+        // Update the associated ExamRequest metadata as well
+        ExamRequest request = paper.getExamRequest();
+        if (request != null) {
+            if (dto.getSubject() != null) {
+                request.setSubject(dto.getSubject());
+            }
+            if (dto.getCourse() != null) {
+                request.setCourse(dto.getCourse());
+            }
+            if (dto.getSyllabus() != null) {
+                request.setSyllabus(dto.getSyllabus());
+            }
+            if (dto.getTotalMarks() != null) {
+                request.setMarks(dto.getTotalMarks());
+            }
+            examRequestRepository.save(request);
+        }
+
+        // Sync/Update questions
+        List<GeneratedQuestion> updatedQuestions = new ArrayList<>();
+        if (dto.getQuestions() != null) {
+            for (GeneratedQuestionDTO qDto : dto.getQuestions()) {
+                GeneratedQuestion question;
+                if (qDto.getId() != null && qDto.getId() > 0) {
+                    question = questionRepository.findById(qDto.getId())
+                            .orElse(new GeneratedQuestion());
+                } else {
+                    question = new GeneratedQuestion();
+                }
+                
+                question.setQuestionText(qDto.getQuestionText());
+                question.setOptions(qDto.getOptions());
+                question.setCorrectAnswer(qDto.getCorrectAnswer());
+                question.setSolutionSteps(qDto.getSolutionSteps());
+                question.setMarks(qDto.getMarks());
+                question.setDifficulty(qDto.getDifficulty() != null ? qDto.getDifficulty() : "MEDIUM");
+                question.setQuestionType(qDto.getQuestionType() != null ? qDto.getQuestionType() : "SHORT");
+                question.setAgentType(qDto.getAgentType() != null ? qDto.getAgentType() : "THEORY");
+                question.setSubject(dto.getSubject() != null ? dto.getSubject() : (request != null ? request.getSubject() : "Mathematics"));
+                question.setChapter(qDto.getChapter());
+                question.setTopic(qDto.getTopic());
+                question.setLearningOutcome(qDto.getLearningOutcome());
+                question.setSection(qDto.getSection());
+                question.setQuestionOrder(qDto.getQuestionOrder());
+                
+                if (question.getId() == null) {
+                    question.setVersion(1);
+                } else {
+                    question.setVersion(question.getVersion() + 1);
+                }
+                
+                GeneratedQuestion savedQ = questionRepository.save(question);
+                updatedQuestions.add(savedQ);
+            }
+        }
+        
+        paper.setQuestions(updatedQuestions);
+        paper.setVersion(paper.getVersion() + 1);
+        GeneratedPaper savedPaper = paperRepository.save(paper);
+
+        // Save a version snapshot AFTER updating
+        saveVersionSnapshot(savedPaper, user, "Saved draft update: " + dto.getTitle());
+
+        return toDTO(savedPaper);
+    }
+
+    @Transactional
     public GeneratedPaperDTO regenerateSingleQuestion(Long paperId, Long questionId, String email) {
         User reviewer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -120,15 +211,15 @@ public class ReviewService {
                 
                 if ("THEORY".equalsIgnoreCase(agentType)) {
                     regenerated = theoryService.generateQuestions(
-                            q.getSubject(), request.getCourse(), request.getSyllabus(), q.getMarks(), q.getDifficulty(), request.getQuestionPattern(), 1
+                            q.getSubject(), request.getCourse(), request.getSyllabus(), List.of(q.getMarks()), List.of(q.getSection() != null ? q.getSection() : "SECTION_A"), q.getDifficulty(), request.getQuestionPattern()
                     );
                 } else if ("MATHEMATICS".equalsIgnoreCase(agentType)) {
                     regenerated = mathematicsService.generateQuestions(
-                            q.getSubject(), request.getCourse(), request.getSyllabus(), q.getMarks(), q.getDifficulty(), 1
+                            q.getSubject(), request.getCourse(), request.getSyllabus(), List.of(q.getMarks()), List.of(q.getSection() != null ? q.getSection() : "SECTION_A"), q.getDifficulty()
                     );
                 } else { // QUESTION_BANK
                     regenerated = questionBankService.fetchQuestions(
-                            q.getSubject(), q.getDifficulty(), q.getMarks(), 1
+                            q.getSubject(), request.getCourse(), request.getSyllabus(), q.getDifficulty(), List.of(q.getMarks()), List.of(q.getSection() != null ? q.getSection() : "SECTION_A")
                     );
                 }
 
@@ -139,11 +230,13 @@ public class ReviewService {
                             .options(newDto.getOptions())
                             .correctAnswer(newDto.getCorrectAnswer())
                             .solutionSteps(newDto.getSolutionSteps())
-                            .marks(q.getMarks()) // Preserve the exact marks of the rejected question!
+                            .marks(q.getMarks())
                             .difficulty(newDto.getDifficulty())
                             .questionType(newDto.getQuestionType())
                             .agentType(agentType)
                             .subject(q.getSubject())
+                            .section(q.getSection())
+                            .questionOrder(q.getQuestionOrder())
                             .version(1)
                             .isApproved(true)
                             .build();
@@ -212,6 +305,11 @@ public class ReviewService {
                 .subject(q.getSubject())
                 .version(q.getVersion())
                 .isApproved(q.getIsApproved())
+                .chapter(q.getChapter())
+                .topic(q.getTopic())
+                .learningOutcome(q.getLearningOutcome())
+                .section(q.getSection())
+                .questionOrder(q.getQuestionOrder())
                 .build();
     }
 
@@ -230,6 +328,13 @@ public class ReviewService {
                 .version(paper.getVersion())
                 .fileUrl(paper.getFileUrl())
                 .createdAt(paper.getCreatedAt())
+                .duration(paper.getDuration())
+                .testType(paper.getTestType())
+                .chapters(paper.getChapters())
+                .topics(paper.getTopics())
+                .course(paper.getExamRequest().getCourse())
+                .subject(paper.getExamRequest().getSubject())
+                .syllabus(paper.getExamRequest().getSyllabus())
                 .build();
     }
 }
