@@ -8,7 +8,8 @@ import ProfileDropdown from '@/components/ProfileDropdown';
 import ThemeToggle from '@/components/ThemeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Grid, 
+  Grid,
+  Home,
   PlayCircle, 
   Compass, 
   Bot, 
@@ -95,6 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ];
   } else {
     menuItems = [
+      { name: 'Home', href: '/', icon: Home },
       { name: 'Dashboard', href: '/dashboard', icon: Grid },
       { name: 'My Courses', href: '/dashboard/my-courses', icon: PlayCircle },
       { name: 'Explore Courses', href: '/courses', icon: Compass, locked: true },

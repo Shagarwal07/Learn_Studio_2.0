@@ -136,14 +136,7 @@ export default function CourseDetailPage() {
     );
   }
 
-  // Fallback curriculum if not logged in
-  const mockLessons = [
-    { title: "Introduction & Setup", duration: "15 mins" },
-    { title: "Core Concepts & Fundamentals", duration: "25 mins" },
-    { title: "Building your first module", duration: "35 mins" },
-    { title: "Advanced Architecture & Patterns", duration: "40 mins" },
-    { title: "Testing & Deployment Guide", duration: "30 mins" }
-  ];
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
@@ -301,17 +294,16 @@ export default function CourseDetailPage() {
                   </div>
                 ))
               ) : (
-                mockLessons.map((l, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 px-6 hover:bg-slate-900/90 transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-6 h-6 bg-slate-800/85 text-xs font-bold text-slate-400 rounded-full flex items-center justify-center shrink-0">
-                        {idx + 1}
-                      </div>
-                      <p className="text-sm font-semibold text-slate-400 truncate">{l.title}</p>
+                <div className="p-8 text-center text-xs text-slate-450 bg-slate-955/20 rounded-3xl">
+                  {course.totalLessons === 0 ? (
+                    <p className="font-semibold text-slate-300">No lessons have been uploaded for this course yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="font-semibold text-slate-200">This course contains {course.totalLessons} lessons.</p>
+                      <p className="text-slate-450">Please enroll in the course to view the full curriculum and start learning.</p>
                     </div>
-                    <span className="text-xs text-slate-500 shrink-0">{l.duration}</span>
-                  </div>
-                ))
+                  )}
+                </div>
               )}
             </div>
           </div>
