@@ -35,6 +35,7 @@ public class AdminService {
     private final ReviewHistoryRepository reviewHistoryRepository;
     private final PaperVersionRepository paperVersionRepository;
     private final NoteViewLogRepository noteViewLogRepository;
+    private final UserIdentityProfileRepository userIdentityProfileRepository;
     private final PasswordEncoder passwordEncoder;
 
     public List<UserDTO> getAllUsers() {
@@ -62,6 +63,15 @@ public class AdminService {
         }
 
         User saved = userRepository.save(user);
+
+        if (dto.getLinkedGoogleEmail() != null && !dto.getLinkedGoogleEmail().trim().isEmpty()) {
+            UserIdentityProfile p = UserIdentityProfile.builder()
+                .user(saved)
+                .googleEmail(dto.getLinkedGoogleEmail().trim())
+                .build();
+            userIdentityProfileRepository.save(p);
+        }
+
         return toDTO(saved);
     }
 
@@ -94,6 +104,27 @@ public class AdminService {
         }
 
         User saved = userRepository.save(user);
+
+        if (dto.getLinkedGoogleEmail() != null) {
+            String linkedEmail = dto.getLinkedGoogleEmail().trim();
+            Optional<UserIdentityProfile> existingProfile = userIdentityProfileRepository.findByUserId(user.getId());
+            if (linkedEmail.isEmpty()) {
+                existingProfile.ifPresent(userIdentityProfileRepository::delete);
+            } else {
+                if (existingProfile.isPresent()) {
+                    UserIdentityProfile p = existingProfile.get();
+                    p.setGoogleEmail(linkedEmail);
+                    userIdentityProfileRepository.save(p);
+                } else {
+                    UserIdentityProfile p = UserIdentityProfile.builder()
+                        .user(saved)
+                        .googleEmail(linkedEmail)
+                        .build();
+                    userIdentityProfileRepository.save(p);
+                }
+            }
+        }
+
         return toDTO(saved);
     }
 
@@ -450,6 +481,9 @@ public class AdminService {
     }
 
     private UserDTO toDTO(User u) {
+        Optional<UserIdentityProfile> profile = userIdentityProfileRepository.findByUserId(u.getId());
+        String linkedGoogleEmail = profile.isPresent() ? profile.get().getGoogleEmail() : null;
+
         return UserDTO.builder()
                 .id(u.getId())
                 .name(u.getName())
@@ -460,6 +494,7 @@ public class AdminService {
                 .active(u.isActive())
                 .deletedAt(u.getDeletedAt() != null ? u.getDeletedAt().toString() : null)
                 .deletedBy(u.getDeletedBy())
+                .linkedGoogleEmail(linkedGoogleEmail)
                 .build();
     }
 }

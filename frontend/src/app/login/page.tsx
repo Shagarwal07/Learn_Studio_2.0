@@ -15,6 +15,42 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      (window as any).google.accounts.id.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "713303798993-9qf4g8m6j493m9c490m1l5h6j7u5a2n6.apps.googleusercontent.com", // Fallback for testing
+        callback: handleGoogleResponse
+      });
+    }
+  }, []);
+
+  const handleGoogleResponse = async (response: any) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/google', { credential: response.credential });
+      const { success, data, message } = res.data;
+      if (success && data) {
+        const { token, refreshToken, userId, name, email: userEmail, role } = data;
+        login(token, refreshToken, { id: userId, name, email: userEmail, role });
+      } else {
+        setError(message || 'Google login failed.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Google login failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const triggerGoogleLogin = () => {
+    if (typeof window !== 'undefined' && (window as any).google) {
+      (window as any).google.accounts.id.prompt();
+    } else {
+      setError("Google Login is not available at the moment.");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -162,7 +198,7 @@ export default function LoginPage() {
 
         <button
           type="button"
-          onClick={() => setError('Google OAuth is configured. Use register first or login with credentials.')}
+          onClick={triggerGoogleLogin}
           className="w-full py-3.5 bg-white/5 hover:bg-white/10 border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl transition-all flex items-center justify-center gap-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer"
         >
           <svg className="w-4.5 h-4.5 shrink-0" viewBox="0 0 24 24">

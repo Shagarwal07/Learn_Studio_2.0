@@ -34,12 +34,14 @@ public class AdminController {
         String role = (String) body.get("role");
         String password = (String) body.get("password");
         Long batchId = body.get("batchId") != null ? Long.valueOf(body.get("batchId").toString()) : null;
+        String linkedGoogleEmail = (String) body.get("linkedGoogleEmail");
 
         UserDTO dto = UserDTO.builder()
                 .name(name)
                 .email(email)
                 .role(role)
                 .batchId(batchId)
+                .linkedGoogleEmail(linkedGoogleEmail)
                 .build();
 
         UserDTO created = adminService.createUser(dto, password);
@@ -53,12 +55,14 @@ public class AdminController {
         String role = (String) body.get("role");
         String password = (String) body.get("password");
         Long batchId = body.get("batchId") != null ? Long.valueOf(body.get("batchId").toString()) : null;
+        String linkedGoogleEmail = (String) body.get("linkedGoogleEmail");
 
         UserDTO dto = UserDTO.builder()
                 .name(name)
                 .email(email)
                 .role(role)
                 .batchId(batchId)
+                .linkedGoogleEmail(linkedGoogleEmail)
                 .build();
 
         UserDTO updated = adminService.updateUser(id, dto, password);

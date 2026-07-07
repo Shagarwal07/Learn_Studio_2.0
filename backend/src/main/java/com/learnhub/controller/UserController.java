@@ -20,17 +20,22 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final CourseService courseService;
+    private final com.learnhub.service.AuthService authService;
+    private final com.learnhub.repository.UserIdentityProfileRepository userIdentityProfileRepository;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserDTO>> getMe(Principal principal) {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
+        var profile = userIdentityProfileRepository.findByUserId(user.getId());
+        
         UserDTO dto = UserDTO.builder()
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .linkedGoogleEmail(profile.isPresent() ? profile.get().getGoogleEmail() : null)
                 .build();
                 
         return ResponseEntity.ok(ApiResponse.success(dto, "User profile retrieved successfully"));
@@ -73,5 +78,20 @@ public class UserController {
         }
         
         return ResponseEntity.ok(ApiResponse.success(dtos, "Instructors retrieved successfully"));
+    }
+
+    @PostMapping("/link-google")
+    public ResponseEntity<ApiResponse<String>> linkGoogleAccount(@RequestBody java.util.Map<String, String> payload, Principal principal) {
+        String credential = payload.get("credential");
+        if (credential == null || credential.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Google credential token is required"));
+        }
+        
+        try {
+            authService.linkGoogleAccount(credential, principal.getName());
+            return ResponseEntity.ok(ApiResponse.success("Successfully linked Google account", "Success"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 }

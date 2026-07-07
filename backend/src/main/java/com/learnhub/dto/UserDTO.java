@@ -19,4 +19,5 @@ public class UserDTO {
     private boolean active;
     private String deletedAt;
     private String deletedBy;
+    private String linkedGoogleEmail;
 }
