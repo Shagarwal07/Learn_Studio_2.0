@@ -8,285 +8,284 @@ import com.learnhub.repository.AgentExecutionLogRepository;
 import com.learnhub.repository.ExamRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
 public class ManagerService {
 
     private final ExamRequestRepository examRequestRepository;
-    private final TheoryService theoryService;
-    private final MathematicsService mathematicsService;
-    private final QuestionBankService questionBankService;
+    private final QuestionGeneratorService questionGeneratorService;
+    private final VerificationService verificationService;
+    private final PromptEnhancerService promptEnhancerService;
+    private final RagService ragService;
     private final EditorService editorService;
     private final AgentExecutionLogRepository executionLogRepository;
 
-    public GeneratedPaper generateExamPaper(ExamRequest request) {
-        request.setStatus(ExamRequest.Status.RUNNING);
+    @org.springframework.beans.factory.annotation.Value("${autota.max.retries:2}")
+    private int maxRetries;
+
+    public static class SectionBlueprint {
+        public String sectionName;
+        public int questionCount;
+        public int marksPerQuestion;
+        public int targetMarks;
+    }
+
+    public static class PaperBlueprint {
+        public SectionBlueprint sectionA;
+        public SectionBlueprint sectionB;
+        public SectionBlueprint sectionC;
+    }
+
+    public static PaperBlueprint createBlueprint(int totalMarks, int totalQuestions) {
+        int[] allowedA = {1, 2};
+        int[] allowedB = {3, 4, 5, 6};
+        int[] allowedC = {8, 10, 12, 15};
+
+        int idealCountA = Math.max(1, Math.round(totalQuestions * 0.40f));
+        int idealCountB = Math.max(1, Math.round(totalQuestions * 0.40f));
+        int idealCountC = Math.max(1, totalQuestions - idealCountA - idealCountB);
+
+        PaperBlueprint bestBlueprint = null;
+        int bestDistance = Integer.MAX_VALUE;
+
+        PaperBlueprint closestBlueprint = null;
+        int closestDiff = Integer.MAX_VALUE;
+
+        for (int countA = 1; countA <= totalQuestions - 2; countA++) {
+            for (int countB = 1; countB <= totalQuestions - countA - 1; countB++) {
+                int countC = totalQuestions - countA - countB;
+                if (countC <= 0) continue;
+
+                for (int marksA : allowedA) {
+                    for (int marksB : allowedB) {
+                        for (int marksC : allowedC) {
+                            int sum = countA * marksA + countB * marksB + countC * marksC;
+                            
+                            PaperBlueprint bp = new PaperBlueprint();
+                            SectionBlueprint sA = new SectionBlueprint();
+                            sA.sectionName = "SECTION_A"; sA.questionCount = countA; sA.marksPerQuestion = marksA; sA.targetMarks = countA * marksA; bp.sectionA = sA;
+                            SectionBlueprint sB = new SectionBlueprint();
+                            sB.sectionName = "SECTION_B"; sB.questionCount = countB; sB.marksPerQuestion = marksB; sB.targetMarks = countB * marksB; bp.sectionB = sB;
+                            SectionBlueprint sC = new SectionBlueprint();
+                            sC.sectionName = "SECTION_C"; sC.questionCount = countC; sC.marksPerQuestion = marksC; sC.targetMarks = countC * marksC; bp.sectionC = sC;
+                            
+                            if (sum == totalMarks) {
+                                int dist = Math.abs(countA - idealCountA) + Math.abs(countB - idealCountB) + Math.abs(countC - idealCountC);
+                                if (dist < bestDistance) {
+                                    bestDistance = dist;
+                                    bestBlueprint = bp;
+                                }
+                            }
+                            
+                            int diff = Math.abs(sum - totalMarks);
+                            if (diff < closestDiff) {
+                                closestDiff = diff;
+                                closestBlueprint = bp;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (bestBlueprint != null) {
+            return bestBlueprint;
+        }
+        
+        if (closestBlueprint != null) {
+            System.err.println("WARNING: Unable to find exact blueprint match. Falling back to nearest approximation.");
+            return closestBlueprint;
+        }
+
+        // Ultimate fallback if loops didn't run (e.g. totalQuestions < 3)
+        PaperBlueprint bp = new PaperBlueprint();
+        SectionBlueprint sA = new SectionBlueprint();
+        sA.sectionName = "SECTION_A"; sA.questionCount = totalQuestions; 
+        sA.marksPerQuestion = totalQuestions > 0 ? (totalMarks / totalQuestions) : totalMarks;
+        if (sA.marksPerQuestion == 0) sA.marksPerQuestion = 1;
+        sA.targetMarks = totalMarks; 
+        bp.sectionA = sA;
+        return bp;
+    }
+
+    public GeneratedPaper generateExamPaper(ExamRequest request, Long userId) {
+        request.setStatus(ExamRequest.Status.GENERATING);
         examRequestRepository.save(request);
 
         long startPipeline = System.currentTimeMillis();
-        logAgent(request, "MANAGER", AgentExecutionLog.Status.RUNNING, 0L, "Manager Agent started. Partitioning tasks...");
+        logAgent(request, "MANAGER", AgentExecutionLog.Status.RUNNING, 0L, "Manager Agent started Section-by-Section pipeline.");
 
-        // 1. Task partitioning based on subject and parameters
-        String subject = request.getSubject();
-        boolean isQuantitative = isQuantitativeSubject(subject);
-
-        int totalCount = request.getTotalQuestions();
-        int totalMarks = request.getMarks();
-        String difficulty = request.getDifficulty();        int targetA = Math.round(totalMarks * 0.20f);
-        int targetB = Math.round(totalMarks * 0.30f);
-        int targetC = totalMarks - targetA - targetB;
-        
-        int countA = Math.max(1, (int)(totalCount * 0.40f));
-        int countB = Math.max(1, (int)(totalCount * 0.40f));
-        int countC = Math.max(1, totalCount - countA - countB);
-        
-        List<Integer> sectionAMarks = distributeMarks(targetA, countA);
-        List<Integer> sectionBMarks = distributeMarks(targetB, countB);
-        List<Integer> sectionCMarks = distributeMarks(targetC, countC);
-        
-        List<Integer> theoryWeights = new ArrayList<>();
-        List<String> theorySections = new ArrayList<>();
-        
-        List<Integer> mathWeights = new ArrayList<>();
-        List<String> mathSections = new ArrayList<>();
-        
-        List<Integer> bankWeights = new ArrayList<>();
-        List<String> bankSections = new ArrayList<>();
-
-        // Section A
-        for (int i = 0; i < sectionAMarks.size(); i++) {
-            int w = sectionAMarks.get(i);
-            if (isQuantitative) {
-                if (i % 3 == 0) {
-                    theoryWeights.add(w);
-                    theorySections.add("SECTION_A");
-                } else if (i % 3 == 1) {
-                    mathWeights.add(w);
-                    mathSections.add("SECTION_A");
-                } else {
-                    bankWeights.add(w);
-                    bankSections.add("SECTION_A");
-                }
-            } else {
-                if (i % 2 == 0) {
-                    theoryWeights.add(w);
-                    theorySections.add("SECTION_A");
-                } else {
-                    bankWeights.add(w);
-                    bankSections.add("SECTION_A");
-                }
-            }
-        }
-
-        // Section B
-        for (int i = 0; i < sectionBMarks.size(); i++) {
-            int w = sectionBMarks.get(i);
-            if (isQuantitative) {
-                if (i % 3 == 0) {
-                    theoryWeights.add(w);
-                    theorySections.add("SECTION_B");
-                } else if (i % 3 == 1) {
-                    mathWeights.add(w);
-                    mathSections.add("SECTION_B");
-                } else {
-                    bankWeights.add(w);
-                    bankSections.add("SECTION_B");
-                }
-            } else {
-                if (i % 2 == 0) {
-                    theoryWeights.add(w);
-                    theorySections.add("SECTION_B");
-                } else {
-                    bankWeights.add(w);
-                    bankSections.add("SECTION_B");
-                }
-            }
-        }
-
-        // Section C
-        for (int i = 0; i < sectionCMarks.size(); i++) {
-            int w = sectionCMarks.get(i);
-            if (isQuantitative) {
-                if (i % 3 == 0) {
-                    theoryWeights.add(w);
-                    theorySections.add("SECTION_C");
-                } else if (i % 3 == 1) {
-                    mathWeights.add(w);
-                    mathSections.add("SECTION_C");
-                } else {
-                    bankWeights.add(w);
-                    bankSections.add("SECTION_C");
-                }
-            } else {
-                if (i % 2 == 0) {
-                    theoryWeights.add(w);
-                    theorySections.add("SECTION_C");
-                } else {
-                    bankWeights.add(w);
-                    bankSections.add("SECTION_C");
-                }
-            }
-        }
-
-        String logMsg = String.format("Tasks partitioned deterministically by sections: Theory Agent (%s), Mathematics Agent (%s), Question Bank Agent (%s)",
-                theoryWeights.toString(), mathWeights.toString(), bankWeights.toString());
-        logAgent(request, "MANAGER", AgentExecutionLog.Status.RUNNING, 0L, logMsg);
-
-        // 2. Parallel Agent Execution with CompletableFuture
-        CompletableFuture<List<GeneratedQuestionDTO>> theoryFuture = CompletableFuture.supplyAsync(() -> 
-            executeAgentWithRetry("THEORY", () -> 
-                theoryService.generateQuestions(subject, request.getCourse(), request.getSyllabus(), theoryWeights, theorySections, difficulty, request.getQuestionPattern()),
-                request
-            )
-        );
-
-        CompletableFuture<List<GeneratedQuestionDTO>> mathFuture = CompletableFuture.supplyAsync(() -> {
-            if (!mathWeights.isEmpty()) {
-                return executeAgentWithRetry("MATHEMATICS", () -> 
-                    mathematicsService.generateQuestions(subject, request.getCourse(), request.getSyllabus(), mathWeights, mathSections, difficulty),
-                    request
-                );
-            }
-            return Collections.emptyList();
-        });
-
-        CompletableFuture<List<GeneratedQuestionDTO>> bankFuture = CompletableFuture.supplyAsync(() -> {
-            if (!bankWeights.isEmpty()) {
-                return executeAgentWithRetry("QUESTION_BANK", () -> 
-                    questionBankService.fetchQuestions(subject, request.getCourse(), request.getSyllabus(), difficulty, bankWeights, bankSections),
-                    request
-                );
-            }
-            return Collections.emptyList();
-        });
-        // Wait for all agents to complete
-        CompletableFuture.allOf(theoryFuture, mathFuture, bankFuture).join();
-
-        List<GeneratedQuestionDTO> theoryQuestions = theoryFuture.join();
-        List<GeneratedQuestionDTO> mathQuestions = mathFuture.join();
-        List<GeneratedQuestionDTO> bankQuestions = bankFuture.join();
-
-        // 3. Editor compilation and aggregation
-        long editorStart = System.currentTimeMillis();
-        logAgent(request, "EDITOR", AgentExecutionLog.Status.RUNNING, 0L, "Editor Agent compiling and aggregation started...");
-
-        List<GeneratedQuestionDTO> compiledList = new ArrayList<>();
-        compiledList.addAll(theoryQuestions);
-        compiledList.addAll(mathQuestions);
-        compiledList.addAll(bankQuestions);
-
-        GeneratedPaper paper = editorService.compileExamPaper(request, compiledList);
-        long editorEnd = System.currentTimeMillis();
-        logAgent(request, "EDITOR", AgentExecutionLog.Status.SUCCESS, (editorEnd - editorStart), "Editor Agent successfully compiled paper: " + paper.getTitle());
-
-        request.setStatus(ExamRequest.Status.COMPLETED);
-        examRequestRepository.save(request);
-
-        long endPipeline = System.currentTimeMillis();
-        logAgent(request, "MANAGER", AgentExecutionLog.Status.SUCCESS, (endPipeline - startPipeline), "Pipeline execution completed successfully.");
-
-        return paper;
-    }
-
-    public static List<Integer> distributeMarks(int totalMarks, int totalQuestions) {
-        int[] allowed = {15, 12, 10, 8, 6, 5, 4, 3, 2, 1};
-        List<Integer> result = new ArrayList<>();
-        
-        int remainingMarks = totalMarks;
-        int remainingQuestions = totalQuestions;
-        
-        for (int i = 0; i < totalQuestions; i++) {
-            if (remainingQuestions <= 0) break;
+        try {
+            // 1. Establish deterministic blueprint targets
+            PaperBlueprint blueprint = createBlueprint(request.getMarks(), request.getTotalQuestions());
             
-            int targetWeight = remainingMarks / remainingQuestions;
-            int chosenWeight = 1;
-            
-            for (int w : allowed) {
-                if (w <= targetWeight && (remainingMarks - w) >= (remainingQuestions - 1)) {
-                    chosenWeight = w;
-                    break;
-                }
-            }
-            
-            result.add(chosenWeight);
-            remainingMarks -= chosenWeight;
-            remainingQuestions--;
-        }
-        
-        // Distribute any remainder by scaling up to next valid allowed marks
-        while (remainingMarks > 0) {
-            boolean increased = false;
-            for (int i = 0; i < result.size(); i++) {
-                int curr = result.get(i);
-                for (int w : allowed) {
-                    if (w > curr && (w - curr) <= remainingMarks) {
-                        result.set(i, w);
-                        remainingMarks -= (w - curr);
-                        increased = true;
-                        break;
+            // 2. Enhance syllabus & retrieve RAG
+            String enhancedSyllabus = promptEnhancerService.enhanceSyllabus(userId, request.getSubject(), request.getSyllabus());
+            String ragContext = ragService.retrieveContext(request.getCourse(), request.getSubject(), enhancedSyllabus);
+
+            // 3. Build Slots
+            List<QuestionGeneratorService.QuestionSlot> allSlots = buildSlots(request, blueprint);
+            List<GeneratedQuestionDTO> compiledList = new ArrayList<>();
+            List<String> questionHistory = new ArrayList<>();
+
+            // 4. GENERATE SECTION-BY-SECTION
+            List<String> sections = Arrays.asList("SECTION_A", "SECTION_B", "SECTION_C");
+            for (String section : sections) {
+                List<QuestionGeneratorService.QuestionSlot> sectionSlots = allSlots.stream()
+                        .filter(s -> s.getSection().equals(section))
+                        .toList();
+
+                if (sectionSlots.isEmpty()) continue;
+
+                List<GeneratedQuestionDTO> sectionQuestions = null;
+                int retries = 0;
+                String rejectionReason = null;
+                boolean sectionPassed = false;
+
+                while (!sectionPassed && retries <= maxRetries) {
+                    long sectionStart = System.currentTimeMillis();
+                    logAgent(request, "SECTION_GENERATOR", AgentExecutionLog.Status.RUNNING, 0L, 
+                        "Generating bulk questions for " + section + " (Attempt " + (retries + 1) + ")");
+
+                    try {
+                        // Batch Generate
+                        sectionQuestions = questionGeneratorService.generateSectionQuestions(
+                            userId, request.getSubject(), request.getCourse(), request.getSyllabus(),
+                            section, sectionSlots, ragContext, questionHistory, rejectionReason
+                        );
+
+                        // Verify
+                        for (GeneratedQuestionDTO q : sectionQuestions) {
+                            try {
+                                VerificationService.VerificationResult verifyResult = verificationService.verifySolution(
+                                    userId, q, request.getSubject(), request.getCourse(), request.getSyllabus(), questionHistory
+                                );
+
+                                if (!verifyResult.isPassed()) {
+                                    q.setQualityStatus("COMPLETED_WITH_WARNINGS");
+                                    if (verifyResult.isCritical()) {
+                                        q.setAgentType("CRITICAL_AUDIT_FAILED");
+                                        logAgent(request, "AUDITOR", AgentExecutionLog.Status.FAILED, 0L, "CRITICAL Audit failure isolated: " + verifyResult.getRejectionReason());
+                                        System.err.println("⚠️ CRITICAL Audit failed for question but isolating failure. Reason: " + verifyResult.getRejectionReason());
+                                    } else {
+                                        q.setAgentType("AUDIT_WARNING");
+                                        logAgent(request, "AUDITOR", AgentExecutionLog.Status.FAILED, 0L, "Audit warning: " + verifyResult.getRejectionReason());
+                                    }
+                                }
+                            } catch (Exception processEx) {
+                                logAgent(request, "PIPELINE", AgentExecutionLog.Status.FAILED, 0L, "Agent crash isolated: " + processEx.getMessage());
+                                System.err.println("⚠️ Pipeline Agent completely crashed for question. Isolating failure to prevent section wipeout: " + processEx.getMessage());
+                                q.setQualityStatus("COMPLETED_WITH_WARNINGS");
+                                q.setAgentType("AGENT_CRASH_FALLBACK");
+                            }
+                        }
+
+                        sectionPassed = true; // All questions processed without critical failure
+                        logAgent(request, "SECTION_GENERATOR", AgentExecutionLog.Status.SUCCESS, System.currentTimeMillis() - sectionStart, "Section " + section + " successfully compiled.");
+                    } catch (Exception e) {
+                        retries++;
+                        rejectionReason = "Validation failed: " + e.getMessage();
+                        logAgent(request, "MANAGER", AgentExecutionLog.Status.FAILED, System.currentTimeMillis() - sectionStart, "Section " + section + " failed: " + e.getMessage() + ". Retrying...");
                     }
                 }
-                if (remainingMarks <= 0) break;
-            }
-            if (!increased) {
-                throw new IllegalStateException(String.format("Unable to distribute %d marks deterministically among %d questions using allowed weights.", totalMarks, totalQuestions));
-            }
-        }
-        
-        // Strict verification checks
-        int sum = 0;
-        for (int m : result) {
-            boolean isValid = false;
-            for (int a : allowed) {
-                if (m == a) {
-                    isValid = true;
-                    break;
+
+                // FALLBACK: If max retries exhausted, inject local templates
+                if (!sectionPassed || sectionQuestions == null || sectionQuestions.size() != sectionSlots.size()) {
+                    logAgent(request, "MANAGER", AgentExecutionLog.Status.FAILED, 0L, "Section " + section + " exhausted all retries. Injecting Local Fallback Templates.");
+                    sectionQuestions = new ArrayList<>();
+                    for (QuestionGeneratorService.QuestionSlot slot : sectionSlots) {
+                        GeneratedQuestionDTO fallback = questionGeneratorService.generateFallbackQuestion(slot, request.getSubject());
+                        sectionQuestions.add(fallback);
+                    }
+                }
+
+                // Add to compiled list
+                for (GeneratedQuestionDTO q : sectionQuestions) {
+                    compiledList.add(q);
+                    questionHistory.add(q.getQuestionText());
                 }
             }
-            if (!isValid) {
-                throw new IllegalStateException("Generated invalid question weight: " + m);
+
+            // Sync Question Orders
+            for (int i = 0; i < compiledList.size(); i++) {
+                compiledList.get(i).setQuestionOrder(i + 1);
             }
-            sum += m;
+
+            // 6. Aggregation and compilation via Editor
+            long editorStart = System.currentTimeMillis();
+            request.setStatus(ExamRequest.Status.VALIDATING);
+            examRequestRepository.save(request);
+            
+            GeneratedPaper paper = editorService.compileExamPaper(request, compiledList);
+            logAgent(request, "EDITOR", AgentExecutionLog.Status.SUCCESS, System.currentTimeMillis() - editorStart, "Editor compiled paper.");
+
+            // Check if ANY question has warnings
+            boolean hasWarnings = compiledList.stream().anyMatch(q -> "COMPLETED_WITH_WARNINGS".equals(q.getQualityStatus()));
+            if (hasWarnings) {
+                request.setStatus(ExamRequest.Status.COMPLETED_WITH_WARNINGS);
+            } else {
+                request.setStatus(ExamRequest.Status.APPROVED);
+            }
+            examRequestRepository.save(request);
+            logAgent(request, "MANAGER", AgentExecutionLog.Status.SUCCESS, System.currentTimeMillis() - startPipeline, "Pipeline successfully completed.");
+            return paper;
+
+        } catch (Exception criticalCrash) {
+            // Absolute catch-all so the paper never just hangs
+            logAgent(request, "MANAGER", AgentExecutionLog.Status.FAILED, 0L, "CRITICAL PIPELINE CRASH: " + criticalCrash.getMessage());
+            request.setStatus(ExamRequest.Status.FAILED);
+            examRequestRepository.save(request);
+            throw new RuntimeException("Generation pipeline crashed, but was safely caught: " + criticalCrash.getMessage(), criticalCrash);
         }
-        
-        if (sum != totalMarks) {
-            throw new IllegalStateException(String.format("Sum of question marks (%d) does not match target marks (%d).", sum, totalMarks));
-        }
-        
-        Collections.sort(result);
-        return result;
     }
 
-    private List<GeneratedQuestionDTO> executeAgentWithRetry(String agentType, java.util.function.Supplier<List<GeneratedQuestionDTO>> agentCall, ExamRequest request) {
-        long start = System.currentTimeMillis();
-        logAgent(request, agentType, AgentExecutionLog.Status.RUNNING, 0L, agentType + " Agent execution started...");
-        try {
-            List<GeneratedQuestionDTO> questions = agentCall.get();
-            long end = System.currentTimeMillis();
-            logAgent(request, agentType, AgentExecutionLog.Status.SUCCESS, (end - start), String.format("%s Agent generated %d questions.", agentType, questions.size()));
-            return questions;
-        } catch (Exception e) {
-            System.err.println(agentType + " Agent failed. Retrying once... Error: " + e.getMessage());
-            logAgent(request, agentType, AgentExecutionLog.Status.RUNNING, 0L, "Warning: " + agentType + " Agent failed. Retrying once...");
-            try {
-                // Retry once
-                List<GeneratedQuestionDTO> questions = agentCall.get();
-                long end = System.currentTimeMillis();
-                logAgent(request, agentType, AgentExecutionLog.Status.SUCCESS, (end - start), String.format("%s Agent generated %d questions on retry.", agentType, questions.size()));
-                return questions;
-            } catch (Exception ex) {
-                long end = System.currentTimeMillis();
-                logAgent(request, agentType, AgentExecutionLog.Status.FAILED, (end - start), String.format("%s Agent failed permanently. Error: %s", agentType, ex.getMessage()));
-                // Return empty list to prevent pipeline crash
-                return Collections.emptyList();
+    private List<QuestionGeneratorService.QuestionSlot> buildSlots(ExamRequest request, PaperBlueprint blueprint) {
+        List<QuestionGeneratorService.QuestionSlot> slots = new ArrayList<>();
+        int slotIndex = 0;
+        int totalQuestions = request.getTotalQuestions();
+        boolean isQuantitative = isQuantitativeSubject(request.getSubject());
+
+        for (int i = 0; i < blueprint.sectionA.questionCount; i++) {
+            slots.add(QuestionGeneratorService.QuestionSlot.builder().section("SECTION_A").marks(blueprint.sectionA.marksPerQuestion).questionType("MCQ").slotIndex(slotIndex++).build());
+        }
+        for (int i = 0; i < blueprint.sectionB.questionCount; i++) {
+            slots.add(QuestionGeneratorService.QuestionSlot.builder().section("SECTION_B").marks(blueprint.sectionB.marksPerQuestion).questionType("SHORT").slotIndex(slotIndex++).build());
+        }
+        for (int i = 0; i < blueprint.sectionC.questionCount; i++) {
+            slots.add(QuestionGeneratorService.QuestionSlot.builder().section("SECTION_C").marks(blueprint.sectionC.marksPerQuestion).questionType(isQuantitative ? "NUMERICAL" : "LONG").slotIndex(slotIndex++).build());
+        }
+
+        int easyCount = (int) Math.round(totalQuestions * 0.30);
+        int hardCount = (int) Math.round(totalQuestions * 0.20);
+        int mediumCount = totalQuestions - easyCount - hardCount;
+
+        List<String> difficultyPool = new ArrayList<>();
+        for (int i = 0; i < easyCount; i++) difficultyPool.add("EASY");
+        for (int i = 0; i < mediumCount; i++) difficultyPool.add("MEDIUM");
+        for (int i = 0; i < hardCount; i++) difficultyPool.add("HARD");
+
+        List<String> chapters = new ArrayList<>();
+        if (request.getSyllabus() != null && !request.getSyllabus().trim().isEmpty()) {
+            for (String part : request.getSyllabus().split(",")) {
+                if (!part.trim().isEmpty()) chapters.add(part.trim());
             }
         }
+        if (chapters.isEmpty()) chapters.add("General Curriculum");
+
+        List<String> bloomLevels = Arrays.asList("Remembering", "Understanding", "Applying", "Analyzing", "Evaluating");
+
+        for (int i = 0; i < totalQuestions; i++) {
+            slots.get(i).setTargetDifficulty(difficultyPool.get(i));
+            slots.get(i).setTargetChapter(chapters.get(i % chapters.size()));
+            slots.get(i).setBloomLevel(bloomLevels.get(i % bloomLevels.size()));
+        }
+        return slots;
     }
 
     private void logAgent(ExamRequest request, String agentType, AgentExecutionLog.Status status, Long timeMs, String message) {

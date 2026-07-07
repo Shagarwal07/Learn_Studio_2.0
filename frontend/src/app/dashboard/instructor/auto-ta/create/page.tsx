@@ -33,6 +33,7 @@ export default function CreateExamPage() {
   const [difficulty, setDifficulty] = useState('MEDIUM');
   const [questionPattern, setQuestionPattern] = useState('MIXED');
   const [totalQuestions, setTotalQuestions] = useState(10);
+  const [duration, setDuration] = useState(100);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +42,10 @@ export default function CreateExamPage() {
     e.preventDefault();
     if (!course.trim() || !syllabus.trim()) {
       setError('Please fill in all mandatory fields.');
+      return;
+    }
+    if (Number(duration) <= 0) {
+      setError('Please enter a valid exam duration (minutes).');
       return;
     }
 
@@ -55,7 +60,8 @@ export default function CreateExamPage() {
         marks: Number(marks),
         difficulty,
         questionPattern,
-        totalQuestions: Number(totalQuestions)
+        totalQuestions: Number(totalQuestions),
+        duration: Number(duration)
       };
 
       const response = await api.post('/autota/requests', payload);
@@ -115,7 +121,7 @@ export default function CreateExamPage() {
             <select
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950/50 border border-border-color rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:border-accent-grape transition-all"
+              className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white focus:outline-none"
             >
               {SUBJECT_OPTIONS.map((sub) => (
                 <option key={sub} value={sub}>{sub}</option>
@@ -130,7 +136,7 @@ export default function CreateExamPage() {
               placeholder="e.g. Physics 101: Kinematics."
               value={course}
               onChange={(e) => setCourse(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-border-color rounded-xl text-xs sm:text-sm text-white placeholder-text-muted focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
+              className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white placeholder-text-muted focus:outline-none"
               required
             />
           </div>
@@ -144,7 +150,7 @@ export default function CreateExamPage() {
             rows={6}
             value={syllabus}
             onChange={(e) => setSyllabus(e.target.value)}
-            className="w-full px-4 py-3.5 bg-white/5 border border-border-color rounded-xl text-xs sm:text-sm text-white placeholder-text-muted focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all leading-relaxed"
+            className="input-premium w-full px-4 py-3.5 rounded-xl text-xs sm:text-sm text-white placeholder-text-muted focus:outline-none leading-relaxed"
             required
           />
         </div>
@@ -156,7 +162,7 @@ export default function CreateExamPage() {
             Generation Blueprint Constraints
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary">Total Marks *</label>
               <input
@@ -165,7 +171,7 @@ export default function CreateExamPage() {
                 max={200}
                 value={marks}
                 onChange={(e) => setMarks(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white/5 border border-border-color rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
+                className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white focus:outline-none"
                 required
               />
             </div>
@@ -178,7 +184,20 @@ export default function CreateExamPage() {
                 max={50}
                 value={totalQuestions}
                 onChange={(e) => setTotalQuestions(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-white/5 border border-border-color rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
+                className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white focus:outline-none"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary">Duration (Mins) *</label>
+              <input
+                type="number"
+                min={10}
+                max={300}
+                value={duration}
+                onChange={(e) => setDuration(Number(e.target.value))}
+                className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white focus:outline-none"
                 required
               />
             </div>
@@ -188,7 +207,7 @@ export default function CreateExamPage() {
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-950/50 border border-border-color rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:border-accent-grape transition-all"
+                className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white focus:outline-none"
               >
                 {DIFFICULTY_OPTIONS.map((diff) => (
                   <option key={diff} value={diff}>{diff}</option>
@@ -202,7 +221,7 @@ export default function CreateExamPage() {
             <select
               value={questionPattern}
               onChange={(e) => setQuestionPattern(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-950/50 border border-border-color rounded-xl text-xs sm:text-sm text-white focus:outline-none focus:border-accent-grape transition-all"
+              className="input-premium w-full px-4 py-3 rounded-xl text-xs sm:text-sm text-white focus:outline-none"
             >
               {PATTERN_OPTIONS.map((pat) => (
                 <option key={pat.value} value={pat.value}>{pat.label}</option>
@@ -214,7 +233,7 @@ export default function CreateExamPage() {
         {/* Submit button */}
         <button
           type="submit"
-          className="w-full py-4 bg-gradient-to-r from-accent-grape to-primary-blue hover:from-accent-grape/90 hover:to-primary-blue/90 disabled:from-slate-800 disabled:to-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-accent-grape/15 flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] cursor-pointer disabled:opacity-50"
+          className="btn-premium w-full py-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={loading}
         >
           {loading ? (

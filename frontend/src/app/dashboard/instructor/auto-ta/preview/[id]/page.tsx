@@ -4,6 +4,11 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -45,6 +50,10 @@ interface QuestionDTO {
   learningOutcome?: string;
   section?: string;
   questionOrder?: number;
+  bloomLevel?: string;
+  markingScheme?: string;
+  qualityStatus?: string;
+  estimatedTimeMinutes?: number;
 }
 
 interface PaperDTO {
@@ -106,6 +115,17 @@ export default function PaperPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'print'>('edit');
+  const [validation, setValidation] = useState<{
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+    sectionATarget: number;
+    sectionBTarget: number;
+    sectionCTarget: number;
+    sectionAActual: number;
+    sectionBActual: number;
+    sectionCActual: number;
+  } | null>(null);
   
   // Review comments / revision modal
   const [comments, setComments] = useState('');
@@ -137,6 +157,18 @@ export default function PaperPreviewPage() {
   const [editTotalMarks, setEditTotalMarks] = useState(50);
   const [editTestType, setEditTestType] = useState('Parakh Test Series');
 
+  const runBackendValidation = async () => {
+    if (!paperId) return;
+    try {
+      const res = await api.get(`/autota/papers/${paperId}/validate`);
+      if (res.data.success) {
+        setValidation(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error running backend validation:', err);
+    }
+  };
+
   const fetchPaperDetails = async () => {
     if (!paperId) return;
     try {
@@ -160,6 +192,7 @@ export default function PaperPreviewPage() {
         setVersions(versionsRes.data.data);
       }
       
+      await runBackendValidation();
       setLoading(false);
     } catch (err) {
       console.error('Error fetching paper details:', err);
@@ -228,14 +261,18 @@ export default function PaperPreviewPage() {
           correctAnswer: q.correctAnswer,
           solutionSteps: q.solutionSteps,
           marks: Number(q.marks),
-          difficulty: q.difficulty,
+          difficulty: q.difficulty || 'MEDIUM',
           questionType: q.questionType,
           agentType: q.agentType,
-          chapter: q.chapter || '',
+          chapter: q.chapter || 'Syllabus Core',
           topic: q.topic || '',
           learningOutcome: q.learningOutcome || '',
           section: q.section,
-          questionOrder: q.questionOrder
+          questionOrder: q.questionOrder,
+          bloomLevel: q.bloomLevel || 'Application',
+          markingScheme: q.markingScheme,
+          qualityStatus: q.qualityStatus,
+          estimatedTimeMinutes: q.estimatedTimeMinutes
         }))
       };
 
@@ -407,7 +444,8 @@ export default function PaperPreviewPage() {
       learningOutcome: 'Conceptual understanding',
       section: 'SECTION_A',
       questionOrder: 999,
-      version: 1
+      version: 1,
+      bloomLevel: 'Application'
     };
     
     const updated = [...paper.questions, newQ];
@@ -430,7 +468,8 @@ export default function PaperPreviewPage() {
     const newQ: QuestionDTO = {
       ...q,
       id: tempId,
-      questionText: q.questionText + ' (Copy)'
+      questionText: q.questionText + ' (Copy)',
+      bloomLevel: q.bloomLevel || 'Application'
     };
     
     const idx = paper.questions.findIndex(item => item.id === q.id);
@@ -456,13 +495,15 @@ export default function PaperPreviewPage() {
       ...q,
       id: -Date.now(),
       questionText: q.questionText + " (Part A)",
-      marks: half1
+      marks: half1,
+      bloomLevel: q.bloomLevel || 'Application'
     };
     const q2: QuestionDTO = {
       ...q,
       id: -Date.now() - 1,
       questionText: q.questionText + " (Part B)",
-      marks: half2
+      marks: half2,
+      bloomLevel: q.bloomLevel || 'Application'
     };
 
     const updated = [...paper.questions];
@@ -490,7 +531,8 @@ export default function PaperPreviewPage() {
       id: -Date.now(),
       questionText: q1.questionText + " [AND] " + q2.questionText,
       marks: q1.marks + q2.marks,
-      solutionSteps: (q1.solutionSteps || "") + "\n" + (q2.solutionSteps || "")
+      solutionSteps: (q1.solutionSteps || "") + "\n" + (q2.solutionSteps || ""),
+      bloomLevel: q1.bloomLevel || 'Application'
     };
 
     const updated = [...paper.questions];
@@ -539,8 +581,8 @@ export default function PaperPreviewPage() {
 
   // Safe Print Trigger
   const handlePrintTrigger = async () => {
-    if (calculatedTotalMarks !== Number(editTotalMarks)) {
-      alert('Validation Error: Calculated question marks sum must equal the target total marks exactly before printing.');
+    if (validation && !validation.isValid) {
+      alert('Print Blocked: Paper validation failed:\n' + validation.errors.join('\n'));
       return;
     }
     if (paper?.status !== 'APPROVED' && paper?.status !== 'EXPORTED' && paper?.status !== 'PUBLISHED') {
@@ -561,6 +603,40 @@ export default function PaperPreviewPage() {
     }
 
     window.print();
+  };
+
+  // Safe POI Word (.docx) Document Download Trigger
+  const handleDownloadDocx = async () => {
+    if (validation && !validation.isValid) {
+      alert('DOCX Export Blocked: Paper validation failed:\n' + validation.errors.join('\n'));
+      return;
+    }
+    if (paper?.status !== 'APPROVED' && paper?.status !== 'EXPORTED' && paper?.status !== 'PUBLISHED' && paper?.status !== 'REVIEWED') {
+      alert('DOCX Export Blocked: You must Approve the paper first to authorize Word export.');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const response = await api.get(`/autota/papers/${paperId}/export/docx`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `exam-paper-${paperId}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Failed to export DOCX:', err);
+      alert('Failed to download Word document: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const toggleQuestionRejection = (id: number) => {
@@ -631,8 +707,12 @@ export default function PaperPreviewPage() {
           </button>
           <button
             onClick={() => {
-              if (calculatedTotalMarks !== Number(editTotalMarks)) {
-                alert(`Paper validation failed. Expected: ${editTotalMarks}, Generated: ${calculatedTotalMarks}. Reconcile marks mismatch before viewing print preview.`);
+              if (validation && !validation.isValid) {
+                alert(`Print Preview Blocked:\n` + validation.errors.join('\n'));
+                return;
+              }
+              if (paper.status !== 'APPROVED' && paper.status !== 'REVIEWED' && paper.status !== 'EXPORTED' && paper.status !== 'PUBLISHED') {
+                alert('Print Blocked: You must Approve the paper first to authorize print preview.');
                 return;
               }
               setActiveTab('print');
@@ -652,12 +732,32 @@ export default function PaperPreviewPage() {
           <div className="space-y-6">
             
             {/* Master validation warning */}
-            {calculatedTotalMarks !== Number(editTotalMarks) && (
+            {validation && !validation.isValid && validation.errors && validation.errors.length > 0 && (
               <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/25 rounded-2xl text-xs text-rose-455 no-print">
-                <AlertTriangle className="w-5 h-5 shrink-0 text-rose-455 mt-0.5" />
-                <div className="leading-relaxed">
-                  <span className="font-extrabold uppercase tracking-wider text-[10px] block text-rose-455">Paper validation failed.</span>
-                  Expected: <strong className="underline">{editTotalMarks} Marks</strong> • Generated: <strong className="underline">{calculatedTotalMarks} Marks</strong>. PDF printing is locked until total weight sums match.
+                <AlertTriangle className="w-5 h-5 shrink-0 text-rose-500 mt-0.5" />
+                <div className="leading-relaxed space-y-1">
+                  <span className="font-extrabold uppercase tracking-wider text-[10px] block text-rose-400">Exam Paper Critical Errors (Backend Check):</span>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {validation.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-rose-450 italic mt-2">PDF Export and Approval are blocked until all errors are resolved.</p>
+                </div>
+              </div>
+            )}
+
+            {validation && validation.warnings && validation.warnings.length > 0 && (
+              <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-xs text-amber-400 no-print">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+                <div className="leading-relaxed space-y-1 w-full">
+                  <span className="font-extrabold uppercase tracking-wider text-[10px] block text-amber-500">Exam Paper Warnings (Pedagogical Check):</span>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {validation.warnings.map((warn, i) => (
+                      <li key={i}>{warn}</li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-amber-500/80 italic mt-2">Warnings do not block approval or printing. They are just suggestions for improvement.</p>
                 </div>
               </div>
             )}
@@ -882,8 +982,8 @@ export default function PaperPreviewPage() {
                               onChange={(e) => setEditMarks(Number(e.target.value))}
                               className="w-full px-3 py-2 bg-slate-955 border border-slate-800 rounded-xl text-xs text-white focus:outline-none"
                             >
-                              {Array.from(new Set([...ALLOWED_MARKS, editMarks])).sort((a,b)=>a-b).map(m => (
-                                <option key={m} value={m}>{m} Marks {!ALLOWED_MARKS.includes(m) ? '(Custom)' : ''}</option>
+                              {ALLOWED_MARKS.map(m => (
+                                <option key={m} value={m}>{m} Marks</option>
                               ))}
                             </select>
                           </div>
@@ -1014,9 +1114,17 @@ export default function PaperPreviewPage() {
                               </p>
                             )}
                             {q.solutionSteps && (
-                              <p className="text-slate-400">
-                                <span className="font-extrabold text-slate-450 uppercase tracking-wider text-[9px] mr-1 block">Solution Guidelines:</span> {q.solutionSteps}
-                              </p>
+                              <div className="text-slate-400">
+                                <span className="font-extrabold text-slate-450 uppercase tracking-wider text-[9px] mr-1 block mb-2">Solution Guidelines:</span> 
+                                <div className="prose prose-invert prose-sm max-w-none text-slate-300">
+                                  <ReactMarkdown 
+                                    remarkPlugins={[remarkGfm, remarkMath]}
+                                    rehypePlugins={[rehypeKatex]}
+                                  >
+                                    {q.solutionSteps}
+                                  </ReactMarkdown>
+                                </div>
+                              </div>
                             )}
                             {(q.topic || q.learningOutcome) && (
                               <div className="flex flex-wrap gap-x-4 pt-1 border-t border-slate-800/30 text-slate-500 font-semibold">
@@ -1107,16 +1215,25 @@ export default function PaperPreviewPage() {
             {/* Toolbar */}
             <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 backdrop-blur-md no-print">
               <div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Print Exam Paper Layout</h4>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Print / Export Exam Paper</h4>
                 <p className="text-[10px] text-slate-455 mt-1.5 leading-normal">Confirm formatting matches school requirements. The RK watermark logo is embedded cleanly.</p>
               </div>
-              <button
-                onClick={handlePrintTrigger}
-                className="flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-lg shadow-indigo-600/10 cursor-pointer shrink-0"
-              >
-                <Printer className="w-4 h-4" />
-                Print / Save PDF
-              </button>
+              <div className="flex gap-2.5">
+                <button
+                  onClick={handlePrintTrigger}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0"
+                >
+                  <Printer className="w-4 h-4" />
+                  Download PDF
+                </button>
+                <button
+                  onClick={handleDownloadDocx}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0"
+                >
+                  <Save className="w-4 h-4" />
+                  Download MS Word (.docx)
+                </button>
+              </div>
             </div>
 
             {/* A4 Container */}
@@ -1341,56 +1458,47 @@ export default function PaperPreviewPage() {
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md space-y-4">
           <h3 className="text-xs font-bold text-white uppercase tracking-wider">Live Validation Dashboard</h3>
           
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-855 space-y-3 text-xs">
+          <div className="bg-slate-955 p-4 rounded-xl border border-slate-855 space-y-3 text-xs">
             <div className="flex justify-between">
               <span className="text-slate-455 font-bold">Paper Total:</span>
               <span className="text-white font-extrabold">{calculatedTotalMarks} / {editTotalMarks} Marks</span>
             </div>
             
             <div className="flex justify-between">
-              <span className="text-slate-455 font-bold">Remaining Marks:</span>
-              <span className={`font-extrabold ${remainingMarks === 0 ? 'text-emerald-450' : remainingMarks > 0 ? 'text-amber-455' : 'text-rose-455'}`}>
-                {remainingMarks} Marks
+              <span className="text-slate-455 font-bold">Validation Status:</span>
+              <span className={`font-extrabold ${validation?.isValid ? 'text-emerald-450' : 'text-rose-455'}`}>
+                {validation?.isValid ? 'CLEAN & VALID' : 'HAS ERRORS'}
               </span>
             </div>
 
             {/* Section A metrics */}
             <div className="border-t border-slate-855 pt-2 space-y-1">
               <div className="flex justify-between text-[11px]">
-                <span className="text-slate-455 font-semibold">Section A (Target: {targetSectionATotal}):</span>
-                <span className={`font-bold ${shortTotal === targetSectionATotal ? 'text-emerald-450' : 'text-amber-455'}`}>
-                  {shortTotal} Marks
+                <span className="text-slate-455 font-semibold">Section A (Target: {validation?.sectionATarget || 0}):</span>
+                <span className={`font-bold ${validation?.sectionAActual === validation?.sectionATarget ? 'text-emerald-450' : 'text-amber-455'}`}>
+                  {validation?.sectionAActual || 0} Marks
                 </span>
               </div>
-              {shortTotal !== targetSectionATotal && (
-                <div className="text-[9px] text-amber-450 font-medium">⚠️ Section A mismatch (Need {targetSectionATotal - shortTotal} Marks)</div>
-              )}
             </div>
 
             {/* Section B metrics */}
             <div className="border-t border-slate-855 pt-2 space-y-1">
               <div className="flex justify-between text-[11px]">
-                <span className="text-slate-455 font-semibold">Section B (Target: {targetSectionBTotal}):</span>
-                <span className={`font-bold ${longTotal === targetSectionBTotal ? 'text-emerald-450' : 'text-amber-455'}`}>
-                  {longTotal} Marks
+                <span className="text-slate-455 font-semibold">Section B (Target: {validation?.sectionBTarget || 0}):</span>
+                <span className={`font-bold ${validation?.sectionBActual === validation?.sectionBTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
+                  {validation?.sectionBActual || 0} Marks
                 </span>
               </div>
-              {longTotal !== targetSectionBTotal && (
-                <div className="text-[9px] text-amber-450 font-medium">⚠️ Section B mismatch (Need {targetSectionBTotal - longTotal} Marks)</div>
-              )}
             </div>
 
             {/* Section C metrics */}
             <div className="border-t border-slate-855 pt-2 space-y-1">
               <div className="flex justify-between text-[11px]">
-                <span className="text-slate-455 font-semibold">Section C (Target: {targetSectionCTotal}):</span>
-                <span className={`font-bold ${essayTotal === targetSectionCTotal ? 'text-emerald-450' : 'text-amber-455'}`}>
-                  {essayTotal} Marks
+                <span className="text-slate-455 font-semibold">Section C (Target: {validation?.sectionCTarget || 0}):</span>
+                <span className={`font-bold ${validation?.sectionCActual === validation?.sectionCTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
+                  {validation?.sectionCActual || 0} Marks
                 </span>
               </div>
-              {essayTotal !== targetSectionCTotal && (
-                <div className="text-[9px] text-amber-450 font-medium">⚠️ Section C mismatch (Need {targetSectionCTotal - essayTotal} Marks)</div>
-              )}
             </div>
             
             <div className="flex justify-between border-t border-slate-855 pt-2">
@@ -1419,8 +1527,8 @@ export default function PaperPreviewPage() {
             {paper.status !== 'APPROVED' && paper.status !== 'EXPORTED' && paper.status !== 'PUBLISHED' ? (
               <button
                 onClick={handleApprove}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 cursor-pointer"
-                disabled={actionLoading || calculatedTotalMarks !== Number(editTotalMarks)}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={actionLoading || !validation?.isValid}
               >
                 <CheckCircle className="w-4.5 h-4.5" /> Approve & Authorize Print
               </button>

@@ -29,6 +29,10 @@ export default function RootLayout({
       lang="en"
       className={`${outfit.variable} h-full antialiased`}
     >
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900">
         <Providers>{children}</Providers>
       </body>

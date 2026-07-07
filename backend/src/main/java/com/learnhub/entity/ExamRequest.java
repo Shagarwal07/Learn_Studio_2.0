@@ -37,12 +37,15 @@ public class ExamRequest extends BaseEntity {
     @Column(name = "total_questions", nullable = false)
     private Integer totalQuestions;
 
+    @Column(name = "duration")
+    private Integer duration;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private Status status = Status.PENDING;
 
     public enum Status {
-        PENDING, RUNNING, COMPLETED, REJECTED, FAILED
+        PENDING, RUNNING, GENERATING, VALIDATING, COMPLETED, COMPLETED_WITH_WARNINGS, APPROVED, PUBLISHED, REJECTED, FAILED
     }
 }

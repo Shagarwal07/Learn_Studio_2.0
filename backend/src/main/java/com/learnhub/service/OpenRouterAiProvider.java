@@ -21,16 +21,19 @@ public class OpenRouterAiProvider implements AiProvider {
     private final WebClient webClient = WebClient.builder().build();
 
     @Override
-    public String ask(String prompt) {
+    public String ask(String prompt, String dynamicApiKey) {
+        String activeKey = (dynamicApiKey != null && !dynamicApiKey.isEmpty()) ? dynamicApiKey : apiKey;
+        
         Map<String, Object> body = Map.of(
             "model", model,
+            "max_tokens", 2048,
             "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 
         Map response = webClient.post()
             .uri(apiUrl)
             .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + apiKey)
+            .header("Authorization", "Bearer " + activeKey)
             .bodyValue(body)
             .retrieve()
             .onStatus(s -> s.value() == 429,
@@ -38,6 +41,7 @@ public class OpenRouterAiProvider implements AiProvider {
             .onStatus(s -> s.is4xxClientError() || s.is5xxServerError(),
                 r -> r.bodyToMono(String.class).map(b -> new RuntimeException("API_ERROR: " + b)))
             .bodyToMono(Map.class)
+            .timeout(java.time.Duration.ofSeconds(60))
             .block();
 
         if (response == null) {
@@ -45,8 +49,18 @@ public class OpenRouterAiProvider implements AiProvider {
         }
 
         var choices = (List<?>) response.get("choices");
+        if (choices == null || choices.isEmpty()) {
+            throw new RuntimeException("OpenRouter returned no choices");
+        }
         var message = (Map<?, ?>) ((Map<?, ?>) choices.get(0)).get("message");
-        return message.get("content").toString();
+        if (message == null) {
+            throw new RuntimeException("OpenRouter returned no message object");
+        }
+        Object content = message.get("content");
+        if (content == null) {
+            throw new RuntimeException("OpenRouter returned null content. The model may have failed or timed out.");
+        }
+        return content.toString();
     }
 
     @Override

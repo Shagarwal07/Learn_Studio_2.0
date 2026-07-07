@@ -11,6 +11,8 @@ public class GeneratedQuestionDTO {
     private String questionText;
     private String options; // JSON string for MCQ options
     private String correctAnswer;
+    private String finalAnswer; // Added for Solver Agent
+    private String calculations; // Added for Solver Agent
     private String solutionSteps; // step-wise math solutions
     private Integer marks;
     private String difficulty;
@@ -24,4 +26,8 @@ public class GeneratedQuestionDTO {
     private String learningOutcome;
     private String section;
     private Integer questionOrder;
+    private String qualityStatus;
+    private String bloomLevel;
+    private String markingScheme;
+    private Integer estimatedTimeMinutes;
 }

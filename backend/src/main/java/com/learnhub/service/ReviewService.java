@@ -9,7 +9,7 @@ import com.learnhub.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,9 +23,10 @@ public class ReviewService {
     private final PaperVersionRepository paperVersionRepository;
     private final UserRepository userRepository;
     private final ExamRequestRepository examRequestRepository;
-    private final TheoryService theoryService;
-    private final MathematicsService mathematicsService;
-    private final QuestionBankService questionBankService;
+    private final QuestionBankRepository questionBankRepository;
+    private final QuestionGeneratorService questionGeneratorService;
+    private final VerificationService verificationService;
+    private final EditorService editorService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -49,7 +50,34 @@ public class ReviewService {
 
         // 2. Handle Action
         if (action == ReviewHistory.Action.APPROVE) {
+            // Run strict validation before approval
+            List<String> validationErrors = editorService.runValidation(paper);
+            if (!validationErrors.isEmpty()) {
+                throw new IllegalStateException("Paper approval blocked due to validation errors: " + String.join(", ", validationErrors));
+            }
+
             paper.setStatus(GeneratedPaper.Status.APPROVED);
+
+            // Save approved questions to the central PostgreSQL QuestionBank
+            for (GeneratedQuestion q : paper.getQuestions()) {
+                QuestionBank qb = QuestionBank.builder()
+                        .questionText(q.getQuestionText())
+                        .options(q.getOptions())
+                        .correctAnswer(q.getCorrectAnswer())
+                        .marks(q.getMarks())
+                        .difficulty(q.getDifficulty())
+                        .questionType(q.getQuestionType())
+                        .subject(q.getSubject())
+                        .classLevel(paper.getExamRequest().getCourse())
+                        .chapter(q.getChapter())
+                        .topic(q.getTopic())
+                        .solution(q.getSolutionSteps())
+                        .sourceAgent(q.getAgentType())
+                        .qualityStatus(q.getQualityStatus())
+                        .build();
+                questionBankRepository.save(qb);
+            }
+
         } else if (action == ReviewHistory.Action.REQUEST_REGENERATION || action == ReviewHistory.Action.REJECT) {
             paper.setStatus(GeneratedPaper.Status.REVISION_NEEDED);
             
@@ -60,7 +88,7 @@ public class ReviewService {
         }
 
         GeneratedPaper saved = paperRepository.save(paper);
-        return toDTO(saved);
+        return editorService.toDTO(saved);
     }
 
     @Transactional
@@ -79,9 +107,17 @@ public class ReviewService {
         question.setCorrectAnswer(dto.getCorrectAnswer());
         question.setSolutionSteps(dto.getSolutionSteps());
         question.setMarks(dto.getMarks());
-        question.setDifficulty(dto.getDifficulty());
-        question.setQuestionType(dto.getQuestionType());
+        question.setDifficulty(dto.getDifficulty() != null ? dto.getDifficulty() : question.getDifficulty());
+        question.setQuestionType(dto.getQuestionType() != null ? dto.getQuestionType() : question.getQuestionType());
+        question.setChapter(dto.getChapter());
+        question.setTopic(dto.getTopic());
+        question.setLearningOutcome(dto.getLearningOutcome());
+        question.setSection(dto.getSection());
         question.setVersion(question.getVersion() + 1);
+        
+        question.setBloomLevel(dto.getBloomLevel());
+        question.setMarkingScheme(dto.getMarkingScheme());
+        question.setEstimatedTimeMinutes(dto.getEstimatedTimeMinutes());
 
         GeneratedQuestion saved = questionRepository.save(question);
         return toQuestionDTO(saved);
@@ -106,7 +142,7 @@ public class ReviewService {
         }
 
         // Update custom metadata fields
-        paper.setDuration(dto.getDuration());
+        paper.setDuration(dto.getDuration() != null ? dto.getDuration() : paper.getDuration());
         paper.setTestType(dto.getTestType());
         paper.setChapters(dto.getChapters());
         paper.setTopics(dto.getTopics());
@@ -148,14 +184,19 @@ public class ReviewService {
                 question.setMarks(qDto.getMarks());
                 question.setDifficulty(qDto.getDifficulty() != null ? qDto.getDifficulty() : "MEDIUM");
                 question.setQuestionType(qDto.getQuestionType() != null ? qDto.getQuestionType() : "SHORT");
-                question.setAgentType(qDto.getAgentType() != null ? qDto.getAgentType() : "THEORY");
+                question.setAgentType(qDto.getAgentType() != null ? qDto.getAgentType() : "UNIFIED_GENERATOR");
                 question.setSubject(dto.getSubject() != null ? dto.getSubject() : (request != null ? request.getSubject() : "Mathematics"));
                 question.setChapter(qDto.getChapter());
                 question.setTopic(qDto.getTopic());
                 question.setLearningOutcome(qDto.getLearningOutcome());
                 question.setSection(qDto.getSection());
                 question.setQuestionOrder(qDto.getQuestionOrder());
+                question.setQualityStatus(qDto.getQualityStatus() != null ? qDto.getQualityStatus() : "APPROVED");
                 
+                question.setBloomLevel(qDto.getBloomLevel());
+                question.setMarkingScheme(qDto.getMarkingScheme());
+                question.setEstimatedTimeMinutes(qDto.getEstimatedTimeMinutes());
+
                 if (question.getId() == null) {
                     question.setVersion(1);
                 } else {
@@ -174,7 +215,7 @@ public class ReviewService {
         // Save a version snapshot AFTER updating
         saveVersionSnapshot(savedPaper, user, "Saved draft update: " + dto.getTitle());
 
-        return toDTO(savedPaper);
+        return editorService.toDTO(savedPaper);
     }
 
     @Transactional
@@ -189,7 +230,7 @@ public class ReviewService {
         executeFeedbackLoop(paper, List.of(questionId), reviewer, "Single question regeneration requested.");
 
         GeneratedPaper saved = paperRepository.save(paper);
-        return toDTO(saved);
+        return editorService.toDTO(saved);
     }
 
     private void executeFeedbackLoop(GeneratedPaper paper, List<Long> rejectedIds, User reviewer, String comments) {
@@ -201,46 +242,80 @@ public class ReviewService {
 
         ExamRequest request = paper.getExamRequest();
 
+        // Establish question history context of non-rejected questions
+        List<String> questionHistory = new ArrayList<>();
+        for (GeneratedQuestion gq : currentQuestions) {
+            if (gq != null && !rejectedIds.contains(gq.getId()) && gq.getQuestionText() != null) {
+                questionHistory.add(gq.getQuestionText());
+            }
+        }
+
         for (GeneratedQuestion q : currentQuestions) {
             if (rejectedIds.contains(q.getId())) {
-                // This question was rejected! Identify responsible agent and regenerate it.
-                System.out.println(String.format("Feedback Loop: Regenerating rejected question ID %d (Agent: %s)", q.getId(), q.getAgentType()));
+                System.out.println(String.format("Feedback Loop: Regenerating rejected question ID %d", q.getId()));
                 
-                List<GeneratedQuestionDTO> regenerated = null;
-                String agentType = q.getAgentType();
+                GeneratedQuestionDTO regeneratedDto = null;
                 
-                if ("THEORY".equalsIgnoreCase(agentType)) {
-                    regenerated = theoryService.generateQuestions(
-                            q.getSubject(), request.getCourse(), request.getSyllabus(), List.of(q.getMarks()), List.of(q.getSection() != null ? q.getSection() : "SECTION_A"), q.getDifficulty(), request.getQuestionPattern()
-                    );
-                } else if ("MATHEMATICS".equalsIgnoreCase(agentType)) {
-                    regenerated = mathematicsService.generateQuestions(
-                            q.getSubject(), request.getCourse(), request.getSyllabus(), List.of(q.getMarks()), List.of(q.getSection() != null ? q.getSection() : "SECTION_A"), q.getDifficulty()
-                    );
-                } else { // QUESTION_BANK
-                    regenerated = questionBankService.fetchQuestions(
-                            q.getSubject(), request.getCourse(), request.getSyllabus(), q.getDifficulty(), List.of(q.getMarks()), List.of(q.getSection() != null ? q.getSection() : "SECTION_A")
-                    );
+                // Form slot config
+                QuestionGeneratorService.QuestionSlot slot = QuestionGeneratorService.QuestionSlot.builder()
+                        .section(q.getSection())
+                        .marks(q.getMarks())
+                        .questionType(q.getQuestionType())
+                        .targetDifficulty(q.getDifficulty())
+                        .targetChapter(q.getChapter() != null ? q.getChapter() : "Review")
+                        .bloomLevel(q.getBloomLevel() != null ? q.getBloomLevel() : "Applying")
+                        .slotIndex(q.getQuestionOrder() != null ? q.getQuestionOrder() - 1 : 0)
+                        .build();
+
+                int retries = 0;
+                boolean passed = false;
+                String rejectionReason = null;
+                
+                while (!passed && retries <= 3) {
+                    try {
+                        regeneratedDto = questionGeneratorService.generateSingleQuestion(
+                                reviewer.getId(), q.getSubject(), request.getCourse(), request.getSyllabus(), slot, null, questionHistory, rejectionReason
+                        );
+                        
+                        VerificationService.VerificationResult audit = verificationService.verifySolution(
+                                reviewer.getId(), regeneratedDto, request.getSubject(), request.getCourse(), request.getSyllabus(), questionHistory
+                        );
+                        passed = audit.isPassed();
+                        if (!passed) {
+                            rejectionReason = audit.getRejectionReason();
+                            retries++;
+                        }
+                    } catch (Exception e) {
+                        rejectionReason = e.getMessage();
+                        retries++;
+                    }
                 }
 
-                if (regenerated != null && !regenerated.isEmpty()) {
-                    GeneratedQuestionDTO newDto = regenerated.get(0);
+                if (regeneratedDto != null) {
                     GeneratedQuestion newQ = GeneratedQuestion.builder()
-                            .questionText(newDto.getQuestionText())
-                            .options(newDto.getOptions())
-                            .correctAnswer(newDto.getCorrectAnswer())
-                            .solutionSteps(newDto.getSolutionSteps())
+                            .questionText(regeneratedDto.getQuestionText())
+                            .options(regeneratedDto.getOptions())
+                            .correctAnswer(regeneratedDto.getCorrectAnswer())
+                            .solutionSteps(regeneratedDto.getMarkingScheme())
                             .marks(q.getMarks())
-                            .difficulty(newDto.getDifficulty())
-                            .questionType(newDto.getQuestionType())
-                            .agentType(agentType)
+                            .difficulty(regeneratedDto.getDifficulty())
+                            .questionType(regeneratedDto.getQuestionType())
+                            .agentType("UNIFIED_GENERATOR")
                             .subject(q.getSubject())
                             .section(q.getSection())
                             .questionOrder(q.getQuestionOrder())
+                            .qualityStatus(passed ? "APPROVED" : "NEEDS_TEACHER_REVIEW")
+                            .bloomLevel(regeneratedDto.getBloomLevel())
+                            .markingScheme(regeneratedDto.getMarkingScheme())
+                            .estimatedTimeMinutes(regeneratedDto.getEstimatedTimeMinutes())
+                            .chapter(regeneratedDto.getChapter())
+                            .topic(regeneratedDto.getTopic())
+                            .learningOutcome(regeneratedDto.getLearningOutcome())
                             .version(1)
                             .isApproved(true)
                             .build();
                     updatedQuestions.add(questionRepository.save(newQ));
+                    questionHistory.add(newQ.getQuestionText()); // update history context
                 } else {
                     // Fallback to preserve the question if regeneration fails
                     updatedQuestions.add(q);
@@ -270,7 +345,6 @@ public class ReviewService {
             // Check if this exact version snapshot already exists to avoid duplicate snaps
             List<PaperVersion> existing = paperVersionRepository.findByGeneratedPaperIdOrderByVersionDesc(paper.getId());
             if (!existing.isEmpty() && existing.get(0).getVersion().equals(paper.getVersion())) {
-                // Just update the reason/timestamp or do nothing
                 return;
             }
 
@@ -310,31 +384,10 @@ public class ReviewService {
                 .learningOutcome(q.getLearningOutcome())
                 .section(q.getSection())
                 .questionOrder(q.getQuestionOrder())
-                .build();
-    }
-
-    private GeneratedPaperDTO toDTO(GeneratedPaper paper) {
-        List<GeneratedQuestionDTO> questionDTOs = paper.getQuestions().stream()
-                .map(this::toQuestionDTO)
-                .collect(Collectors.toList());
-
-        return GeneratedPaperDTO.builder()
-                .id(paper.getId())
-                .examRequestId(paper.getExamRequest().getId())
-                .title(paper.getTitle())
-                .totalMarks(paper.getTotalMarks())
-                .questions(questionDTOs)
-                .status(paper.getStatus().name())
-                .version(paper.getVersion())
-                .fileUrl(paper.getFileUrl())
-                .createdAt(paper.getCreatedAt())
-                .duration(paper.getDuration())
-                .testType(paper.getTestType())
-                .chapters(paper.getChapters())
-                .topics(paper.getTopics())
-                .course(paper.getExamRequest().getCourse())
-                .subject(paper.getExamRequest().getSubject())
-                .syllabus(paper.getExamRequest().getSyllabus())
+                .qualityStatus(q.getQualityStatus())
+                .bloomLevel(q.getBloomLevel())
+                .markingScheme(q.getMarkingScheme())
+                .estimatedTimeMinutes(q.getEstimatedTimeMinutes())
                 .build();
     }
 }

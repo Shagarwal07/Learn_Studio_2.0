@@ -16,6 +16,7 @@ public class ExamRequestDTO {
     private String difficulty;
     private String questionPattern;
     private Integer totalQuestions;
+    private Integer duration;
     private String status;
     private LocalDateTime createdAt;
 }

@@ -10,6 +10,7 @@ import com.learnhub.repository.GeneratedQuestionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,67 +21,28 @@ public class EditorService {
     private final GeneratedQuestionRepository questionRepository;
     private final GeneratedPaperRepository paperRepository;
 
+    private static final List<Integer> ALLOWED_MARKS = Arrays.asList(1, 2, 3, 4, 5, 6, 8, 10, 12, 15);
+
     @Transactional
     public GeneratedPaper compileExamPaper(ExamRequest request, List<GeneratedQuestionDTO> allQuestions) {
-        // 1. Deduplicate questions by text (case-insensitive)
-        Map<String, GeneratedQuestionDTO> uniqueMap = new LinkedHashMap<>();
-        for (GeneratedQuestionDTO q : allQuestions) {
-            uniqueMap.put(q.getQuestionText().toLowerCase().trim(), q);
-        }
-        List<GeneratedQuestionDTO> filtered = new ArrayList<>(uniqueMap.values());
-
-        // 2. Verify and enforce marks distribution
-        int totalMarks = request.getMarks();
-        int currentTotal = filtered.stream().mapToInt(GeneratedQuestionDTO::getMarks).sum();
-        
-        if (currentTotal != totalMarks) {
-            throw new IllegalStateException(String.format("Paper validation failed. Expected: %d, Generated: %d", totalMarks, currentTotal));
-        }
-
-        // 3. Save questions to database
+        // 1. Sort questions into sections
         List<GeneratedQuestionDTO> listA = new ArrayList<>();
         List<GeneratedQuestionDTO> listB = new ArrayList<>();
         List<GeneratedQuestionDTO> listC = new ArrayList<>();
-        
-        for (GeneratedQuestionDTO dto : filtered) {
+
+        for (GeneratedQuestionDTO dto : allQuestions) {
             String sec = dto.getSection();
-            if (sec == null || sec.trim().isEmpty()) {
-                throw new IllegalStateException("Validation error: Question has no section assigned.");
-            }
-            if ("SECTION_A".equalsIgnoreCase(sec)) {
-                listA.add(dto);
-            } else if ("SECTION_B".equalsIgnoreCase(sec)) {
+            if ("SECTION_B".equalsIgnoreCase(sec)) {
                 listB.add(dto);
             } else if ("SECTION_C".equalsIgnoreCase(sec)) {
                 listC.add(dto);
             } else {
-                throw new IllegalStateException("Validation error: Invalid section name assigned: " + sec);
+                dto.setSection("SECTION_A");
+                listA.add(dto);
             }
         }
-        
-        int sumA = listA.stream().mapToInt(GeneratedQuestionDTO::getMarks).sum();
-        int sumB = listB.stream().mapToInt(GeneratedQuestionDTO::getMarks).sum();
-        int sumC = listC.stream().mapToInt(GeneratedQuestionDTO::getMarks).sum();
-        
-        int calculatedTotal = sumA + sumB + sumC;
-        if (calculatedTotal != totalMarks) {
-            throw new IllegalStateException(String.format("Paper validation failed. Expected total: %d, Generated: %d", totalMarks, calculatedTotal));
-        }
-        
-        int targetA = Math.round(totalMarks * 0.20f);
-        int targetB = Math.round(totalMarks * 0.30f);
-        int targetC = totalMarks - targetA - targetB;
-        
-        if (sumA != targetA) {
-            throw new IllegalStateException(String.format("Section A validation failed. Expected target: %d, Generated total: %d", targetA, sumA));
-        }
-        if (sumB != targetB) {
-            throw new IllegalStateException(String.format("Section B validation failed. Expected target: %d, Generated total: %d", targetB, sumB));
-        }
-        if (sumC != targetC) {
-            throw new IllegalStateException(String.format("Section C validation failed. Expected target: %d, Generated total: %d", targetC, sumC));
-        }
-        
+
+        // 2. Set question order within each section
         for (int i = 0; i < listA.size(); i++) {
             listA.get(i).setQuestionOrder(i + 1);
         }
@@ -90,13 +52,14 @@ public class EditorService {
         for (int i = 0; i < listC.size(); i++) {
             listC.get(i).setQuestionOrder(i + 1);
         }
-        
-        List<GeneratedQuestionDTO> sortedFiltered = new ArrayList<>();
-        sortedFiltered.addAll(listA);
-        sortedFiltered.addAll(listB);
-        sortedFiltered.addAll(listC);
 
-        List<GeneratedQuestion> savedQuestions = sortedFiltered.stream()
+        List<GeneratedQuestionDTO> sortedList = new ArrayList<>();
+        sortedList.addAll(listA);
+        sortedList.addAll(listB);
+        sortedList.addAll(listC);
+
+        // 3. Save questions to database
+        List<GeneratedQuestion> savedQuestions = sortedList.stream()
                 .map(dto -> {
                     GeneratedQuestion q = GeneratedQuestion.builder()
                             .questionText(dto.getQuestionText())
@@ -113,22 +76,26 @@ public class EditorService {
                             .learningOutcome(dto.getLearningOutcome())
                             .section(dto.getSection())
                             .questionOrder(dto.getQuestionOrder())
+                            .qualityStatus(dto.getQualityStatus() != null ? dto.getQualityStatus() : "APPROVED")
+                            .bloomLevel(dto.getBloomLevel())
+                            .markingScheme(dto.getMarkingScheme())
+                            .estimatedTimeMinutes(dto.getEstimatedTimeMinutes())
                             .version(1)
-                            .isApproved(true)
+                            .isApproved(dto.getIsApproved() != null ? dto.getIsApproved() : true)
                             .build();
                     return questionRepository.save(q);
                 })
                 .collect(Collectors.toList());
 
-        // 4. Create and compile final exam paper
+        // 4. Create and save final paper
         GeneratedPaper paper = GeneratedPaper.builder()
                 .examRequest(request)
                 .title(String.format("Final Exam: %s (%s)", request.getCourse(), request.getSubject()))
-                .totalMarks(totalMarks)
+                .totalMarks(request.getMarks())
                 .questions(savedQuestions)
                 .status(GeneratedPaper.Status.DRAFT)
                 .version(1)
-                .duration(100)
+                .duration(request.getDuration() != null ? request.getDuration() : 100)
                 .testType("Parakh Test Series")
                 .chapters(request.getSyllabus())
                 .topics("")
@@ -137,34 +104,148 @@ public class EditorService {
         return paperRepository.save(paper);
     }
 
+    public List<String> runValidation(GeneratedPaper paper) {
+        List<String> errors = new ArrayList<>();
+
+        if (paper == null) {
+            errors.add("Paper does not exist.");
+            return errors;
+        }
+
+        List<GeneratedQuestion> questions = paper.getQuestions();
+        if (questions == null || questions.isEmpty()) {
+            errors.add("Paper must contain at least one question.");
+            return errors;
+        }
+
+        // 1. Deduplicate check (case-insensitive check for text)
+        Set<String> uniqueTexts = new HashSet<>();
+        for (GeneratedQuestion q : questions) {
+            if (q.getQuestionText() != null) {
+                String textLower = q.getQuestionText().toLowerCase().trim().replaceAll("[^a-zA-Z0-9]+", "");
+                if (uniqueTexts.contains(textLower)) {
+                    errors.add(String.format("Duplicate question text found: \"%s\"", q.getQuestionText()));
+                }
+                uniqueTexts.add(textLower);
+            }
+        }
+
+        // 2. Validate section placement & allowed marks
+        int actualTotal = 0;
+        int actualA = 0;
+        int actualB = 0;
+        int actualC = 0;
+
+        int orderA = 1;
+        int orderB = 1;
+        int orderC = 1;
+
+        List<GeneratedQuestion> sortedQuestions = questions.stream()
+                .sorted(Comparator.comparing(q -> q.getSection() != null ? q.getSection() : ""))
+                .collect(Collectors.toList());
+
+        for (GeneratedQuestion q : sortedQuestions) {
+            if (q.getSection() == null || q.getSection().trim().isEmpty()) {
+                errors.add(String.format("Question ID %d has no section assigned.", q.getId()));
+                continue;
+            }
+
+            Integer m = q.getMarks();
+            if (m == null || m <= 0) {
+                errors.add(String.format("Question ID %d has invalid or missing marks.", q.getId()));
+                continue;
+            }
+
+            if (!ALLOWED_MARKS.contains(m)) {
+                errors.add(String.format("Question ID %d has invalid marks weight (%d). Allowed marks only: %s", 
+                    q.getId(), m, ALLOWED_MARKS.toString()));
+            }
+
+            actualTotal += m;
+            if ("SECTION_A".equalsIgnoreCase(q.getSection())) {
+                actualA += m;
+                if (q.getQuestionOrder() != null && q.getQuestionOrder() != orderA++) {
+                    errors.add(String.format("Section A question ID %d has wrong numbering order %d (expected %d).", q.getId(), q.getQuestionOrder(), orderA - 1));
+                }
+            } else if ("SECTION_B".equalsIgnoreCase(q.getSection())) {
+                actualB += m;
+                if (q.getQuestionOrder() != null && q.getQuestionOrder() != orderB++) {
+                    errors.add(String.format("Section B question ID %d has wrong numbering order %d (expected %d).", q.getId(), q.getQuestionOrder(), orderB - 1));
+                }
+            } else if ("SECTION_C".equalsIgnoreCase(q.getSection())) {
+                actualC += m;
+                if (q.getQuestionOrder() != null && q.getQuestionOrder() != orderC++) {
+                    errors.add(String.format("Section C question ID %d has wrong numbering order %d (expected %d).", q.getId(), q.getQuestionOrder(), orderC - 1));
+                }
+            } else {
+                errors.add(String.format("Question ID %d has invalid section code: '%s'.", q.getId(), q.getSection()));
+            }
+
+            // Empty fields validation
+            if (q.getQuestionText() == null || q.getQuestionText().trim().isEmpty()) {
+                errors.add(String.format("Question ID %d has empty or missing question text.", q.getId()));
+                continue;
+            }
+            if (q.getDifficulty() == null || q.getDifficulty().trim().isEmpty()) {
+                errors.add(String.format("Question ID %d is missing difficulty level.", q.getId()));
+            }
+            if (q.getBloomLevel() == null || q.getBloomLevel().trim().isEmpty()) {
+                errors.add(String.format("Question ID %d is missing Bloom's Taxonomy level.", q.getId()));
+            }
+            if (q.getCorrectAnswer() == null || q.getCorrectAnswer().trim().isEmpty()) {
+                errors.add(String.format("Question ID %d has missing correct answer.", q.getId()));
+            }
+            if (q.getChapter() == null || q.getChapter().trim().isEmpty()) {
+                errors.add(String.format("Question ID %d is missing target chapter details.", q.getId()));
+            }
+
+            String text = q.getQuestionText().toLowerCase().trim();
+            if (text.length() < 15) {
+                errors.add(String.format("Question ID %d is too short (< 15 characters).", q.getId()));
+            }
+            String[] placeholders = {"placeholder", "lorem ipsum", "todo", "mock question", "insert question", "test question"};
+            for (String p : placeholders) {
+                if (text.contains(p)) {
+                    errors.add(String.format("Question ID %d contains placeholder content: '%s'.", q.getId(), p));
+                }
+            }
+        }
+
+        // 3. Validate paper totals
+        int expectedTotal = paper.getTotalMarks();
+        if (actualTotal != expectedTotal) {
+            errors.add(String.format("Paper marks mismatch: Expected sum is %d, but actual sum is %d.", expectedTotal, actualTotal));
+        }
+
+        // 4. Validate section totals against blueprint target totals
+        try {
+            ManagerService.PaperBlueprint blueprint = ManagerService.createBlueprint(expectedTotal, questions.size());
+            if (actualA != blueprint.sectionA.targetMarks) {
+                errors.add(String.format("Section A total mismatch: Expected target of %d marks, but has %d marks.", 
+                    blueprint.sectionA.targetMarks, actualA));
+            }
+            if (actualB != blueprint.sectionB.targetMarks) {
+                errors.add(String.format("Section B total mismatch: Expected target of %d marks, but has %d marks.", 
+                    blueprint.sectionB.targetMarks, actualB));
+            }
+            if (actualC != blueprint.sectionC.targetMarks) {
+                errors.add(String.format("Section C total mismatch: Expected target of %d marks, but has %d marks.", 
+                    blueprint.sectionC.targetMarks, actualC));
+            }
+        } catch (Exception e) {
+            errors.add("Deterministic section distribution failure: " + e.getMessage());
+        }
+
+        return errors;
+    }
+
     public GeneratedPaperDTO toDTO(GeneratedPaper paper) {
         if (paper == null) return null;
         
         List<GeneratedQuestionDTO> questionDTOs = new ArrayList<>();
         List<GeneratedQuestion> questions = paper.getQuestions();
         
-        int orderA = 1;
-        int orderB = 1;
-        int orderC = 1;
-
         for (GeneratedQuestion q : questions) {
-            String section = q.getSection();
-            Integer order = q.getQuestionOrder();
-            
-            if (section == null) {
-                int marks = q.getMarks();
-                if (marks <= 2) {
-                    section = "SECTION_A";
-                    order = orderA++;
-                } else if (marks <= 5) {
-                    section = "SECTION_B";
-                    order = orderB++;
-                } else {
-                    section = "SECTION_C";
-                    order = orderC++;
-                }
-            }
-            
             questionDTOs.add(GeneratedQuestionDTO.builder()
                     .id(q.getId())
                     .questionText(q.getQuestionText())
@@ -179,8 +260,12 @@ public class EditorService {
                     .chapter(q.getChapter())
                     .topic(q.getTopic())
                     .learningOutcome(q.getLearningOutcome())
-                    .section(section)
-                    .questionOrder(order)
+                    .section(q.getSection())
+                    .questionOrder(q.getQuestionOrder())
+                    .qualityStatus(q.getQualityStatus())
+                    .bloomLevel(q.getBloomLevel())
+                    .markingScheme(q.getMarkingScheme())
+                    .estimatedTimeMinutes(q.getEstimatedTimeMinutes())
                     .version(q.getVersion())
                     .isApproved(q.getIsApproved())
                     .build());

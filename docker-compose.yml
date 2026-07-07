@@ -12,6 +12,9 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
+    # IMPORTANT: named volume 'postgres_data' is persistent. 
+    # Do NOT run 'docker-compose down -v' or prune volumes, otherwise all custom students/batches are deleted 
+    # and the database will re-initialize to the default seeded state (exactly 2 students).
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/src/main/resources/full-seed.sql:/docker-entrypoint-initdb.d/seed.sql
@@ -33,6 +36,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: learnhub2025SecretKeyForJWTTokenGenerationMustBe256BitsLong!
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     depends_on:
       postgres:

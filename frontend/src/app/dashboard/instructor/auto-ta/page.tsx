@@ -57,8 +57,10 @@ export default function AutoTaDashboard() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-6 max-w-7xl mx-auto text-foreground"
+      className="space-y-6 max-w-7xl mx-auto text-foreground relative z-10"
     >
+      {/* Ambient background glow for premium feel */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-accent-grape/20 blur-[120px] rounded-full -z-10 pointer-events-none opacity-50 dark:opacity-30"></div>
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border-color pb-5">
@@ -84,7 +86,7 @@ export default function AutoTaDashboard() {
           </button>
           <Link
             href="/dashboard/instructor/auto-ta/create"
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-accent-grape to-primary-blue text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-accent-grape/10 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="btn-premium flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-white cursor-pointer"
           >
             <Plus className="w-4.5 h-4.5" />
             Create Exam Paper
@@ -130,8 +132,8 @@ export default function AutoTaDashboard() {
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Active Agents</p>
-            <h3 className="text-xl font-black text-white mt-0.5">5 Active</h3>
+            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Multi-Agent State</p>
+            <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-accent-blue to-accent-grape mt-0.5 animate-pulse">Running</h3>
           </div>
         </div>
 
@@ -160,7 +162,7 @@ export default function AutoTaDashboard() {
             </p>
             <Link
               href="/dashboard/instructor/auto-ta/create"
-              className="mt-6 px-5 py-3 bg-white/5 border border-border-color hover:border-accent-grape text-accent-grape hover:text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+              className="btn-premium mt-6 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-white"
             >
               Configure First Exam
             </Link>

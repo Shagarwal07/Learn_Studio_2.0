@@ -62,7 +62,19 @@ public class GeneratedQuestion extends BaseEntity {
     @Builder.Default
     private Integer version = 1;
 
+    @Column(name = "quality_status")
+    private String qualityStatus;
+
     @Column(name = "is_approved", nullable = false)
     @Builder.Default
     private Boolean isApproved = true;
+
+    @Column(name = "bloom_level")
+    private String bloomLevel;
+
+    @Column(name = "marking_scheme", columnDefinition = "TEXT")
+    private String markingScheme;
+
+    @Column(name = "estimated_time_minutes")
+    private Integer estimatedTimeMinutes;
 }

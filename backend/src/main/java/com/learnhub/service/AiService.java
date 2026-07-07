@@ -17,22 +17,74 @@ public class AiService {
     private final List<AiProvider> providers;
     private final QuizAttemptRepository quizAttemptRepository;
     private final UserRepository userRepository;
+    private final AiProviderRouter aiProviderRouter;
+    private final AiPlanService aiPlanService;
 
-    // Ask with automatic fallback handling
-    public String askWithFallback(String prompt, String preferredProvider) {
-        try {
-            return getProvider(preferredProvider).ask(prompt);
-        } catch (Exception e) {
-            System.err.println("Preferred provider " + preferredProvider + " failed: " + e.getMessage());
-            // Attempt fallback
-            String fallbackProvider = "gemini".equalsIgnoreCase(preferredProvider) ? "openrouter" : "gemini";
+    // Ask with automatic fallback handling and Model Routing
+    public String askWithFallback(Long userId, String feature, String prompt, String preferredProvider) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID must be provided to evaluate AI quotas");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        long start = System.currentTimeMillis();
+        
+        // 1. Evaluate Plan and Resolve Route (BYOK -> PREMIUM -> FREE)
+        AiProviderRouter.RoutingDecision decision = aiProviderRouter.routeRequest(user);
+        
+        // Map the router provider name back to our AiProvider beans (e.g. GEMINI_PRO -> gemini, OPENROUTER -> openrouter)
+        String initialProviderName = decision.getProvider().toLowerCase().contains("openrouter") ? "openrouter" : 
+                             (decision.getProvider().equalsIgnoreCase("mock") ? "mock" : 
+                             (decision.getProvider().equalsIgnoreCase("vertex") ? "vertex" : "gemini"));
+        
+        boolean isByokOrForced = "BYOK".equals(decision.getBillingType()) || 
+                                 "mock".equals(initialProviderName) || 
+                                 "vertex".equals(initialProviderName);
+
+        List<String> providerChain;
+        if (isByokOrForced) {
+            providerChain = List.of(initialProviderName); // No fallback for BYOK or explicitly forced
+        } else {
+            // Standard user fallback chain
+            providerChain = List.of("gemini", "groq", "openrouter");
+        }
+        
+        Exception lastException = null;
+
+        for (String providerName : providerChain) {
             try {
-                System.out.println("Attempting fallback to " + fallbackProvider);
-                return getProvider(fallbackProvider).ask(prompt);
-            } catch (Exception ex) {
-                throw new RuntimeException("Both AI providers failed. Error: " + ex.getMessage(), ex);
+                AiProvider provider = getProvider(providerName);
+                
+                // If it's BYOK, pass the decision's API key. Otherwise pass null (let provider use defaults)
+                String apiKeyToUse = "BYOK".equals(decision.getBillingType()) ? decision.getApiKey() : null;
+                
+                // 2. Execute Prompt
+                String response = provider.ask(prompt, apiKeyToUse);
+                
+                long latency = System.currentTimeMillis() - start;
+                System.out.println(String.format("✅ [AiService] Successfully routed via %s (Latency: %dms, BYOK: %b)", providerName.toUpperCase(), latency, "BYOK".equals(decision.getBillingType())));
+                
+                // 3. Log Usage and Increment Quota
+                aiPlanService.incrementUsage(user, feature, providerName, "default", 0, java.math.BigDecimal.ZERO, true, null);
+                
+                return response;
+            } catch (Exception e) {
+                System.err.println("⚠️ [AiService] Request to " + providerName + " failed: " + e.getMessage() + ". Attempting next fallback...");
+                lastException = e;
             }
         }
+        
+        // If we exhausted the chain
+        long latency = System.currentTimeMillis() - start;
+        System.err.println("❌ [AiService] All providers in fallback chain failed.");
+        try {
+            aiPlanService.incrementUsage(user, feature, "FAILED", "unknown", 0, java.math.BigDecimal.ZERO, false, lastException != null ? lastException.getMessage() : "Unknown error");
+        } catch (Exception loggingEx) {
+            // ignore
+        }
+        throw new RuntimeException("AI Routing failed after exhausting fallback chain: " + (lastException != null ? lastException.getMessage() : "Unknown error"), lastException);
     }
 
     private AiProvider getProvider(String providerName) {
@@ -44,38 +96,38 @@ public class AiService {
 
     // ── AI Features ──────────────────────────────────────────
     
-    public String solveDoubt(String question, String courseName, String model) {
+    public String solveDoubt(Long userId, String question, String courseName, String model) {
         String prompt = String.format(
             "You are a helpful tutor for the course '%s'. " +
             "Answer this student's question clearly and concisely in 3-5 lines: %s",
             courseName, question);
-        return askWithFallback(prompt, model);
+        return askWithFallback(userId, "SOLVE_DOUBT", prompt, model);
     }
 
-    public String recommendCourses(List<String> enrolledCourses, String model) {
+    public String recommendCourses(Long userId, List<String> enrolledCourses, String model) {
         String enrolled = enrolledCourses.isEmpty() ? "none yet" : String.join(", ", enrolledCourses);
         String prompt = String.format(
             "A student is enrolled in these courses: %s. " +
             "Recommend 3 next courses they should take to advance their career. " +
             "Format as a numbered list with course name and one-line reason. Keep it brief.", enrolled);
-        return askWithFallback(prompt, model);
+        return askWithFallback(userId, "COURSE_RECOMMEND", prompt, model);
     }
 
-    public String generateQuiz(String topic, String model) {
+    public String generateQuiz(Long userId, String topic, String model) {
         String prompt = String.format(
             "Generate exactly 5 multiple choice questions about '%s'. " +
             "Respond ONLY with a valid JSON array, no markdown, no explanation. " +
             "Format: [{\"question\":\"...\",\"options\":{\"A\":\"...\",\"B\":\"...\",\"C\":\"...\",\"D\":\"...\"},\"answer\":\"A\"}]. " +
             "Keep questions practical and beginner-friendly.", topic);
-        return askWithFallback(prompt, model);
+        return askWithFallback(userId, "GENERATE_QUIZ", prompt, model);
     }
 
-    public String generateVivaQuestions(String topic, String model) {
+    public String generateVivaQuestions(Long userId, String topic, String model) {
         String prompt = String.format(
             "Generate 5 interview/viva questions about the topic '%s' to help a student prepare. " +
             "Provide both the question and a brief, ideal model answer (2-3 lines) for each. " +
             "Format clearly with bold headers for Question and Answer.", topic);
-        return askWithFallback(prompt, model);
+        return askWithFallback(userId, "GENERATE_VIVA", prompt, model);
     }
 
     // ── Quiz Attempt Database Storage ────────────────────────

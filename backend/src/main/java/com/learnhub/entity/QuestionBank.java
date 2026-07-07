@@ -40,4 +40,22 @@ public class QuestionBank extends BaseEntity {
 
     @Column(name = "last_used_at")
     private LocalDate lastUsedAt;
+
+    @Column(name = "class_level")
+    private String classLevel;
+
+    @Column(name = "chapter")
+    private String chapter;
+
+    @Column(name = "topic")
+    private String topic;
+
+    @Column(name = "solution", columnDefinition = "TEXT")
+    private String solution;
+
+    @Column(name = "source_agent")
+    private String sourceAgent;
+
+    @Column(name = "quality_status")
+    private String qualityStatus;
 }

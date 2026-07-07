@@ -424,7 +424,7 @@ public class NoteService {
         promptBuilder.append("Provide a helpful, precise, and educational response based on the note context. Keep it under 6-8 sentences.");
 
         // Call AI Service
-        return aiService.askWithFallback(promptBuilder.toString(), "gemini");
+        return aiService.askWithFallback(null, "NOTE_GENERATION", promptBuilder.toString(), "gemini");
     }
 
     private String extractTextFromPdf(InputStream inputStream) {

@@ -34,6 +34,6 @@ public class AgentExecutionLog extends BaseEntity {
     private String logOutput;
 
     public enum Status {
-        RUNNING, SUCCESS, FAILED
+        RUNNING, SUCCESS, WARNING, FAILED
     }
 }
