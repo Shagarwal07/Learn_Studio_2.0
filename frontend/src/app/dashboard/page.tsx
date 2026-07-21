@@ -226,7 +226,7 @@ export default function StudentDashboardPage() {
           <span className="inline-flex items-center justify-center md:justify-start gap-1.5 text-[10px] font-bold text-success bg-success/10 px-3 py-1 rounded-full border border-success/20 uppercase tracking-wider mx-auto md:mx-0">
             <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" /> Learning Portal Active
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-foreground leading-tight">
             Welcome back,<br className="hidden md:block" /> {user?.name || 'Student'} 👋
           </h2>
           <p className="text-text-secondary text-xs sm:text-sm leading-relaxed mt-2">
@@ -236,7 +236,7 @@ export default function StudentDashboardPage() {
             <Link href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} className="w-full sm:w-auto justify-center px-6 py-3 bg-gradient-to-r from-accent-blue to-accent-grape text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
               <Play className="w-4 h-4" /> Continue Learning
             </Link>
-            <Link href="/dashboard/ai" className="w-full sm:w-auto justify-center px-6 py-3 bg-white/5 border border-border-color text-white text-xs font-bold rounded-full hover:bg-white/10 transition-colors flex items-center gap-2">
+            <Link href="/dashboard/ai" className="w-full sm:w-auto justify-center px-6 py-3 bg-black/5 dark:bg-white/5 border border-border-color text-foreground text-xs font-bold rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
               <Zap className="w-4 h-4" /> Ask AI Tutor
             </Link>
           </div>
@@ -281,7 +281,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {grade !== 'N/A' ? (
-              <h3 className="text-4xl font-black text-white">{grade}</h3>
+              <h3 className="text-4xl font-black text-foreground">{grade}</h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -299,7 +299,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {attendanceData ? (
-              <h3 className="text-4xl font-black text-white"><AnimatedCounter value={attendanceRate} />%</h3>
+              <h3 className="text-4xl font-black text-foreground"><AnimatedCounter value={attendanceRate} />%</h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -322,7 +322,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {totalQuizzes > 0 ? (
-              <h3 className="text-4xl font-black text-white"><AnimatedCounter value={avgScore} /></h3>
+              <h3 className="text-4xl font-black text-foreground"><AnimatedCounter value={avgScore} /></h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -345,7 +345,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {currentStreak > 0 ? (
-              <h3 className="text-4xl font-black text-white"><AnimatedCounter value={currentStreak} />d</h3>
+              <h3 className="text-4xl font-black text-foreground"><AnimatedCounter value={currentStreak} />d</h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
