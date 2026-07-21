@@ -87,8 +87,8 @@ export default function WeeklyActivityChart({ quizAttempts }: Props) {
   return (
     <div className="glass-card p-6 rounded-3xl flex flex-col h-full border border-border-color relative overflow-hidden">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-extrabold text-white">Weekly Activity</h3>
-        <span className="text-lg font-black text-white">{quizAttempts.length} <span className="text-xs text-text-muted">Quizzes</span></span>
+        <h3 className="text-sm font-extrabold text-foreground">Weekly Activity</h3>
+        <span className="text-lg font-black text-foreground">{quizAttempts.length} <span className="text-xs text-text-muted">Quizzes</span></span>
       </div>
       
       {quizAttempts.length > 0 ? (

@@ -243,7 +243,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Profile Avatar Widget */}
-        <div className="relative z-10 w-40 h-40 md:w-48 md:h-48 shrink-0 mx-auto md:mx-0 flex items-center justify-center mt-6 md:mt-0">
+        <div className="relative z-10 w-24 h-24 md:w-48 md:h-48 shrink-0 mx-auto md:mx-0 flex items-center justify-center mt-6 md:mt-0">
           <input type="file" id="avatarUpload" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
           <div className="absolute inset-0 bg-gradient-to-br from-accent-grape to-primary-blue rounded-full blur-xl opacity-20 mix-blend-screen" />
           <label htmlFor="avatarUpload" className="relative w-full h-full rounded-full border-[6px] border-[#121623] shadow-2xl overflow-hidden bg-[#1E2335] cursor-pointer group block">
@@ -273,7 +273,7 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Grade */}
         <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
           <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
@@ -281,7 +281,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {grade !== 'N/A' ? (
-              <h3 className="text-4xl font-black text-foreground">{grade}</h3>
+              <h3 className="text-3xl lg:text-4xl font-black text-foreground">{grade}</h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -299,7 +299,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {attendanceData ? (
-              <h3 className="text-4xl font-black text-foreground"><AnimatedCounter value={attendanceRate} />%</h3>
+              <h3 className="text-3xl lg:text-4xl font-black text-foreground"><AnimatedCounter value={attendanceRate} />%</h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -322,7 +322,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {totalQuizzes > 0 ? (
-              <h3 className="text-4xl font-black text-foreground"><AnimatedCounter value={avgScore} /></h3>
+              <h3 className="text-3xl lg:text-4xl font-black text-foreground"><AnimatedCounter value={avgScore} /></h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -345,7 +345,7 @@ export default function StudentDashboardPage() {
           </div>
           <div>
             {currentStreak > 0 ? (
-              <h3 className="text-4xl font-black text-foreground"><AnimatedCounter value={currentStreak} />d</h3>
+              <h3 className="text-3xl lg:text-4xl font-black text-foreground"><AnimatedCounter value={currentStreak} />d</h3>
             ) : (
               <h3 className="text-lg font-bold text-text-muted">N/A</h3>
             )}
@@ -410,11 +410,11 @@ export default function StudentDashboardPage() {
                   <span className="text-[9px] font-extrabold text-accent-grape uppercase tracking-wider">Resume Learning</span>
                   <span className="bg-success/10 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/20">Active</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-white leading-tight line-clamp-2">{fallbackResume.courseTitle}</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-foreground leading-tight line-clamp-2">{fallbackResume.courseTitle}</h3>
                 <p className="text-[11px] text-text-secondary">Enrolled: {new Date(fallbackResume.enrolledAt).toLocaleDateString()}</p>
                 
                 <div className="pt-2">
-                  <div className="flex justify-between text-[10px] font-bold text-white mb-1.5">
+                  <div className="flex justify-between text-[10px] font-bold text-foreground mb-1.5">
                     <span>Progress</span>
                     <span>{fallbackResume.progress}%</span>
                   </div>
@@ -424,7 +424,7 @@ export default function StudentDashboardPage() {
                 </div>
 
                 <div className="pt-2">
-                  <Link href={`/dashboard/course/${fallbackResume.courseId}/learn`} className="inline-block px-4 py-2 bg-white/5 border border-border-color text-white text-xs font-bold rounded-xl hover:bg-white/10 transition-colors">
+                  <Link href={`/dashboard/course/${fallbackResume.courseId}/learn`} className="inline-block px-4 py-2 bg-black/5 dark:bg-white/5 border border-border-color text-foreground text-xs font-bold rounded-xl hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
                     Continue lesson
                   </Link>
                 </div>
@@ -436,7 +436,7 @@ export default function StudentDashboardPage() {
                 <Compass className="w-6 h-6 text-text-muted" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">No Active Courses</h3>
+                <h3 className="text-sm font-bold text-foreground">No Active Courses</h3>
                 <p className="text-[10px] text-text-secondary mt-1">Enroll in a course to track your online learning progress here.</p>
               </div>
               <Link href="/courses" className="px-4 py-2 bg-accent-grape/20 text-accent-grape border border-accent-grape/30 text-xs font-bold rounded-xl hover:bg-accent-grape/30 transition-colors">
@@ -453,7 +453,7 @@ export default function StudentDashboardPage() {
                 <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
                   <Zap className="w-5 h-5 text-accent-grape" />
                 </div>
-                <h3 className="text-2xl font-black text-white">AI Study Assistant</h3>
+                <h3 className="text-2xl font-black text-foreground">AI Study Assistant</h3>
                 <p className="text-xs text-text-secondary leading-relaxed">
                   Turn any lesson into notes, quizzes, explanations, summaries, and voice-guided tutoring in seconds.
                 </p>
@@ -463,19 +463,19 @@ export default function StudentDashboardPage() {
               </div>
               
               <div className="grid grid-cols-2 gap-3 shrink-0">
-                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-accent-grape/50 transition-colors flex items-center gap-2">
+                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-accent-grape/50 transition-colors flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-accent-grape" /> Generate Notes
                 </button>
-                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-secondary-blue/50 transition-colors flex items-center gap-2">
+                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-secondary-blue/50 transition-colors flex items-center gap-2">
                   <Compass className="w-3.5 h-3.5 text-secondary-blue" /> Explain Topic
                 </button>
-                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-success/50 transition-colors flex items-center gap-2">
+                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-success/50 transition-colors flex items-center gap-2">
                   <ClipboardList className="w-3.5 h-3.5 text-success" /> Create Quiz
                 </button>
-                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-warning/50 transition-colors flex items-center gap-2">
+                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-warning/50 transition-colors flex items-center gap-2">
                   <Award className="w-3.5 h-3.5 text-warning" /> Ask Doubt
                 </button>
-                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-accent-blue/50 transition-colors flex items-center gap-2 col-span-2">
+                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-accent-blue/50 transition-colors flex items-center gap-2 col-span-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-accent-blue" /> Summarize Lesson
                 </button>
               </div>
@@ -486,9 +486,9 @@ export default function StudentDashboardPage() {
         {/* Right Column: Upcoming Classes */}
         <div className="glass-card p-6 rounded-3xl border border-border-color flex flex-col">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-sm font-extrabold text-white">Upcoming Classes</h3>
+            <h3 className="text-sm font-extrabold text-foreground">Upcoming Classes</h3>
             {schedules.length > 0 && (
-              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white font-bold">{schedules.length} Event{schedules.length !== 1 ? 's' : ''}</span>
+              <span className="text-[10px] bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full text-foreground font-bold">{schedules.length} Event{schedules.length !== 1 ? 's' : ''}</span>
             )}
           </div>
           

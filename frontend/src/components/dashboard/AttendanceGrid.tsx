@@ -54,7 +54,7 @@ export default function AttendanceGrid({ attendanceData }: Props) {
   return (
     <div className="glass-card p-6 rounded-3xl flex flex-col justify-between h-full border border-border-color">
       <div className="flex justify-between items-start">
-        <h3 className="text-sm font-extrabold text-white">Attendance</h3>
+        <h3 className="text-sm font-extrabold text-foreground">Attendance</h3>
       </div>
       
       {attendanceData && attendanceData.offlineTotal > 0 ? (

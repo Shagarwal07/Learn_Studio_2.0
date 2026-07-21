@@ -41,7 +41,7 @@ export default function CourseCompletionDonut() {
   return (
     <div className="glass-card p-6 rounded-3xl flex flex-col justify-between h-full border border-border-color">
       <div>
-        <h3 className="text-sm font-extrabold text-white leading-tight">Course<br/>Completion</h3>
+        <h3 className="text-sm font-extrabold text-foreground leading-tight">Course<br/>Completion</h3>
       </div>
       
       <div className="flex-1 flex flex-col items-center justify-center mt-4">
