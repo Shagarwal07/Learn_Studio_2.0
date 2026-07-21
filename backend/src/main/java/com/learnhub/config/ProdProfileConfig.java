@@ -13,14 +13,7 @@ public class ProdProfileConfig {
     @Value("${SPRING_DATASOURCE_URL:}")
     private String datasourceUrl;
 
-    @Value("${cloudinary.cloud-name:}")
-    private String cloudinaryCloudName;
-
-    @Value("${cloudinary.api-key:}")
-    private String cloudinaryApiKey;
-
-    @Value("${cloudinary.api-secret:}")
-    private String cloudinaryApiSecret;
+    // Cloudinary validations removed
 
     @Value("${JWT_SECRET:}")
     private String jwtSecret;
@@ -36,15 +29,7 @@ public class ProdProfileConfig {
             if (datasourceUrl == null || datasourceUrl.isBlank()) {
                 throw new IllegalStateException("SPRING_DATASOURCE_URL must be defined in production");
             }
-            if (cloudinaryCloudName == null || cloudinaryCloudName.isBlank() || cloudinaryCloudName.contains("YOUR_CLOUD_NAME")) {
-                throw new IllegalStateException("CLOUDINARY_CLOUD_NAME must be defined in production");
-            }
-            if (cloudinaryApiKey == null || cloudinaryApiKey.isBlank() || cloudinaryApiKey.contains("YOUR_API_KEY")) {
-                throw new IllegalStateException("CLOUDINARY_API_KEY must be defined in production");
-            }
-            if (cloudinaryApiSecret == null || cloudinaryApiSecret.isBlank() || cloudinaryApiSecret.contains("YOUR_API_SECRET")) {
-                throw new IllegalStateException("CLOUDINARY_API_SECRET must be defined in production");
-            }
+            // Cloudinary validations removed
             if (jwtSecret == null || jwtSecret.isBlank()) {
                 throw new IllegalStateException("JWT_SECRET must be defined in production");
             }

@@ -3,32 +3,32 @@ package com.learnhub.dto;
 import com.learnhub.entity.Course.Level;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Builder;
 import java.math.BigDecimal;
 
-@Data
-public class CourseDTO {
-    private Long id;
+@Builder
+public record CourseDTO(
+    Long id,
     
     @NotBlank
-    private String title;
+    String title,
     
-    private String description;
+    String description,
     
     @NotNull
-    private BigDecimal price;
+    BigDecimal price,
     
-    private String thumbnail;
+    String thumbnail,
     
-    private Level level;
+    Level level,
     
-    private String instructorName;
+    String instructorName,
     
-    private int totalLessons;
+    int totalLessons,
     
-    private String previewVideoUrl;
+    String previewVideoUrl,
     
-    private Double averageRating;
+    Double averageRating,
     
-    private int totalReviews;
-}
+    int totalReviews
+) {}

@@ -12,11 +12,15 @@ public class UserIdentityProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
+    @Column(name = "is_primary")
+    private boolean isPrimary;
+
     private String googleEmail;
+    
     private String googleSub;
     private String googleName;
     @Column(columnDefinition = "TEXT")

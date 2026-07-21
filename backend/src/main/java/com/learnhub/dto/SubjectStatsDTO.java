@@ -1,14 +1,11 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class SubjectStatsDTO {
-    private String subjectName;
-    private double percentage;
-    private int present;
-    private int total;
-}
+public record SubjectStatsDTO(
+    String subjectName,
+    double percentage,
+    int present,
+    int total
+) {}

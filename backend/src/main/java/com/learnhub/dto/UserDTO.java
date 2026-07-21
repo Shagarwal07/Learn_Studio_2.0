@@ -1,23 +1,19 @@
 package com.learnhub.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UserDTO {
-    private Long id;
-    private String name;
-    private String email;
-    private String role;
-    private Long batchId;
-    private String batchName;
-    private boolean active;
-    private String deletedAt;
-    private String deletedBy;
-    private String linkedGoogleEmail;
-}
+public record UserDTO(
+    Long id,
+    String name,
+    String email,
+    String role,
+    Long batchId,
+    String batchName,
+    boolean active,
+    String deletedAt,
+    String deletedBy,
+    String primaryGoogleEmail,
+    String secondaryGoogleEmail,
+    String avatarUrl
+) {}

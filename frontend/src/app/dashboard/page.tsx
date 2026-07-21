@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, 
   Clock, 
@@ -24,8 +24,12 @@ import {
   Megaphone,
   ArrowUpRight,
   Zap,
-  Folder
+  Folder,
+  ChevronDown
 } from 'lucide-react';
+import CourseCompletionDonut from '@/components/dashboard/CourseCompletionDonut';
+import WeeklyActivityChart from '@/components/dashboard/WeeklyActivityChart';
+import AttendanceGrid from '@/components/dashboard/AttendanceGrid';
 
 interface EnrolledCourse {
   enrollmentId: number;
@@ -62,409 +66,6 @@ function AnimatedCounter({ value, duration = 800 }: { value: number; duration?: 
   return <span>{count}</span>;
 }
 
-// Donut Chart representing Overall Course Progress
-function OverallProgressDonut({ courses }: { courses: EnrolledCourse[] }) {
-  const total = courses.length;
-  const completed = courses.filter(c => c.progress === 100).length;
-  const inProgress = courses.filter(c => c.progress > 0 && c.progress < 100).length;
-  const notStarted = courses.filter(c => c.progress === 0).length;
-
-  // Compute percentages
-  const completedPct = total ? Math.round((completed / total) * 100) : 0;
-  const inProgressPct = total ? Math.round((inProgress / total) * 100) : 0;
-  const notStartedPct = total ? Math.round((notStarted / total) * 100) : 0;
-
-  // Average progress across all courses
-  const avgProgress = total ? Math.round(courses.reduce((sum, c) => sum + c.progress, 0) / total) : 0;
-
-  // SVG parameters
-  const radius = 45;
-  const strokeWidth = 8;
-  const circumference = 2 * Math.PI * radius;
-
-  // Segment lengths
-  const completedStroke = (completedPct / 100) * circumference;
-  const inProgressStroke = (inProgressPct / 100) * circumference;
-  const notStartedStroke = (notStartedPct / 100) * circumference;
-
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 bg-card-bg/25 dark:bg-card-bg/10 rounded-3xl border border-border-color h-full">
-      <div className="relative w-36 h-36 flex items-center justify-center">
-        <svg className="w-full h-full transform -rotate-90">
-          {/* Base track */}
-          <circle
-            cx="72"
-            cy="72"
-            r={radius}
-            className="stroke-border-color"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-          {/* Completed Segment (Grape Soda) */}
-          {completedStroke > 0 && (
-            <circle
-              cx="72"
-              cy="72"
-              r={radius}
-              className="stroke-accent-grape"
-              strokeWidth={strokeWidth}
-              fill="transparent"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference - completedStroke}
-              strokeLinecap="round"
-              style={{ filter: 'drop-shadow(0 0 4px rgba(150,52,132,0.45))' }}
-            />
-          )}
-          {/* In Progress Segment (Primary Blue) */}
-          {inProgressStroke > 0 && (
-            <circle
-              cx="72"
-              cy="72"
-              r={radius}
-              className="stroke-secondary-blue"
-              strokeWidth={strokeWidth}
-              fill="transparent"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference - inProgressStroke}
-              strokeLinecap="round"
-              style={{ 
-                transformOrigin: '72px 72px',
-                transform: `rotate(${ (completedPct / 100) * 360 }deg)`,
-                filter: 'drop-shadow(0 0 4px rgba(96,175,255,0.45))'
-              }}
-            />
-          )}
-          {/* Not Started Segment */}
-          {notStartedStroke > 0 && (
-            <circle
-              cx="72"
-              cy="72"
-              r={radius}
-              className="stroke-text-muted/30"
-              strokeWidth={strokeWidth}
-              fill="transparent"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference - notStartedStroke}
-              strokeLinecap="round"
-              style={{ 
-                transformOrigin: '72px 72px',
-                transform: `rotate(${ ((completedPct + inProgressPct) / 100) * 360 }deg)`
-              }}
-            />
-          )}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-black text-white leading-none">
-            {avgProgress}%
-          </span>
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-1.5">
-            Completed
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-accent-grape shadow-[0_0_8px_rgba(150,52,132,0.6)]" />
-          <div>
-            <p className="text-xs font-black text-white">{completedPct}%</p>
-            <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Completed</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-secondary-blue shadow-[0_0_8px_rgba(96,175,255,0.6)]" />
-          <div>
-            <p className="text-xs font-black text-white">{inProgressPct}%</p>
-            <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">In Progress</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-text-muted/40" />
-          <div>
-            <p className="text-xs font-black text-white">{notStartedPct}%</p>
-            <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Not Started</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Vector Line Chart with Gradient fill under curve for Quiz scores
-function QuizPerformanceChart({ attempts }: { attempts: any[] }) {
-  const hasData = attempts && attempts.length >= 2;
-  const dataPoints = hasData
-    ? attempts.map((a, idx) => ({
-        label: new Date(a.attemptedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        score: Math.round((a.score / a.totalQuestions) * 100)
-      })).slice(-6)
-    : [];
-
-  const width = 320;
-  const height = 150;
-  const padding = 20;
-
-  const points = dataPoints.map((d, idx) => {
-    const x = padding + (idx * (width - 2 * padding)) / Math.max(dataPoints.length - 1, 1);
-    const y = height - padding - (d.score * (height - 2 * padding)) / 100;
-    return { x, y, score: d.score, label: d.label };
-  });
-
-  let dPath = '';
-  if (points.length > 0) {
-    dPath = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      const cpX1 = p0.x + (p1.x - p0.x) / 2;
-      const cpY1 = p0.y;
-      const cpX2 = p0.x + (p1.x - p0.x) / 2;
-      const cpY2 = p1.y;
-      dPath += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p1.x} ${p1.y}`;
-    }
-  }
-
-  const areaPath = dPath 
-    ? `${dPath} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
-    : '';
-
-  return (
-    <div className="p-6 bg-card-bg/25 dark:bg-card-bg/10 rounded-3xl border border-border-color h-full flex flex-col justify-between relative overflow-hidden">
-      <div className="flex justify-between items-start">
-        <div>
-          <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Quiz Performance</h4>
-          <p className="text-[10px] text-text-muted mt-0.5">Average score over recent attempts</p>
-        </div>
-        {!hasData && (
-          <span className="text-[8px] bg-accent-grape/10 text-accent-grape border border-accent-grape/20 px-2 py-0.5 rounded-full uppercase font-bold tracking-wider">
-            Empty
-          </span>
-        )}
-      </div>
-
-      {hasData ? (
-        <>
-          <div className="relative w-full h-40 mt-4 flex items-center justify-center">
-            <svg className="w-full h-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#963484" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#3066BE" stopOpacity="0.0" />
-                </linearGradient>
-                <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#963484" />
-                  <stop offset="100%" stopColor="#60AFFF" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid Lines */}
-              <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              <line x1={padding} y1={height/2} x2={width - padding} y2={height/2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-
-              {/* Fill area under curve */}
-              {areaPath && (
-                <path d={areaPath} fill="url(#chartGradient)" />
-              )}
-
-              {/* Vector bezier path */}
-              {dPath && (
-                <path
-                  d={dPath}
-                  fill="none"
-                  stroke="url(#lineGradient)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  style={{ filter: 'drop-shadow(0 4px 8px rgba(150,52,132,0.3))' }}
-                />
-              )}
-
-              {/* Nodes */}
-              {points.map((p, idx) => (
-                <g key={idx} className="group cursor-pointer">
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r="5"
-                    className="fill-background stroke-secondary-blue"
-                    strokeWidth="2"
-                  />
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r="2"
-                    className="fill-accent-grape"
-                  />
-                  <title>{`${p.label}: ${p.score}%`}</title>
-                </g>
-              ))}
-            </svg>
-          </div>
-
-          <div className="flex justify-between text-[9px] font-bold text-text-muted uppercase tracking-wider mt-2 px-1">
-            {dataPoints.map((d, idx) => (
-              <span key={idx}>{d.label}</span>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="py-8 flex flex-col items-center justify-center text-center space-y-2 mt-4">
-          <span className="text-2xl">⚡</span>
-          <p className="text-[11px] font-bold text-text-muted">No Quiz Attempts Yet</p>
-          <p className="text-[9px] text-text-muted/65 max-w-[180px]">
-            Start practicing quizzes inside the "Study Assistant" tab to view metrics!
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SubjectPerformance({ courses }: { courses: EnrolledCourse[] }) {
-  const subjects = courses.length > 0
-    ? courses.map((c, idx) => {
-        const colors = [
-          { bar: 'bg-success', glow: 'shadow-[0_0_10px_rgba(34,197,94,0.35)]' },
-          { bar: 'bg-primary-blue', glow: 'shadow-[0_0_10px_rgba(48,102,190,0.35)]' },
-          { bar: 'bg-warning', glow: 'shadow-[0_0_10px_rgba(234,179,8,0.35)]' },
-          { bar: 'bg-accent-grape', glow: 'shadow-[0_0_10px_rgba(150,52,132,0.35)]' },
-          { bar: 'bg-error', glow: 'shadow-[0_0_10px_rgba(239,68,68,0.35)]' }
-        ];
-        const color = colors[idx % colors.length];
-        return {
-          title: c.courseTitle,
-          progress: c.progress,
-          color
-        };
-      }).slice(0, 5)
-    : [];
-
-  return (
-    <div className="p-6 bg-card-bg/25 dark:bg-card-bg/10 rounded-3xl border border-border-color h-full flex flex-col justify-between">
-      <div>
-        <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">Subject Wise Performance</h4>
-        <p className="text-[10px] text-text-muted mt-0.5">Progress across active courses</p>
-      </div>
-
-      <div className="space-y-4 mt-6">
-        {subjects.length > 0 ? (
-          subjects.map((s, idx) => (
-            <div key={idx} className="space-y-1.5">
-              <div className="flex justify-between text-[10px] font-bold text-text-secondary">
-                <span className="truncate max-w-[210px] text-white font-black">{s.title}</span>
-                <span className="text-white">{s.progress}%</span>
-              </div>
-              <div className="w-full bg-bg-secondary-dark h-2 rounded-full overflow-hidden border border-border-color">
-                <div
-                  className={`${s.color.bar} h-full rounded-full transition-all duration-500 ${s.color.glow}`}
-                  style={{ width: `${s.progress}%` }}
-                />
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
-            <span className="text-2xl">📚</span>
-            <p className="text-[11px] font-bold text-text-muted">No Enrolled Courses</p>
-            <p className="text-[9px] text-text-muted/65 max-w-[180px]">
-              Offline study materials and batches are managed directly under notes and homework sections.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Sparkline statistics block matching mock bottom row
-function StatsRow({ 
-  quizAttempts = [], 
-  streakData 
-}: { 
-  quizAttempts?: any[]; 
-  streakData?: any 
-}) {
-  const totalQuizzes = quizAttempts.length;
-  
-  const avgScore = totalQuizzes 
-    ? Math.round(quizAttempts.reduce((sum, a) => sum + ((a.score / a.totalQuestions) * 100), 0) / totalQuizzes) 
-    : 0;
-
-  const correctAnswers = totalQuizzes 
-    ? quizAttempts.reduce((sum, a) => sum + a.score, 0) 
-    : 0;
-
-  const currentStreak = streakData 
-    ? Math.max(streakData.currentOfflineStreak || 0, streakData.currentOnlineStreak || 0) 
-    : 0;
-
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Stat 1: Total Quizzes */}
-      <div className="glass-card hover-lift p-6 rounded-3xl space-y-2">
-        <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Total Quizzes</p>
-        <h3 className="text-3xl font-black text-white">
-          <AnimatedCounter value={totalQuizzes} />
-        </h3>
-        {totalQuizzes > 0 ? (
-          <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
-            <span>↗ 12%</span> <span className="text-text-muted font-semibold">vs last week</span>
-          </span>
-        ) : (
-          <span className="text-[10px] font-bold text-text-muted">No attempts yet</span>
-        )}
-      </div>
-
-      {/* Stat 2: Average Score */}
-      <div className="glass-card hover-lift p-6 rounded-3xl space-y-2">
-        <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Average Score</p>
-        <h3 className="text-3xl font-black text-white">
-          <AnimatedCounter value={avgScore} />%
-        </h3>
-        {totalQuizzes > 0 ? (
-          <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
-            <span>↗ 8%</span> <span className="text-text-muted font-semibold">vs last week</span>
-          </span>
-        ) : (
-          <span className="text-[10px] font-bold text-text-muted">No attempts yet</span>
-        )}
-      </div>
-
-      {/* Stat 3: Correct Answers */}
-      <div className="glass-card hover-lift p-6 rounded-3xl space-y-2">
-        <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Correct Answers</p>
-        <h3 className="text-3xl font-black text-white">
-          <AnimatedCounter value={correctAnswers} />
-        </h3>
-        {totalQuizzes > 0 ? (
-          <span className="inline-flex items-center text-[10px] font-bold text-success gap-1">
-            <span>↗ 15%</span> <span className="text-text-muted font-semibold">vs last week</span>
-          </span>
-        ) : (
-          <span className="text-[10px] font-bold text-text-muted">No attempts yet</span>
-        )}
-      </div>
-
-      {/* Stat 4: Study Streak */}
-      <div className="glass-card hover-lift p-6 rounded-3xl space-y-2">
-        <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Study Streak</p>
-        <h3 className="text-3xl font-black text-white">
-          <AnimatedCounter value={currentStreak} /> Days
-        </h3>
-        {currentStreak > 0 ? (
-          <span className="inline-flex items-center text-[10px] font-bold text-accent-grape gap-1">
-            <span>🔥</span> <span className="text-text-muted font-semibold">Keep it up!</span>
-          </span>
-        ) : (
-          <span className="inline-flex items-center text-[10px] font-bold text-text-muted gap-1">
-            <span>⚡</span> <span className="font-semibold">No active streak</span>
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // Consistent project status color legend
 function StatusColorsLegend() {
   const statuses = [
@@ -498,13 +99,35 @@ function StatusColorsLegend() {
 export default function StudentDashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
-  // Redirect if logged-in user is an Instructor or Admin
-  if (user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN') {
-    return <InstructorDashboardView />;
-  }
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // 1. Fetch enrolled courses
+    setIsUploadingAvatar(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.post('/users/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data.success) {
+        window.location.reload();
+      } else {
+        alert(response.data.message || 'Failed to upload avatar');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.message || 'An error occurred during upload.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  // 1. Fetch enrolled courses (currently expected to be empty)
   const { data: enrollments, isLoading, error } = useQuery<EnrolledCourse[]>({
     queryKey: ['my-enrollments'],
     enabled: user?.role === 'STUDENT',
@@ -514,17 +137,7 @@ export default function StudentDashboardPage() {
     },
   });
 
-  // 2. Fetch actual Resume Learning state
-  const { data: resumeState } = useQuery<any>({
-    queryKey: ['resume-state'],
-    enabled: user?.role === 'STUDENT',
-    queryFn: async () => {
-      const response = await api.get('/enrollments/resume');
-      return response.data.success ? response.data.data : null;
-    }
-  });
-
-  // 3. Fetch attendance summary
+  // 2. Fetch attendance summary
   const { data: attendanceData } = useQuery<any>({
     queryKey: ['student-attendance-summary'],
     enabled: user?.role === 'STUDENT',
@@ -534,7 +147,7 @@ export default function StudentDashboardPage() {
     },
   });
 
-  // 4. Fetch attendance streak
+  // 3. Fetch attendance streak
   const { data: streakData } = useQuery<any>({
     queryKey: ['student-attendance-streak'],
     enabled: user?.role === 'STUDENT',
@@ -554,355 +167,374 @@ export default function StudentDashboardPage() {
     }
   });
 
+  // 6. Fetch weekly schedules
+  const { data: schedules = [] } = useQuery<any[]>({
+    queryKey: ['my-schedules'],
+    enabled: user?.role === 'STUDENT',
+    queryFn: async () => {
+      const response = await api.get('/schedules/week');
+      return response.data.success ? response.data.data : [];
+    }
+  });
+
+  // Redirect if logged-in user is an Instructor or Admin
+  if (user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN') {
+    return <InstructorDashboardView />;
+  }
+
   if (isLoading) {
     return (
-      <div className="space-y-8 max-w-6xl mx-auto">
-        <div className="h-40 bg-gradient-to-r from-bg-secondary-dark to-card-dark rounded-3xl animate-pulse border border-border-color" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-28 bg-card-dark rounded-3xl border border-border-color animate-pulse" />
-          <div className="h-28 bg-card-dark rounded-3xl border border-border-color animate-pulse" />
-          <div className="h-28 bg-card-dark rounded-3xl border border-border-color animate-pulse" />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-56 bg-card-dark rounded-3xl border border-border-color animate-pulse" />
-          <div className="lg:col-span-1 h-56 bg-card-dark rounded-3xl border border-border-color animate-pulse" />
-        </div>
+      <div className="space-y-8 max-w-6xl mx-auto flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-accent-grape" />
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-8 bg-error/5 border border-error/15 rounded-3xl text-center max-w-xl mx-auto space-y-4">
-        <h3 className="font-bold text-error text-lg">Failed to load dashboard data.</h3>
-        <p className="text-xs text-text-secondary leading-relaxed">
-          Please verify if the Spring Boot backend server is running and try again.
-        </p>
-      </div>
-    );
-  }
+  // Calculate metrics based on APIs
+  const totalQuizzes = quizAttempts.length;
+  const avgScore = totalQuizzes 
+    ? Math.round(quizAttempts.reduce((sum, a) => sum + ((a.score / a.totalQuestions) * 100), 0) / totalQuizzes) 
+    : 0;
+
+  // Grade derived from quiz avg for now
+  const grade = avgScore >= 90 ? 'A+' : avgScore >= 80 ? 'A' : avgScore >= 70 ? 'B' : avgScore >= 60 ? 'C' : avgScore > 0 ? 'D' : 'N/A';
+
+  const currentStreak = streakData 
+    ? Math.max(streakData.currentOfflineStreak || 0, streakData.currentOnlineStreak || 0) 
+    : 0;
+
+  const attendanceRate = attendanceData ? Math.round(attendanceData.overallRate) : 0;
 
   const courses = enrollments || [];
-  const completedCourses = courses.filter(c => c.progress === 100);
-  const activeCourses = courses.filter(c => c.progress < 100);
-  const fallbackResume = courses.find(c => c.progress > 0 && c.progress < 100) || courses[0];
+  const totalUnlockedLessons = courses.reduce((sum, c) => sum + (c.completedLessons || 0), 0);
+  const focusScore = attendanceRate > 0 && avgScore > 0 ? Math.round((attendanceRate + avgScore) / 2) : 0;
+  
+  const fallbackResume = courses.length > 0 ? courses[0] : null;
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-8 max-w-6xl mx-auto text-foreground"
+      className="space-y-8 max-w-6xl mx-auto text-foreground pb-20"
     >
-      
-      {/* Welcome banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-bg-secondary-dark via-card-dark to-surface-dark p-6 lg:p-10 rounded-3xl border border-border-color shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-accent-grape/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-1/3 w-64 h-64 bg-primary-blue/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Top Section: Welcome & Orb */}
+      <div className="relative overflow-hidden glass-card p-6 lg:p-10 rounded-3xl border border-border-color shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-96 h-96 bg-accent-grape/15 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 space-y-3 max-w-xl">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-accent-blue bg-accent-blue/10 px-3 py-1 rounded-full border border-accent-blue/25 uppercase tracking-wider">
-            Learning Portal Active
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-success bg-success/10 px-3 py-1 rounded-full border border-success/20 uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" /> Learning Portal Active
           </span>
-          <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
-            Welcome back, {user?.name}. 👋
+          <h2 className="text-3xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+            Welcome back,<br />{user?.name || 'Student'} 👋
           </h2>
-          <p className="text-text-secondary text-xs sm:text-sm leading-relaxed">
-            Check your progress, consult the AI assistant to clear doubts, and complete your lessons to earn certificates.
+          <p className="text-text-secondary text-sm leading-relaxed mt-2">
+            Continue your learning journey, track your progress and unlock certificates.
           </p>
-        </div>
-
-        {/* Studying Teddy Cartoon Illustration */}
-        <motion.div 
-          animate={{ y: [0, -8, 0] }}
-          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-          className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 shrink-0 mx-auto md:mx-0 select-none hidden sm:block"
-        >
-          <img 
-            src="/images/study-teddy.png" 
-            alt="Studying Teddy Bear"
-            className="w-full h-full object-contain filter drop-shadow-[0_0_20px_rgba(150,52,132,0.3)]" 
-          />
-        </motion.div>
-      </div>
-
-      {/* PROGRESS & ANALYTICS HEADER */}
-      <div className="space-y-2">
-        <h3 className="text-lg sm:text-xl font-extrabold tracking-tight text-white uppercase flex items-center gap-2">
-          <Zap className="w-5 h-5 text-accent-grape" />
-          Progress & Analytics
-        </h3>
-        <p className="text-xs text-text-muted">A premium visualization of your course milestones and quiz accomplishments</p>
-      </div>
-
-      {/* PROGRESS & ANALYTICS WIDGETS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <OverallProgressDonut courses={courses} />
-        </div>
-        <div className="lg:col-span-1">
-          <QuizPerformanceChart attempts={quizAttempts} />
-        </div>
-        <div className="lg:col-span-1">
-          <SubjectPerformance courses={courses} />
-        </div>
-      </div>
-
-      {/* Bottom row stats */}
-      <StatsRow quizAttempts={quizAttempts} streakData={streakData} />
-
-      {/* Resume Learning & Attendance Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left: Resume Learning Card (Col span 2) */}
-        <div className="lg:col-span-2">
-          {(resumeState || fallbackResume) && (
-            <div className="h-full glass-card hover-lift p-6 rounded-3xl flex flex-col justify-between gap-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary-blue/5 rounded-full blur-2xl pointer-events-none" />
-              
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-1.5 text-[10px] bg-accent-grape/10 text-accent-grape border border-accent-grape/20 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-                  <Clock className="w-3.5 h-3.5 animate-pulse" /> Resume Learning
-                </div>
-                <h4 className="text-lg sm:text-xl font-black text-white">
-                  {resumeState ? resumeState.courseTitle : fallbackResume.courseTitle}
-                </h4>
-                {resumeState?.lessonTitle && (
-                  <p className="text-xs text-text-secondary">
-                    Last viewed: <strong className="text-white">{resumeState.lessonTitle}</strong>
-                  </p>
-                )}
-                
-                <div className="flex items-center gap-4 pt-2">
-                  <div className="flex-1 max-w-xs bg-bg-secondary-dark h-2 rounded-full overflow-hidden border border-border-color">
-                    <div 
-                      className="bg-gradient-to-r from-accent-grape to-primary-blue h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(150,52,132,0.5)]"
-                      style={{ 
-                        width: `${resumeState ? (courses.find(c => c.courseId === resumeState.courseId)?.progress || 0) : fallbackResume.progress}%` 
-                      }}
-                    />
-                  </div>
-                  <span className="text-xs font-bold text-text-secondary">
-                    {resumeState ? (courses.find(c => c.courseId === resumeState.courseId)?.progress || 0) : fallbackResume.progress}% Completed
-                  </span>
-                </div>
-              </div>
-              
-              <div className="pt-2">
-                <Link
-                  href={resumeState ? `/dashboard/course/${resumeState.courseId}/learn` : `/dashboard/course/${fallbackResume.courseId}/learn`}
-                  className="inline-flex px-6 py-3.5 bg-gradient-to-r from-accent-grape to-primary-blue hover:from-accent-grape/90 hover:to-primary-blue/90 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-accent-grape/15 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  Resume Lesson
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Attendance Summary Card (Col span 1) */}
-        <div className="lg:col-span-1">
-          {attendanceData && (
-            <div className="h-full glass-card hover-lift p-6 rounded-3xl flex flex-col justify-between gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                    My Attendance
-                  </h4>
-                  <span className={`px-2.5 py-0.5 text-[9px] font-extrabold rounded-full border uppercase tracking-wider ${
-                    attendanceData.overallRate >= 85
-                      ? 'bg-success/10 border-success/20 text-success'
-                      : attendanceData.overallRate >= 75
-                      ? 'bg-warning/10 border-warning/20 text-warning'
-                      : 'bg-error/10 border-error/20 text-error'
-                  }`}>
-                    {attendanceData.overallRate >= 85 ? 'Good' : attendanceData.overallRate >= 75 ? 'Warning' : 'Critical'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-5 py-1.5">
-                  <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
-                    <svg className="w-full h-full transform -rotate-90">
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="28"
-                        className="stroke-border-color"
-                        strokeWidth="4"
-                        fill="transparent"
-                      />
-                      <circle
-                        cx="40"
-                        cy="40"
-                        r="28"
-                        className={`transition-all duration-1000 ${
-                          attendanceData.overallRate >= 85 
-                            ? 'stroke-success' 
-                            : attendanceData.overallRate >= 75 
-                            ? 'stroke-warning' 
-                            : 'stroke-error'
-                        }`}
-                        strokeWidth="4"
-                        fill="transparent"
-                        strokeDasharray={2 * Math.PI * 28}
-                        strokeDashoffset={2 * Math.PI * 28 - (attendanceData.overallRate / 100) * (2 * Math.PI * 28)}
-                        strokeLinecap="round"
-                        style={{ filter: 'drop-shadow(0 0 4px currentColor)' }}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center text-center">
-                      <span className="text-base font-black text-white leading-none">
-                        {Math.round(attendanceData.overallRate)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 min-w-0">
-                    <p className="text-sm font-black text-white leading-tight truncate">
-                      {Math.round(attendanceData.overallRate)}% Attendance
-                    </p>
-                    <p className="text-[9px] font-extrabold text-text-muted uppercase tracking-wider truncate">
-                      Offline: {Math.round(attendanceData.offlineRate)}% | Online: {Math.round(attendanceData.onlineRate)}%
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 border-y border-border-color py-3 text-center text-xs">
-                  <div>
-                    <div className="font-extrabold text-success">
-                      {attendanceData.offlinePresent}
-                    </div>
-                    <div className="text-[9px] font-bold text-text-muted uppercase tracking-wider mt-0.5">Present</div>
-                  </div>
-                  <div className="border-x border-border-color">
-                    <div className="font-extrabold text-error">
-                      {attendanceData.offlineTotal - attendanceData.offlinePresent}
-                    </div>
-                    <div className="text-[9px] font-bold text-text-muted uppercase tracking-wider mt-0.5">Absent</div>
-                  </div>
-                  <div>
-                    <div className="font-extrabold text-white">
-                      {attendanceData.offlineTotal}
-                    </div>
-                    <div className="text-[9px] font-bold text-text-muted uppercase tracking-wider mt-0.5">Total</div>
-                  </div>
-                </div>
-              </div>
-
-              <Link
-                href="/dashboard/attendance"
-                className="w-full py-3 bg-white/5 hover:bg-gradient-to-r hover:from-accent-grape hover:to-primary-blue hover:text-white text-text-secondary rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer border border-border-color hover:border-accent-grape shadow-sm"
-              >
-                View Detailed Attendance
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* Learning Paths List */}
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg sm:text-xl font-bold text-white">Your Learning Paths</h3>
-          {courses.length > 0 && (
-            <Link 
-              href="/dashboard/my-courses" 
-              className="text-xs font-bold uppercase tracking-wider text-accent-grape hover:text-accent-blue transition-colors flex items-center gap-1"
-            >
-              See all <ArrowRight className="w-4 h-4" />
+          <div className="flex items-center gap-4 pt-4">
+            <Link href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} className="px-6 py-3 bg-gradient-to-r from-accent-blue to-accent-grape text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
+              <Play className="w-4 h-4" /> Continue Learning
             </Link>
-          )}
-        </div>
-
-        {courses.length === 0 ? (
-          <div className="glass-card py-12 px-6 rounded-3xl border border-border-color text-center max-w-xl mx-auto space-y-6">
-            <div className="w-16 h-16 bg-white/5 border border-border-color text-text-muted rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-              <Compass className="w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <h4 className="text-base font-bold text-white">No courses enrolled yet.</h4>
-              <p className="text-xs text-text-secondary max-w-xs mx-auto leading-relaxed">
-                Discover from our wide selection of professional full-stack development and cloud computing courses.
-              </p>
-            </div>
-            <Link 
-              href="/courses"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-accent-grape to-primary-blue text-white rounded-2xl shadow-lg shadow-accent-grape/10 font-bold text-xs uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-            >
-              <Compass className="w-4 h-4" /> Explore Catalog
+            <Link href="/dashboard/ai" className="px-6 py-3 bg-white/5 border border-border-color text-white text-xs font-bold rounded-full hover:bg-white/10 transition-colors flex items-center gap-2">
+              <Zap className="w-4 h-4" /> Ask AI Tutor
             </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.slice(0, 3).map((item) => (
-              <div 
-                key={item.enrollmentId} 
-                className="glass-card hover-lift rounded-3xl overflow-hidden flex flex-col justify-between"
-              >
-                <div className="p-6 space-y-5">
-                  <div className="flex justify-between items-start">
-                    <span className={`inline-flex items-center gap-1 text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border ${
-                      item.progress === 100
-                        ? 'bg-success/10 text-success border-success/20'
-                        : 'bg-accent-grape/10 text-accent-grape border-accent-grape/20'
-                    }`}>
-                      {item.progress === 100 ? (
-                        <>
-                          <CheckCircle2 className="w-3 h-3" /> Completed
-                        </>
-                      ) : (
-                        'In Progress'
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-base font-black text-white line-clamp-2 leading-snug">
-                      {item.courseTitle}
-                    </h4>
-                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-1.5">
-                      Enrolled: {new Date(item.enrolledAt).toLocaleDateString()}
-                    </p>
-                  </div>
+        </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-semibold text-text-secondary">
-                      <span>Progress</span>
-                      <span className="text-white font-bold">{item.progress}%</span>
-                    </div>
-                    <div className="w-full bg-bg-secondary-dark h-1.5 rounded-full overflow-hidden border border-border-color">
-                      <div 
-                        className="bg-gradient-to-r from-accent-grape to-primary-blue h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(150,52,132,0.4)]"
-                        style={{ width: `${item.progress}%` }}
-                      />
-                    </div>
+        {/* Profile Avatar Widget */}
+        <div className="relative z-10 w-40 h-40 md:w-48 md:h-48 shrink-0 mx-auto md:mx-0 flex items-center justify-center mt-6 md:mt-0">
+          <input type="file" id="avatarUpload" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          <div className="absolute inset-0 bg-gradient-to-br from-accent-grape to-primary-blue rounded-full blur-xl opacity-20 mix-blend-screen" />
+          <label htmlFor="avatarUpload" className="relative w-full h-full rounded-full border-[6px] border-[#121623] shadow-2xl overflow-hidden bg-[#1E2335] cursor-pointer group block">
+            {isUploadingAvatar && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#121623]/80 backdrop-blur-sm">
+                <Loader2 className="w-8 h-8 text-accent-grape animate-spin mb-2" />
+                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Uploading...</span>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+              <span className="text-xs font-bold text-white bg-black/50 px-3 py-1 rounded-full">Change Picture</span>
+            </div>
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
+                <Users className="w-12 h-12 mb-2 opacity-50 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">No Avatar</span>
+              </div>
+            )}
+          </label>
+          {/* Floating badge */}
+          <div className="absolute bottom-2 -left-2 bg-[#1E2335] border border-border-color rounded-full p-2.5 shadow-xl z-20">
+            <CheckCircle2 className="w-5 h-5 text-success" />
+          </div>
+        </div>
+      </div>
+
+      {/* Metric Cards Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Grade */}
+        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+          <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
+            <BookOpen className="w-5 h-5 text-accent-grape" />
+          </div>
+          <div>
+            {grade !== 'N/A' ? (
+              <h3 className="text-4xl font-black text-white">{grade}</h3>
+            ) : (
+              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
+            )}
+            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">GRADE</p>
+          </div>
+        </div>
+
+        {/* Attendance */}
+        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+          <div className="flex justify-between items-start">
+            <div className="w-10 h-10 bg-secondary-blue/20 rounded-xl flex items-center justify-center border border-secondary-blue/30">
+              <CheckCircle2 className="w-5 h-5 text-secondary-blue" />
+            </div>
+            {attendanceRate > 0 && <span className="bg-success/20 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/30">+8%</span>}
+          </div>
+          <div>
+            {attendanceData ? (
+              <h3 className="text-4xl font-black text-white"><AnimatedCounter value={attendanceRate} />%</h3>
+            ) : (
+              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
+            )}
+            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">Attendance</p>
+            {attendanceData && (
+              <div className="w-full bg-bg-secondary-dark h-1.5 rounded-full overflow-hidden mt-3">
+                <div className="bg-secondary-blue h-full rounded-full" style={{ width: `${attendanceRate}%` }} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Average Quiz Score */}
+        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+          <div className="flex justify-between items-start">
+            <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
+              <Award className="w-5 h-5 text-accent-grape" />
+            </div>
+            {avgScore > 0 && <span className="bg-success/20 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/30">top 6%</span>}
+          </div>
+          <div>
+            {totalQuizzes > 0 ? (
+              <h3 className="text-4xl font-black text-white"><AnimatedCounter value={avgScore} /></h3>
+            ) : (
+              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
+            )}
+            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">Average Quiz Score</p>
+            {totalQuizzes > 0 && (
+              <div className="w-full bg-bg-secondary-dark h-1.5 rounded-full overflow-hidden mt-3">
+                <div className="bg-gradient-to-r from-accent-grape to-accent-blue h-full rounded-full" style={{ width: `${avgScore}%` }} />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Study Streak */}
+        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+          <div className="flex justify-between items-start">
+            <div className="w-10 h-10 bg-warning/20 rounded-xl flex items-center justify-center border border-warning/30">
+              <Zap className="w-5 h-5 text-warning" />
+            </div>
+            {currentStreak > 0 && <span className="bg-warning/20 text-warning text-[10px] font-bold px-2 py-0.5 rounded-full border border-warning/30">record</span>}
+          </div>
+          <div>
+            {currentStreak > 0 ? (
+              <h3 className="text-4xl font-black text-white"><AnimatedCounter value={currentStreak} />d</h3>
+            ) : (
+              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
+            )}
+            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">Study Streak</p>
+            {currentStreak > 0 && (
+              <div className="flex gap-1.5 mt-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className={`w-3 h-3 rounded-full ${i < Math.min(currentStreak, 4) ? 'bg-warning shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 'bg-white/5'}`} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-center pt-2 pb-4">
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)} 
+          className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-border-color rounded-full text-xs font-bold text-text-secondary hover:text-white transition-all shadow-sm"
+        >
+          {isExpanded ? 'Hide Full Analytics' : 'View Full Analytics'}
+          <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="overflow-hidden space-y-8"
+          >
+            {/* D3 Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1 h-64">
+          <CourseCompletionDonut />
+        </div>
+        <div className="lg:col-span-2 h-64">
+          <WeeklyActivityChart quizAttempts={quizAttempts} />
+        </div>
+        <div className="lg:col-span-1 h-64">
+          <AttendanceGrid attendanceData={attendanceData} />
+        </div>
+      </div>
+
+      {/* Bottom Section: Resume Learning & Upcoming & AI */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Resume Learning + AI Assistant */}
+        <div className="space-y-6">
+          {/* Locked Course / Resume Learning */}
+          {fallbackResume ? (
+            <div className="glass-card p-6 rounded-3xl flex flex-col sm:flex-row gap-6 border border-border-color items-center">
+              <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-[#2E1A47] to-[#121623] flex flex-col items-center justify-center border border-accent-grape/20 shrink-0 relative overflow-hidden">
+                <div className="absolute top-4 left-4 w-12 h-12 bg-white/10 rounded-full blur-xl" />
+                <Compass className="w-10 h-10 text-white mb-2" />
+                <span className="text-xs font-bold text-white text-center px-2 line-clamp-2">{fallbackResume.courseTitle}</span>
+              </div>
+              <div className="flex-1 space-y-3 w-full">
+                <div className="flex justify-between items-start">
+                  <span className="text-[9px] font-extrabold text-accent-grape uppercase tracking-wider">Resume Learning</span>
+                  <span className="bg-success/10 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/20">Active</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-white leading-tight line-clamp-2">{fallbackResume.courseTitle}</h3>
+                <p className="text-[11px] text-text-secondary">Enrolled: {new Date(fallbackResume.enrolledAt).toLocaleDateString()}</p>
+                
+                <div className="pt-2">
+                  <div className="flex justify-between text-[10px] font-bold text-white mb-1.5">
+                    <span>Progress</span>
+                    <span>{fallbackResume.progress}%</span>
+                  </div>
+                  <div className="w-full bg-bg-secondary-dark h-2 rounded-full overflow-hidden">
+                    <div className="bg-secondary-blue h-full rounded-full" style={{ width: `${fallbackResume.progress}%` }} />
                   </div>
                 </div>
 
-                <div className="p-5 bg-white/5 border-t border-border-color">
-                  <Link
-                    href={`/dashboard/course/${item.courseId}/learn`}
-                    className="w-full py-3 bg-gradient-to-r from-accent-grape to-primary-blue hover:from-accent-grape/90 hover:to-primary-blue/90 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    Enter Classroom
+                <div className="pt-2">
+                  <Link href={`/dashboard/course/${fallbackResume.courseId}/learn`} className="inline-block px-4 py-2 bg-white/5 border border-border-color text-white text-xs font-bold rounded-xl hover:bg-white/10 transition-colors">
+                    Continue lesson
                   </Link>
                 </div>
               </div>
-            ))}
+            </div>
+          ) : (
+            <div className="glass-card p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-4 border border-border-color h-48">
+              <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center">
+                <Compass className="w-6 h-6 text-text-muted" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">No Active Courses</h3>
+                <p className="text-[10px] text-text-secondary mt-1">Enroll in a course to track your online learning progress here.</p>
+              </div>
+              <Link href="/courses" className="px-4 py-2 bg-accent-grape/20 text-accent-grape border border-accent-grape/30 text-xs font-bold rounded-xl hover:bg-accent-grape/30 transition-colors">
+                Explore Courses
+              </Link>
+            </div>
+          )}
+
+          {/* AI Study Assistant */}
+          <div className="glass-card p-6 rounded-3xl border border-border-color relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-accent-blue/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row gap-8 relative z-10">
+              <div className="space-y-4 flex-1">
+                <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
+                  <Zap className="w-5 h-5 text-accent-grape" />
+                </div>
+                <h3 className="text-2xl font-black text-white">AI Study Assistant</h3>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  Turn any lesson into notes, quizzes, explanations, summaries, and voice-guided tutoring in seconds.
+                </p>
+                <Link href="/dashboard/ai" className="inline-flex px-5 py-2.5 bg-accent-grape text-white text-xs font-bold rounded-xl shadow-lg shadow-accent-grape/20 hover:scale-[1.02] transition-transform">
+                  <Zap className="w-3.5 h-3.5 mr-1.5" /> Open AI Assistant
+                </Link>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 shrink-0">
+                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-accent-grape/50 transition-colors flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-accent-grape" /> Generate Notes
+                </button>
+                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-secondary-blue/50 transition-colors flex items-center gap-2">
+                  <Compass className="w-3.5 h-3.5 text-secondary-blue" /> Explain Topic
+                </button>
+                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-success/50 transition-colors flex items-center gap-2">
+                  <ClipboardList className="w-3.5 h-3.5 text-success" /> Create Quiz
+                </button>
+                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-warning/50 transition-colors flex items-center gap-2">
+                  <Award className="w-3.5 h-3.5 text-warning" /> Ask Doubt
+                </button>
+                <button className="px-4 py-3 bg-[#1E2335] border border-border-color text-white text-[10px] font-bold rounded-xl hover:border-accent-blue/50 transition-colors flex items-center gap-2 col-span-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-accent-blue" /> Summarize Lesson
+                </button>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Right Column: Upcoming Classes */}
+        <div className="glass-card p-6 rounded-3xl border border-border-color flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-extrabold text-white">Upcoming Classes</h3>
+            {schedules.length > 0 && (
+              <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white font-bold">{schedules.length} Event{schedules.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          
+          {schedules.length > 0 ? (
+            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[5px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-accent-grape before:via-border-color before:to-transparent flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[500px]">
+              {schedules.map((event: any, idx: number) => {
+                const colors = ['bg-accent-grape', 'bg-secondary-blue', 'bg-success', 'bg-warning'];
+                const colorClass = colors[idx % colors.length];
+                const textColors = ['text-accent-grape', 'text-secondary-blue', 'text-success', 'text-warning'];
+                const textColorClass = textColors[idx % textColors.length];
+
+                return (
+                  <div key={event.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group hover:bg-white/5 p-3 -mx-3 rounded-xl transition-colors">
+                    <div className={`flex items-center justify-center w-3 h-3 rounded-full border-2 border-background ${colorClass} shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 relative z-10`} />
+                    <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] pl-4 md:p-0 md:group-even:text-right">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${textColorClass}`}>
+                        {new Date(event.eventDate).toLocaleDateString()} • {event.startTime.substring(0, 5)} - {event.endTime.substring(0, 5)}
+                      </span>
+                      <h4 className="text-sm font-bold text-white mt-1 group-hover:text-accent-blue transition-colors">{event.title}</h4>
+                      <p className="text-[10px] text-text-muted mt-1 truncate">
+                        {event.batchName ? `Batch: ${event.batchName}` : 'General Session'} 
+                        {event.subjectName ? ` • ${event.subjectName}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-12 border border-dashed border-border-color rounded-2xl">
+              <Calendar className="w-8 h-8 text-text-muted" />
+              <div>
+                <p className="text-xs font-bold text-white">No Upcoming Classes</p>
+                <p className="text-[10px] text-text-muted mt-1 max-w-[200px] mx-auto">You have no offline lectures scheduled for this week.</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Consistent status colors legend */}
-      <StatusColorsLegend />
-
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
+
 
 function InstructorDashboardView() {
   const { user } = useAuth();

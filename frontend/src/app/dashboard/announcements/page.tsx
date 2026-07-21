@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { motion } from 'framer-motion';
 import { 
   Megaphone, 
   Pin, 
@@ -33,6 +34,19 @@ interface AnnouncementDTO {
   pinned: boolean;
   createdByName: string;
   createdAt: string;
+  batchId?: number;
+  batchName?: string;
+}
+
+interface CourseDTO {
+  id: number;
+  title: string;
+}
+
+interface BatchDTO {
+  id: number;
+  name: string;
+  level: string;
 }
 
 export default function AnnouncementsPage() {
@@ -47,7 +61,32 @@ export default function AnnouncementsPage() {
   const [instagramInput, setInstagramInput] = useState('');
   const [externalInput, setExternalInput] = useState('');
   const [imageInput, setImageInput] = useState('');
+  const [scope, setScope] = useState<'GLOBAL' | 'COURSE' | 'BATCH'>('GLOBAL');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
   const [posting, setPosting] = useState(false);
+
+  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
+
+  // Fetch Courses
+  const { data: courses = [] } = useQuery<CourseDTO[]>({
+    queryKey: ['announcements-courses'],
+    enabled: isInstructorOrAdmin,
+    queryFn: async () => {
+      const response = await api.get('/courses?size=100');
+      return response.data.success ? response.data.data.content : [];
+    }
+  });
+
+  // Fetch Batches
+  const { data: batches = [] } = useQuery<BatchDTO[]>({
+    queryKey: ['announcements-batches'],
+    enabled: isInstructorOrAdmin,
+    queryFn: async () => {
+      const response = await api.get('/instructor/batches');
+      return response.data.success ? response.data.data : [];
+    }
+  });
 
   // Fetch Announcements
   const { data: announcements, isLoading } = useQuery<AnnouncementDTO[]>({
@@ -74,6 +113,9 @@ export default function AnnouncementsPage() {
       setExternalInput('');
       setImageInput('');
       setPinnedInput(false);
+      setScope('GLOBAL');
+      setSelectedCourseId('');
+      setSelectedBatchId('');
       alert('Announcement posted successfully!');
     },
     onError: (err: any) => {
@@ -102,6 +144,15 @@ export default function AnnouncementsPage() {
       alert('Please fill out Title and Message.');
       return;
     }
+    if (scope === 'COURSE' && !selectedCourseId) {
+      alert('Please select a course.');
+      return;
+    }
+    if (scope === 'BATCH' && !selectedBatchId) {
+      alert('Please select a batch.');
+      return;
+    }
+
     createMutation.mutate({
       title: titleInput,
       message: messageInput,
@@ -109,11 +160,11 @@ export default function AnnouncementsPage() {
       pinned: pinnedInput,
       instagramUrl: instagramInput || null,
       externalLink: externalInput || null,
-      imageUrl: imageInput || null
+      imageUrl: imageInput || null,
+      courseId: scope === 'COURSE' ? Number(selectedCourseId) : null,
+      batchId: scope === 'BATCH' ? Number(selectedBatchId) : null
     });
   };
-
-  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
 
   if (isLoading) {
     return (
@@ -174,7 +225,7 @@ export default function AnnouncementsPage() {
                 placeholder="Enter announcement title" 
                 value={titleInput} 
                 onChange={(e) => setTitleInput(e.target.value)}
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
@@ -185,7 +236,7 @@ export default function AnnouncementsPage() {
                 placeholder="Write your announcement details here..." 
                 value={messageInput} 
                 onChange={(e) => setMessageInput(e.target.value)}
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
@@ -194,13 +245,58 @@ export default function AnnouncementsPage() {
               <select
                 value={targetRoleInput}
                 onChange={(e) => setTargetRoleInput(e.target.value as any)}
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
               >
                 <option value="ALL">Everyone</option>
                 <option value="STUDENT">Students Only</option>
                 <option value="INSTRUCTOR">Instructors Only</option>
               </select>
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Scope</label>
+              <select
+                value={scope}
+                onChange={(e) => setScope(e.target.value as any)}
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="GLOBAL">Global</option>
+                <option value="COURSE">Course Specific</option>
+                <option value="BATCH">Batch Specific</option>
+              </select>
+            </div>
+
+            {scope === 'COURSE' && (
+              <div className="flex flex-col gap-1.5 col-span-2">
+                <label className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Select Course *</label>
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">-- Choose a Course --</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {scope === 'BATCH' && (
+              <div className="flex flex-col gap-1.5 col-span-2">
+                <label className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Select Batch *</label>
+                <select
+                  value={selectedBatchId}
+                  onChange={(e) => setSelectedBatchId(e.target.value)}
+                  className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">-- Choose a Batch --</option>
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.level})</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="flex items-center gap-2 mt-6">
               <input 
@@ -222,7 +318,7 @@ export default function AnnouncementsPage() {
                 placeholder="https://instagram.com/p/..." 
                 value={instagramInput} 
                 onChange={(e) => setInstagramInput(e.target.value)}
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-805 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
@@ -233,7 +329,7 @@ export default function AnnouncementsPage() {
                 placeholder="https://example.com/learn-more" 
                 value={externalInput} 
                 onChange={(e) => setExternalInput(e.target.value)}
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-805 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
@@ -275,10 +371,13 @@ export default function AnnouncementsPage() {
           </h3>
 
           <div className="grid grid-cols-1 gap-5">
-            {pinnedAnnouncements.map((a) => (
-              <div 
+            {pinnedAnnouncements.map((a, i) => (
+              <motion.div 
                 key={a.id}
-                className="relative bg-gradient-to-br from-indigo-500/10 via-indigo-600/[0.03] to-slate-900 border-2 border-indigo-500/35 rounded-3xl p-6 shadow-md space-y-4 animate-in fade-in duration-200"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 + 0.1, duration: 0.3 }}
+                className="relative bg-gradient-to-br from-indigo-500/10 via-indigo-600/[0.03] to-slate-900 border-2 border-indigo-500/35 rounded-3xl p-6 shadow-md space-y-4"
               >
                 {/* Notice Body */}
                 <div className="space-y-2">
@@ -303,6 +402,19 @@ export default function AnnouncementsPage() {
                       <User className="w-4 h-4 text-indigo-400" />
                       {a.createdByName}
                     </span>
+                    {a.batchName ? (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-violet-500/20 text-violet-300 uppercase">
+                        BATCH: {a.batchName}
+                      </span>
+                    ) : a.courseTitle ? (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-emerald-500/20 text-emerald-300 uppercase">
+                        COURSE: {a.courseTitle}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-slate-800 text-slate-400 uppercase">
+                        GLOBAL
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4 text-indigo-400" />
                       {new Date(a.createdAt).toLocaleDateString()}
@@ -334,7 +446,7 @@ export default function AnnouncementsPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -348,9 +460,12 @@ export default function AnnouncementsPage() {
 
         {standardAnnouncements.length > 0 ? (
           <div className="grid grid-cols-1 gap-5">
-            {standardAnnouncements.map((a) => (
-              <div 
+            {standardAnnouncements.map((a, i) => (
+              <motion.div 
                 key={a.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 + 0.2, duration: 0.3 }}
                 className="bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-800/75 rounded-3xl p-6 shadow-sm space-y-4 transition-all"
               >
                 <div className="space-y-2">
@@ -374,6 +489,19 @@ export default function AnnouncementsPage() {
                       <User className="w-4 h-4 text-indigo-500/70" />
                       {a.createdByName}
                     </span>
+                    {a.batchName ? (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-300 uppercase">
+                        BATCH: {a.batchName}
+                      </span>
+                    ) : a.courseTitle ? (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 uppercase">
+                        COURSE: {a.courseTitle}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase">
+                        GLOBAL
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4 text-indigo-500/70" />
                       {new Date(a.createdAt).toLocaleDateString()}
@@ -405,7 +533,7 @@ export default function AnnouncementsPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : (

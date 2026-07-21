@@ -19,6 +19,19 @@ public class AdminController {
 
     private final DataSource dataSource;
     private final AdminService adminService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE user_identity_profile DROP CONSTRAINT IF EXISTS uk_user_identity_profile_google_email;");
+            jdbcTemplate.execute("ALTER TABLE user_identity_profile DROP CONSTRAINT IF EXISTS uk_user_identity_profile_google_sub;");
+            jdbcTemplate.execute("ALTER TABLE user_identity_profile DROP CONSTRAINT IF EXISTS user_identity_profile_google_email_key;");
+            jdbcTemplate.execute("ALTER TABLE user_identity_profile DROP CONSTRAINT IF EXISTS user_identity_profile_google_sub_key;");
+        } catch (Exception e) {
+            System.err.println("Failed to drop constraints: " + e.getMessage());
+        }
+    }
 
     // ── User Management CRUD ──
 
@@ -34,14 +47,16 @@ public class AdminController {
         String role = (String) body.get("role");
         String password = (String) body.get("password");
         Long batchId = body.get("batchId") != null ? Long.valueOf(body.get("batchId").toString()) : null;
-        String linkedGoogleEmail = (String) body.get("linkedGoogleEmail");
+        String primaryGoogleEmail = (String) body.get("primaryGoogleEmail");
+        String secondaryGoogleEmail = (String) body.get("secondaryGoogleEmail");
 
         UserDTO dto = UserDTO.builder()
                 .name(name)
                 .email(email)
                 .role(role)
                 .batchId(batchId)
-                .linkedGoogleEmail(linkedGoogleEmail)
+                .primaryGoogleEmail(primaryGoogleEmail)
+                .secondaryGoogleEmail(secondaryGoogleEmail)
                 .build();
 
         UserDTO created = adminService.createUser(dto, password);
@@ -55,14 +70,16 @@ public class AdminController {
         String role = (String) body.get("role");
         String password = (String) body.get("password");
         Long batchId = body.get("batchId") != null ? Long.valueOf(body.get("batchId").toString()) : null;
-        String linkedGoogleEmail = (String) body.get("linkedGoogleEmail");
+        String primaryGoogleEmail = (String) body.get("primaryGoogleEmail");
+        String secondaryGoogleEmail = (String) body.get("secondaryGoogleEmail");
 
         UserDTO dto = UserDTO.builder()
                 .name(name)
                 .email(email)
                 .role(role)
                 .batchId(batchId)
-                .linkedGoogleEmail(linkedGoogleEmail)
+                .primaryGoogleEmail(primaryGoogleEmail)
+                .secondaryGoogleEmail(secondaryGoogleEmail)
                 .build();
 
         UserDTO updated = adminService.updateUser(id, dto, password);

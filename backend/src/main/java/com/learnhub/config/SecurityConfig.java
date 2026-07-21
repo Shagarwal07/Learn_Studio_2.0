@@ -74,7 +74,8 @@ public class SecurityConfig {
                 // Allow localhost for development only
                 config.setAllowedOrigins(List.of(
                     "http://localhost:3000", "http://localhost:3001",
-                    "http://127.0.0.1:3000", "http://127.0.0.1:3001"));
+                    "http://127.0.0.1:3000", "http://127.0.0.1:3001",
+                    "http://localhost:5500", "http://127.0.0.1:5500"));
             } else {
                 // In production, disallow all if no origins are set
                 throw new IllegalStateException("CORS_ALLOWED_ORIGINS must be set in production");

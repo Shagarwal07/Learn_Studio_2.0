@@ -3,6 +3,7 @@ package com.learnhub.service;
 import com.learnhub.dto.*;
 import com.learnhub.entity.*;
 import com.learnhub.repository.*;
+import com.learnhub.mapper.BatchMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +25,11 @@ public class BatchService {
     private final UserRepository userRepository;
     private final TestRepository testRepository;
     private final AttendanceRepository attendanceRepository;
+    private final BatchMapper batchMapper;
     private final NoteRepository noteRepository;
     private final HomeworkRepository homeworkRepository;
     private final AnnouncementRepository announcementRepository;
-    private final CloudinaryService cloudinaryService;
+    private final GoogleCloudStorageService gcsService;
     private final GoogleDriveSyncService googleDriveSyncService;
 
     // ────────────────────────────────────────────────────────────────────────
@@ -36,32 +38,31 @@ public class BatchService {
 
     public List<BatchDTO> getAllBatches() {
         return batchRepository.findAll().stream()
-                .map(this::convertToDTO)
+                .map(batchMapper::toDTO)
                 .toList();
     }
 
     public BatchDetailsDTO getBatchDetails(Long id) {
         Batch batch = batchRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
-        return convertToDetailsDTO(batch);
+        return batchMapper.toDetailsDTO(batch);
     }
 
     public BatchDTO createBatch(BatchDTO dto) {
         User instructor = null;
-        if (dto.getInstructorId() != null) {
-            instructor = userRepository.findById(dto.getInstructorId())
+        if (dto.instructorId() != null) {
+            instructor = userRepository.findById(dto.instructorId())
                     .orElseThrow(() -> new RuntimeException("Instructor not found"));
         }
 
         Batch batch = Batch.builder()
-                .name(dto.getName())
-                .level(dto.getLevel())
+                .name(dto.name())
+                .level(dto.level())
                 .instructor(instructor)
-                .subjects(dto.getSubjects() != null ? dto.getSubjects() : new HashSet<>())
+                .subjects(dto.subjects() != null ? dto.subjects() : new HashSet<>())
                 .build();
 
-        Batch saved = batchRepository.save(batch);
-        return convertToDTO(saved);
+        return batchMapper.toDTO(batchRepository.save(batch));
     }
 
     public BatchDTO updateBatch(Long id, BatchDTO dto) {
@@ -69,20 +70,19 @@ public class BatchService {
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
 
         User instructor = null;
-        if (dto.getInstructorId() != null) {
-            instructor = userRepository.findById(dto.getInstructorId())
+        if (dto.instructorId() != null) {
+            instructor = userRepository.findById(dto.instructorId())
                     .orElseThrow(() -> new RuntimeException("Instructor not found"));
         }
 
-        batch.setName(dto.getName());
-        batch.setLevel(dto.getLevel());
+        batch.setName(dto.name());
+        batch.setLevel(dto.level());
         batch.setInstructor(instructor);
-        if (dto.getSubjects() != null) {
-            batch.setSubjects(dto.getSubjects());
+        if (dto.subjects() != null) {
+            batch.setSubjects(dto.subjects());
         }
 
-        Batch saved = batchRepository.save(batch);
-        return convertToDTO(saved);
+        return batchMapper.toDTO(batchRepository.save(batch));
     }
 
     public void deleteBatch(Long id) {
@@ -145,17 +145,17 @@ public class BatchService {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
 
-        LocalDate date = LocalDate.parse(request.getDate());
-        String subjectName = request.getSubjectName();
+        LocalDate date = LocalDate.parse(request.date());
+        String subjectName = request.subjectName();
 
         // Validate subject belongs to batch
         if (!batch.getSubjects().contains(subjectName)) {
             throw new RuntimeException("Subject '" + subjectName + "' is not assigned to this batch.");
         }
 
-        for (BatchAttendanceMarkRequest.StudentMark record : request.getRecords()) {
-            User student = userRepository.findById(record.getStudentId())
-                    .orElseThrow(() -> new RuntimeException("Student not found with ID: " + record.getStudentId()));
+        for (BatchAttendanceMarkRequest.StudentMark record : request.records()) {
+            User student = userRepository.findById(record.studentId())
+                    .orElseThrow(() -> new RuntimeException("Student not found with ID: " + record.studentId()));
 
             // Check if student belongs to this batch
             if (student.getBatch() == null || !student.getBatch().getId().equals(batchId)) {
@@ -172,7 +172,7 @@ public class BatchService {
 
             if (existing.isPresent()) {
                 Attendance att = existing.get();
-                att.setStatus(Attendance.Status.valueOf(record.getStatus().toUpperCase()));
+                att.setStatus(Attendance.Status.valueOf(record.status().toUpperCase()));
                 att.setBatch(batch); // Ensure batch is set
                 attendanceRepository.save(att);
             } else {
@@ -182,7 +182,7 @@ public class BatchService {
                         .subjectName(subjectName)
                         .date(date)
                         .day(dayOfWeek)
-                        .status(Attendance.Status.valueOf(record.getStatus().toUpperCase()))
+                        .status(Attendance.Status.valueOf(record.status().toUpperCase()))
                         .build();
                 attendanceRepository.save(att);
             }
@@ -253,46 +253,7 @@ public class BatchService {
     // CONVERTERS & HELPERS
     // ────────────────────────────────────────────────────────────────────────
 
-    private BatchDTO convertToDTO(Batch batch) {
-        return BatchDTO.builder()
-                .id(batch.getId())
-                .name(batch.getName())
-                .level(batch.getLevel())
-                .instructorId(batch.getInstructor() != null ? batch.getInstructor().getId() : null)
-                .instructorName(batch.getInstructor() != null ? batch.getInstructor().getName() : null)
-                .subjects(batch.getSubjects())
-                .studentCount(batch.getStudents() != null ? batch.getStudents().size() : 0)
-                .build();
-    }
 
-    private BatchDetailsDTO convertToDetailsDTO(Batch batch) {
-        UserDTO instructorDTO = batch.getInstructor() != null ? 
-                UserDTO.builder()
-                        .id(batch.getInstructor().getId())
-                        .name(batch.getInstructor().getName())
-                        .email(batch.getInstructor().getEmail())
-                        .role(batch.getInstructor().getRole().name())
-                        .build() : null;
-
-        List<UserDTO> studentDTOs = batch.getStudents() != null ?
-                batch.getStudents().stream()
-                        .map(s -> UserDTO.builder()
-                                .id(s.getId())
-                                .name(s.getName())
-                                .email(s.getEmail())
-                                .role(s.getRole().name())
-                                .build())
-                        .toList() : new ArrayList<>();
-
-        return BatchDetailsDTO.builder()
-                .id(batch.getId())
-                .name(batch.getName())
-                .level(batch.getLevel())
-                .instructor(instructorDTO)
-                .students(studentDTOs)
-                .subjects(batch.getSubjects())
-                .build();
-    }
 
     private TestDTO convertTestToDTO(Test test) {
         return TestDTO.builder()
@@ -350,13 +311,13 @@ public class BatchService {
 
             // Fallback to Cloudinary if not uploaded to Google Drive
             if (secureUrl == null) {
-                System.out.println("Uploading note to Cloudinary fallback...");
+                System.out.println("Uploading note to Google Cloud Storage fallback...");
                 @SuppressWarnings("rawtypes")
-                Map uploadResult = cloudinaryService.uploadFileRaw(file, "notes");
+                Map uploadResult = gcsService.uploadFileRaw(file, "notes");
                 secureUrl = uploadResult.get("secure_url").toString();
                 publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
                 resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
-                System.out.println("Cloudinary upload success for batch note: " + title + ", publicId: " + publicId);
+                System.out.println("Google Cloud Storage upload success for batch note: " + title + ", publicId: " + publicId);
             }
 
             // 2. Extract Text from PDF using PDFBox
@@ -475,12 +436,12 @@ public class BatchService {
 
             // Fallback to Cloudinary if not uploaded to Google Drive
             if (secureUrl == null) {
-                System.out.println("Uploading homework to Cloudinary fallback...");
+                System.out.println("Uploading homework to Google Cloud Storage fallback...");
                 @SuppressWarnings("rawtypes")
-                Map uploadResult = cloudinaryService.uploadFileRaw(file, "homework");
+                Map uploadResult = gcsService.uploadFileRaw(file, "homework");
                 secureUrl = uploadResult.get("secure_url").toString();
                 publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
-                System.out.println("Cloudinary upload success for batch homework: " + title + ", publicId: " + publicId);
+                System.out.println("Google Cloud Storage upload success for batch homework: " + title + ", publicId: " + publicId);
             }
 
             LocalDateTime dueDate = null;
@@ -537,19 +498,19 @@ public class BatchService {
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        Announcement ann = Announcement.builder()
-                .title(dto.getTitle())
-                .message(dto.getMessage())
-                .imageUrl(dto.getImageUrl())
+        Announcement announcement = Announcement.builder()
+                .title(dto.title())
+                .message(dto.message())
+                .imageUrl(dto.imageUrl())
                 .batch(batch)
-                .targetRole(dto.getTargetRole() != null ? dto.getTargetRole() : Announcement.TargetRole.STUDENT)
-                .pinned(dto.getPinned() != null ? dto.getPinned() : false)
+                .targetRole(dto.targetRole() != null ? dto.targetRole() : Announcement.TargetRole.ALL)
+                .pinned(dto.pinned() != null ? dto.pinned() : false)
                 .createdBy(creator)
-                .instagramUrl(dto.getInstagramUrl())
-                .externalLink(dto.getExternalLink())
+                .instagramUrl(dto.instagramUrl())
+                .externalLink(dto.externalLink())
                 .build();
 
-        Announcement saved = announcementRepository.save(ann);
+        Announcement saved = announcementRepository.save(announcement);
         return convertAnnouncementToDTO(saved);
     }
 
@@ -576,7 +537,7 @@ public class BatchService {
         if (student.getBatch() == null) {
             return null;
         }
-        return convertToDTO(student.getBatch());
+        return batchMapper.toDTO(student.getBatch());
     }
 
     private NoteDTO convertNoteToDTO(Note note) {
@@ -650,7 +611,7 @@ public class BatchService {
     public List<AttendanceDTO> getBatchAttendance(Long batchId) {
         return attendanceRepository.findByBatchId(batchId).stream()
                 .map(this::convertAttendanceToDTO)
-                .sorted(Comparator.comparing(AttendanceDTO::getDate).reversed())
+                .sorted(Comparator.comparing(AttendanceDTO::date).reversed())
                 .toList();
     }
 

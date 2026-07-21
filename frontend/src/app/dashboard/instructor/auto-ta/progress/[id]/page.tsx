@@ -51,7 +51,7 @@ export default function GenerationProgressPage() {
   useEffect(() => {
     if (!requestId) return;
 
-    let pollInterval: NodeJS.Timeout;
+    const intervalRef = { current: null as NodeJS.Timeout | null };
 
     const fetchStatus = async () => {
       try {
@@ -67,14 +67,14 @@ export default function GenerationProgressPage() {
           
           if (managerSuccess) {
             setPipelineCompleted(true);
-            clearInterval(pollInterval);
+            if (intervalRef.current) clearInterval(intervalRef.current);
             // Fetch the compiled paper details
             const paperRes = await api.get(`/autota/requests/${requestId}/paper`);
             if (paperRes.data.success && paperRes.data.data?.id) {
               setPaperId(paperRes.data.data.id);
             }
           } else if (managerFailed) {
-            clearInterval(pollInterval);
+            if (intervalRef.current) clearInterval(intervalRef.current);
           }
         }
       } catch (err) {
@@ -83,9 +83,9 @@ export default function GenerationProgressPage() {
     };
 
     fetchStatus();
-    pollInterval = setInterval(fetchStatus, 1000);
+    intervalRef.current = setInterval(fetchStatus, 1000);
 
-    return () => clearInterval(pollInterval);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [requestId]);
 
   // Scroll terminal to bottom when new logs arrive

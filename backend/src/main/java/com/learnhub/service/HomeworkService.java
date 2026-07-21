@@ -24,7 +24,7 @@ public class HomeworkService {
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
-    private final CloudinaryService cloudinaryService;
+    private final GoogleCloudStorageService gcsService;
     private final GoogleDriveSyncService googleDriveSyncService;
 
     // ── Instructor APIs ─────────────────────────────────
@@ -39,9 +39,9 @@ public class HomeworkService {
 
         Lesson lesson = lessonId != null ? lessonRepository.findById(lessonId).orElse(null) : null;
 
-        // Upload task to Cloudinary
+        // Upload task to Google Cloud Storage
         @SuppressWarnings("rawtypes")
-        Map uploadResult = cloudinaryService.uploadFileRaw(file, "homework_tasks");
+        Map uploadResult = gcsService.uploadFileRaw(file, "homework_tasks");
         String secureUrl = uploadResult.get("secure_url").toString();
         String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
 
@@ -77,7 +77,7 @@ public class HomeworkService {
             if (homework.getFileUrl() != null && homework.getFileUrl().contains("drive.google.com")) {
                 googleDriveSyncService.deleteFileFromDrive(homework.getPublicId());
             } else {
-                cloudinaryService.deleteFile(homework.getPublicId());
+                gcsService.deleteFile(homework.getPublicId());
             }
         }
 
@@ -163,6 +163,15 @@ public class HomeworkService {
             if (!enrolled) {
                 throw new RuntimeException("You must be enrolled to view homework");
             }
+            if (user.getBatch() != null) {
+                return homeworkRepository.findByCourseIdAndBatchIdOrBatchNull(courseId, user.getBatch().getId()).stream()
+                        .map(this::toDTO)
+                        .toList();
+            } else {
+                return homeworkRepository.findByCourseIdAndBatchIsNull(courseId).stream()
+                        .map(this::toDTO)
+                        .toList();
+            }
         }
 
         return homeworkRepository.findByCourseIdAndIsVisibleTrue(courseId).stream()
@@ -217,9 +226,9 @@ public class HomeworkService {
             throw new RuntimeException("Access denied: Homework is not assigned to a batch or course");
         }
 
-        // Upload submission to Cloudinary
+        // Upload submission to Google Cloud Storage
         @SuppressWarnings("rawtypes")
-        Map uploadResult = cloudinaryService.uploadFileRaw(file, "homework_submissions");
+        Map uploadResult = gcsService.uploadFileRaw(file, "homework_submissions");
         String secureUrl = uploadResult.get("secure_url").toString();
         String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
 
@@ -235,7 +244,7 @@ public class HomeworkService {
             submission = existingOpt.get();
             // Delete old file
             if (submission.getPublicId() != null) {
-                cloudinaryService.deleteFile(submission.getPublicId());
+                gcsService.deleteFile(submission.getPublicId());
             }
             submission.setSubmissionFileUrl(secureUrl);
             submission.setPublicId(publicId);

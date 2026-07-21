@@ -23,6 +23,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "avatar_url", length = 1000)
+    private String avatarUrl;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -42,6 +45,10 @@ public class User extends BaseEntity {
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Enrollment> enrollments;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserIdentityProfile> identityProfiles;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")

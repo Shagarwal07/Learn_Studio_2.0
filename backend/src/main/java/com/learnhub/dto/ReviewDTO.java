@@ -1,17 +1,14 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 import java.time.LocalDateTime;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ReviewDTO {
-    private Long id;
-    private Long userId;
-    private String studentName;
-    private Integer rating;
-    private String comment;
-    private LocalDateTime createdAt;
-}
+public record ReviewDTO(
+    Long id,
+    Long userId,
+    String studentName,
+    Integer rating,
+    String comment,
+    LocalDateTime createdAt
+) {}

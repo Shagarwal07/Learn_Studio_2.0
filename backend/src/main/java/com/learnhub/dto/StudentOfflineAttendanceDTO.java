@@ -1,16 +1,13 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 import java.util.List;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class StudentOfflineAttendanceDTO {
-    private double offlineRate;
-    private int offlinePresent;
-    private int offlineTotal;
-    private List<SubjectStatsDTO> subjectWiseStats;
-    private List<AttendanceDTO> records;
-}
+public record StudentOfflineAttendanceDTO(
+    double offlineRate,
+    int offlinePresent,
+    int offlineTotal,
+    List<SubjectStatsDTO> subjectWiseStats,
+    List<AttendanceDTO> records
+) {}

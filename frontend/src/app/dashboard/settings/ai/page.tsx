@@ -28,10 +28,6 @@ export default function AiSettingsPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -59,6 +55,12 @@ export default function AiSettingsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+
 
   const handleAddKey = async () => {
     setErrorMsg("");

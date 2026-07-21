@@ -1,32 +1,29 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 import java.time.LocalDateTime;
 
-@Data 
 @Builder 
-@NoArgsConstructor 
-@AllArgsConstructor
-public class NoteDTO {
-    private Long id;
-    private String title;
-    private String description;
-    private Long courseId;
-    private String courseTitle;
-    private Long lessonId;
-    private String lessonTitle;
-    private String fileUrl;
-    private String publicId;
-    private Long uploadedById;
-    private String uploadedByName;
-    private Boolean isVisible;
-    private Boolean aiEnabled;
-    private Long batchId;
-    private String batchName;
-    private String subjectName;
-    private LocalDateTime createdAt;
-    private String originalFilename;
-    private Long fileSize;
-    private String resourceType;
-    private String secureUrl;
-}
+public record NoteDTO(
+    Long id,
+    String title,
+    String description,
+    Long courseId,
+    String courseTitle,
+    Long lessonId,
+    String lessonTitle,
+    String fileUrl,
+    String publicId,
+    Long uploadedById,
+    String uploadedByName,
+    Boolean isVisible,
+    Boolean aiEnabled,
+    Long batchId,
+    String batchName,
+    String subjectName,
+    LocalDateTime createdAt,
+    String originalFilename,
+    Long fileSize,
+    String resourceType,
+    String secureUrl
+) {}

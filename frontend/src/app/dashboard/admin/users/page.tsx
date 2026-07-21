@@ -30,7 +30,8 @@ interface UserDTO {
   role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
   batchId: number | null;
   batchName: string | null;
-  linkedGoogleEmail?: string | null;
+  primaryGoogleEmail?: string | null;
+  secondaryGoogleEmail?: string | null;
 }
 
 interface BatchDTO {
@@ -58,7 +59,8 @@ export default function UserManagementPage() {
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<'STUDENT' | 'INSTRUCTOR' | 'ADMIN'>('STUDENT');
   const [formBatchId, setFormBatchId] = useState<string>('');
-  const [formLinkedGoogleEmail, setFormLinkedGoogleEmail] = useState('');
+  const [formPrimaryGoogleEmail, setFormPrimaryGoogleEmail] = useState('');
+  const [formSecondaryGoogleEmail, setFormSecondaryGoogleEmail] = useState('');
   
   const [isSyncing, setIsSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,7 +181,8 @@ export default function UserManagementPage() {
     setFormPassword('');
     setFormRole('STUDENT');
     setFormBatchId('');
-    setFormLinkedGoogleEmail('');
+    setFormPrimaryGoogleEmail('');
+    setFormSecondaryGoogleEmail('');
   };
 
   const handleOpenEdit = (user: UserDTO) => {
@@ -189,7 +192,8 @@ export default function UserManagementPage() {
     setFormPassword('[ENCRYPTED]');
     setFormRole(user.role);
     setFormBatchId(user.batchId ? String(user.batchId) : '');
-    setFormLinkedGoogleEmail(user.linkedGoogleEmail || '');
+    setFormPrimaryGoogleEmail(user.primaryGoogleEmail || '');
+    setFormSecondaryGoogleEmail(user.secondaryGoogleEmail || '');
     setShowEditModal(true);
   };
 
@@ -203,7 +207,8 @@ export default function UserManagementPage() {
       role: formRole,
       password: formPassword,
       batchId: formRole === 'STUDENT' && formBatchId ? parseInt(formBatchId) : null,
-      linkedGoogleEmail: formLinkedGoogleEmail.trim() || null
+      primaryGoogleEmail: formPrimaryGoogleEmail.trim() || null,
+      secondaryGoogleEmail: formSecondaryGoogleEmail.trim() || null
     });
   };
 
@@ -219,7 +224,8 @@ export default function UserManagementPage() {
         role: formRole,
         password: formPassword === '[ENCRYPTED]' ? '' : formPassword,
         batchId: formRole === 'STUDENT' && formBatchId ? parseInt(formBatchId) : null,
-        linkedGoogleEmail: formLinkedGoogleEmail.trim()
+        primaryGoogleEmail: formPrimaryGoogleEmail.trim() || null,
+        secondaryGoogleEmail: formSecondaryGoogleEmail.trim() || null
       }
     });
   };
@@ -262,6 +268,8 @@ export default function UserManagementPage() {
     let passwordIdx = -1;
     let roleIdx = -1;
     let batchIdx = -1;
+    let primaryGoogleIdx = -1;
+    let secondaryGoogleIdx = -1;
     
     for (let i = 0; i < headers.length; i++) {
       const h = headers[i];
@@ -270,6 +278,8 @@ export default function UserManagementPage() {
       else if (h === 'password') passwordIdx = i;
       else if (h === 'role') roleIdx = i;
       else if (h === 'batchname' || h === 'batch') batchIdx = i;
+      else if (h === 'primary google email' || h === 'google email' || h === 'googleemail') primaryGoogleIdx = i;
+      else if (h === 'secondary google email') secondaryGoogleIdx = i;
     }
     
     if (nameIdx === -1 || emailIdx === -1) {
@@ -287,16 +297,18 @@ export default function UserManagementPage() {
       const password = passwordIdx !== -1 && parts.length > passwordIdx ? parts[passwordIdx].trim() : '';
       const role = roleIdx !== -1 && parts.length > roleIdx ? parts[roleIdx].trim() : '';
       const batchName = batchIdx !== -1 && parts.length > batchIdx ? parts[batchIdx].trim() : '';
+      const primaryGoogleEmail = primaryGoogleIdx !== -1 && parts.length > primaryGoogleIdx ? parts[primaryGoogleIdx].trim() : '';
+      const secondaryGoogleEmail = secondaryGoogleIdx !== -1 && parts.length > secondaryGoogleIdx ? parts[secondaryGoogleIdx].trim() : '';
       
       if (!name && !email) continue;
-      rows.push({ name, email, password, role, batchName });
+      rows.push({ name, email, password, role, batchName, primaryGoogleEmail, secondaryGoogleEmail });
     }
     
     return rows;
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = "name,email,password,batchName,role\nTanisha,tanisha@example.com,,Class X,STUDENT\nManoj,manoj@example.com,secretPass123,Class IX,STUDENT\n";
+    const csvContent = "name,email,password,batchName,role,Primary Google Email,Secondary Google Email\nTanisha,tanisha@example.com,,Class X,STUDENT,tanisha.personal@gmail.com,tanisha.sec@gmail.com\nManoj,manoj@example.com,secretPass123,Class IX,STUDENT,,\n";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -397,7 +409,9 @@ export default function UserManagementPage() {
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            u.email.toLowerCase().includes(searchQuery.toLowerCase());
+                            u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            ((u.primaryGoogleEmail && u.primaryGoogleEmail.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                            (u.secondaryGoogleEmail && u.secondaryGoogleEmail.toLowerCase().includes(searchQuery.toLowerCase())));
       const matchesRole = selectedRoleFilter === 'ALL' ? true : u.role === selectedRoleFilter;
       return matchesSearch && matchesRole;
     });
@@ -603,15 +617,35 @@ export default function UserManagementPage() {
                       </motion.div>
                     )}
                     
-                    {u.linkedGoogleEmail && (
-                      <div className="flex items-center gap-2 mt-1.5 text-[10px] text-teal-400 bg-teal-400/10 px-2 py-1 rounded-md border border-teal-400/20">
-                        <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24">
-                          <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                          <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                          <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                          <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                        </svg>
-                        <span className="font-semibold truncate">Linked: {u.linkedGoogleEmail}</span>
+                    {(u.primaryGoogleEmail || u.secondaryGoogleEmail) ? (
+                        <div className="flex flex-col gap-1">
+                          {u.primaryGoogleEmail && (
+                            <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-800 w-fit">
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                              </svg>
+                              <span className="font-semibold truncate">Primary: {u.primaryGoogleEmail}</span>
+                            </div>
+                          )}
+                          {u.secondaryGoogleEmail && (
+                            <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md border border-blue-100 dark:border-blue-800 w-fit">
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                              </svg>
+                              <span className="font-semibold truncate">Secondary: {u.secondaryGoogleEmail}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                      <div className="flex justify-between items-center px-1 mt-1.5 border-t border-slate-900 pt-1.5">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Provider</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">LOCAL</span>
                       </div>
                     )}
                   </div>
@@ -748,15 +782,27 @@ export default function UserManagementPage() {
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Linked Google Email (Optional)</label>
-                  <input
-                    type="email"
-                    placeholder="e.g. personal@gmail.com"
-                    value={formLinkedGoogleEmail}
-                    onChange={(e) => setFormLinkedGoogleEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Google Email</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. personal@gmail.com"
+                      value={formPrimaryGoogleEmail}
+                      onChange={(e) => setFormPrimaryGoogleEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Secondary Google Email</label>
+                    <input
+                      type="email"
+                      placeholder="Optional second account"
+                      value={formSecondaryGoogleEmail}
+                      onChange={(e) => setFormSecondaryGoogleEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-3 border-t border-slate-800 mt-2">
@@ -851,42 +897,57 @@ export default function UserManagementPage() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reset Password (Leave as is to keep existing)</label>
-                  <input
-                    type="password"
-                    placeholder="Modify account password"
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+                <div className="mt-6 pt-4 border-t border-slate-800">
+                  <h4 className="text-[11px] font-black text-slate-300 uppercase tracking-wider mb-3">Authentication Settings</h4>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reset Password (Local Provider)</label>
+                      <input
+                        type="password"
+                        placeholder="Leave unchanged to keep current password"
+                        value={formPassword}
+                        onChange={(e) => setFormPassword(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
 
-                {formRole === 'STUDENT' && (
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assign Batch</label>
-                    <select
-                      value={formBatchId}
-                      onChange={(e) => setFormBatchId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-955 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                    >
-                      <option value="">No batch assigned</option>
-                      {batches.map(b => (
-                        <option key={b.id} value={b.id}>{b.name} ({b.level})</option>
-                      ))}
-                    </select>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                          <span>Primary Google Email</span>
+                          <span className={formPrimaryGoogleEmail ? 'text-teal-400' : 'text-slate-500'}>
+                            {formPrimaryGoogleEmail ? 'LINKED' : 'UNLINKED'}
+                          </span>
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="e.g. personal@gmail.com (Clear to unlink)"
+                          value={formPrimaryGoogleEmail}
+                          onChange={(e) => setFormPrimaryGoogleEmail(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+                          <span>Secondary Google Email</span>
+                          <span className={formSecondaryGoogleEmail ? 'text-teal-400' : 'text-slate-500'}>
+                            {formSecondaryGoogleEmail ? 'LINKED' : 'UNLINKED'}
+                          </span>
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="e.g. secondary@gmail.com (Clear to unlink)"
+                          value={formSecondaryGoogleEmail}
+                          onChange={(e) => setFormSecondaryGoogleEmail(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <p className="text-[9px] text-slate-500 mt-1 pl-1">
+                        Users login with their Google account using these emails instead of a password.
+                      </p>
+                    </div>
                   </div>
-                )}
-
-                <div className="space-y-1 mt-4">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Linked Google Email (Optional)</label>
-                  <input
-                    type="email"
-                    placeholder="e.g. personal@gmail.com"
-                    value={formLinkedGoogleEmail}
-                    onChange={(e) => setFormLinkedGoogleEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-855 rounded-xl text-slate-205 focus:outline-none focus:border-indigo-500"
-                  />
                 </div>
 
                 <div className="flex justify-end gap-3 pt-3 border-t border-slate-800 mt-2">
@@ -1115,7 +1176,7 @@ export default function UserManagementPage() {
                         <th className="p-3">#</th>
                         <th className="p-3">Name</th>
                         <th className="p-3">Email</th>
-                        <th className="p-3">Password</th>
+                        <th className="p-3">Google Email</th>
                         <th className="p-3">Batch Name</th>
                         <th className="p-3">Role</th>
                       </tr>
@@ -1127,13 +1188,13 @@ export default function UserManagementPage() {
                           <td className="p-3 font-semibold text-white">{row.name}</td>
                           <td className="p-3 text-slate-350 font-mono">{row.email}</td>
                           <td className="p-3">
-                            {row.password ? (
-                              <span className="font-mono bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-[10px]">
-                                {row.password}
+                            {row.primaryGoogleEmail ? (
+                              <span className="font-mono bg-teal-900/20 text-teal-400 border border-teal-800 px-2 py-0.5 rounded text-[10px]">
+                                {row.primaryGoogleEmail}
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold text-indigo-400 italic">
-                                [Auto-Generated]
+                              <span className="text-[10px] font-bold text-slate-500 italic">
+                                None
                               </span>
                             )}
                           </td>

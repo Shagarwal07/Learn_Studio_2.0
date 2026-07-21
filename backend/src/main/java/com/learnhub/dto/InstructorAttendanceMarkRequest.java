@@ -1,15 +1,12 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 import java.time.LocalDate;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class InstructorAttendanceMarkRequest {
-    private Long studentId;
-    private String subjectName;
-    private LocalDate date;
-    private String status; // "PRESENT" or "ABSENT"
-}
+public record InstructorAttendanceMarkRequest(
+    Long studentId,
+    String subjectName,
+    LocalDate date,
+    String status // "PRESENT" or "ABSENT"
+) {}

@@ -228,11 +228,9 @@ function TopperCard({ topper, year }: { topper: Topper; year: string }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      initial={{ opacity: 1, y: 0 }}
       whileHover={{ y: -6, scale: 1.01 }}
-      className="group flex flex-col bg-white text-slate-900 rounded-3xl overflow-hidden shadow-xl border border-slate-200/50 w-full max-w-[340px] sm:max-w-none mx-auto relative cursor-pointer h-auto"
+      className="group flex flex-col bg-slate-900 text-white rounded-3xl overflow-hidden shadow-xl border border-slate-800 w-full max-w-[340px] sm:max-w-none mx-auto relative cursor-pointer h-auto"
     >
       {/* Top Image Part with Responsive fixed heights */}
       <div className="relative w-full h-[260px] sm:h-[300px] lg:h-[340px] overflow-hidden bg-slate-100 shrink-0">
@@ -277,12 +275,12 @@ function TopperCard({ topper, year }: { topper: Topper; year: string }) {
       </div>
 
       {/* Bottom Text Part */}
-      <div className="p-5 flex-1 flex flex-col justify-between bg-white relative gap-4">
+      <div className="p-5 flex-1 flex flex-col justify-between bg-slate-900 relative gap-4">
         <div className="space-y-1 text-left">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-450 block">
+          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">
             Class 10th Board
           </span>
-          <h4 className="font-black text-slate-900 text-lg leading-tight transition-colors duration-300 group-hover:text-indigo-600 truncate">
+          <h4 className="font-black text-white text-lg leading-tight transition-colors duration-300 group-hover:text-indigo-400 truncate">
             {topper.name}
           </h4>
           <p className="text-xs text-slate-500 font-medium">
@@ -307,7 +305,7 @@ function TopperCard({ topper, year }: { topper: Topper; year: string }) {
                 }
               >
                 <span className="block text-[8px] text-slate-400 font-bold">{m.label}</span>
-                <span className="text-slate-800 font-black">{m.value}</span>
+                <span className="text-white font-black">{m.value}</span>
               </div>
             ))}
           </div>

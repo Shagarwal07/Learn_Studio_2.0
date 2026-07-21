@@ -20,6 +20,11 @@ interface BatchDTO {
   level: string;
 }
 
+interface CourseDTO {
+  id: number;
+  title: string;
+}
+
 interface AnnouncementDTO {
   id: number;
   title: string;
@@ -33,7 +38,9 @@ interface AnnouncementDTO {
 export default function InstructorAnnouncementsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [scope, setScope] = useState<'COURSE' | 'BATCH'>('BATCH');
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   
   // Form states
   const [title, setTitle] = useState('');
@@ -60,27 +67,48 @@ export default function InstructorAnnouncementsPage() {
     }
   });
 
-  // 2. Fetch announcements for selected batch
-  const { data: announcements = [], isLoading: isAnnouncementsLoading, refetch: refetchAnnouncements } = useQuery<AnnouncementDTO[]>({
-    queryKey: ['batch-announcements-list', selectedBatchId],
-    enabled: !!selectedBatchId,
+  // 1b. Fetch Instructor Courses
+  const { data: courses = [], isLoading: isCoursesLoading } = useQuery<CourseDTO[]>({
+    queryKey: ['instructor-courses-announcements'],
+    enabled: user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN',
     queryFn: async () => {
-      const response = await api.get(`/instructor/batches/${selectedBatchId}/announcements`);
-      return response.data.success ? response.data.data : [];
+      const response = await api.get('/courses?size=100');
+      return response.data.success ? response.data.data.content : [];
+    }
+  });
+
+  // 2. Fetch announcements for selected scope
+  const { data: announcements = [], isLoading: isAnnouncementsLoading, refetch: refetchAnnouncements } = useQuery<AnnouncementDTO[]>({
+    queryKey: ['instructor-announcements-list', scope, selectedBatchId, selectedCourseId],
+    enabled: (scope === 'BATCH' && !!selectedBatchId) || (scope === 'COURSE' && !!selectedCourseId),
+    queryFn: async () => {
+      if (scope === 'BATCH') {
+        const response = await api.get(`/instructor/batches/${selectedBatchId}/announcements`);
+        return response.data.success ? response.data.data : [];
+      } else {
+        const response = await api.get(`/announcements?courseId=${selectedCourseId}`);
+        return response.data.success ? response.data.data : [];
+      }
     }
   });
 
   // 3. Create announcement mutation
   const createAnnouncementMutation = useMutation({
     mutationFn: async (newAnn: any) => {
-      const response = await api.post(`/instructor/batches/${selectedBatchId}/announcements`, newAnn);
-      return response.data;
+      if (scope === 'BATCH') {
+        const response = await api.post(`/instructor/batches/${selectedBatchId}/announcements`, newAnn);
+        return response.data;
+      } else {
+        newAnn.courseId = Number(selectedCourseId);
+        const response = await api.post(`/announcements`, newAnn);
+        return response.data;
+      }
     },
     onSuccess: () => {
       refetchAnnouncements();
       setTitle('');
       setMessage('');
-      setFormSuccess('Announcement posted successfully to the batch.');
+      setFormSuccess('Announcement posted successfully.');
       setFormError('');
       setTimeout(() => setFormSuccess(''), 4000);
     },
@@ -104,7 +132,15 @@ export default function InstructorAnnouncementsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatchId || !title.trim() || !message.trim()) {
+    if (scope === 'BATCH' && !selectedBatchId) {
+      setFormError('Please select a batch.');
+      return;
+    }
+    if (scope === 'COURSE' && !selectedCourseId) {
+      setFormError('Please select a course.');
+      return;
+    }
+    if (!title.trim() || !message.trim()) {
       setFormError('Please fill in all fields.');
       return;
     }
@@ -141,34 +177,76 @@ export default function InstructorAnnouncementsPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             
-            {/* Batch Selector */}
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-medium text-slate-400 uppercase tracking-wider">Select Academic Batch *</label>
-              {isBatchesLoading ? (
-                <div className="flex items-center gap-2 py-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
-                  <span className="text-[10px] text-slate-400 font-medium">Loading batches...</span>
-                </div>
-              ) : (
-                <select
-                  value={selectedBatchId}
-                  onChange={(e) => {
-                    setSelectedBatchId(e.target.value);
-                    setFormError('');
-                    setFormSuccess('');
-                  }}
-                  className="w-full px-3 py-1.5 bg-slate-955 border border-slate-800 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 rounded-lg text-xs h-9 transition-all cursor-pointer"
-                  required
-                >
-                  <option value="">-- Choose a Batch --</option>
-                  {batches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name} ({b.level})</option>
-                  ))}
-                </select>
-              )}
+              <label className="block text-[11px] font-medium text-slate-400 uppercase tracking-wider">Announcement Scope *</label>
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={scope === 'BATCH'} onChange={() => { setScope('BATCH'); setFormError(''); setFormSuccess(''); }} className="text-violet-500" />
+                  <span className="text-slate-200">Batch-Specific</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={scope === 'COURSE'} onChange={() => { setScope('COURSE'); setFormError(''); setFormSuccess(''); }} className="text-violet-500" />
+                  <span className="text-slate-200">Course-Wide</span>
+                </label>
+              </div>
             </div>
 
-            {selectedBatchId && (
+            {/* Scope Selector */}
+            {scope === 'BATCH' ? (
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-medium text-slate-400 uppercase tracking-wider">Select Academic Batch *</label>
+                {isBatchesLoading ? (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
+                    <span className="text-[10px] text-slate-400 font-medium">Loading batches...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedBatchId}
+                    onChange={(e) => {
+                      setSelectedBatchId(e.target.value);
+                      setFormError('');
+                      setFormSuccess('');
+                    }}
+                    className="w-full px-3 py-1.5 bg-slate-955 border border-slate-800 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 rounded-lg text-xs h-9 transition-all cursor-pointer"
+                    required
+                  >
+                    <option value="">-- Choose a Batch --</option>
+                    {batches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} ({b.level})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-medium text-slate-400 uppercase tracking-wider">Select Course *</label>
+                {isCoursesLoading ? (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />
+                    <span className="text-[10px] text-slate-400 font-medium">Loading courses...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedCourseId}
+                    onChange={(e) => {
+                      setSelectedCourseId(e.target.value);
+                      setFormError('');
+                      setFormSuccess('');
+                    }}
+                    className="w-full px-3 py-1.5 bg-slate-955 border border-slate-800 text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 rounded-lg text-xs h-9 transition-all cursor-pointer"
+                    required
+                  >
+                    <option value="">-- Choose a Course --</option>
+                    {courses.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+
+            {((scope === 'BATCH' && selectedBatchId) || (scope === 'COURSE' && selectedCourseId)) && (
               <>
                 {/* Announcement Title */}
                 <div className="space-y-1.5">
@@ -221,7 +299,7 @@ export default function InstructorAnnouncementsPage() {
                   ) : (
                     <>
                       <MegaphoneIcon className="w-3.5 h-3.5" />
-                      Broadcast to Batch
+                      Broadcast Announcement
                     </>
                   )}
                 </button>
@@ -239,20 +317,18 @@ export default function InstructorAnnouncementsPage() {
               <h3 className="font-semibold text-sm text-slate-200 flex items-center gap-2">
                 <Megaphone className="w-4 h-4 text-violet-400" /> Recent Broadcasts List
               </h3>
-              {selectedBatchId && (
+              {((scope === 'BATCH' && selectedBatchId) || (scope === 'COURSE' && selectedCourseId)) && (
                 <span className="text-[10px] bg-slate-955 border border-slate-800 px-2 py-0.5 rounded-full text-slate-400 font-medium">
                   {announcements.length} Notices Active
                 </span>
               )}
             </div>
 
-            {!selectedBatchId ? (
+            {!((scope === 'BATCH' && selectedBatchId) || (scope === 'COURSE' && selectedCourseId)) ? (
               <div className="p-16 text-center text-slate-400 space-y-2">
-                <Layers className="w-8 h-8 mx-auto text-slate-600 animate-pulse" />
-                <p className="font-semibold text-xs text-slate-300">No Batch Selected</p>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto leading-normal">
-                  Select a batch from the left dropdown selector to load recent notices and broadcasts.
-                </p>
+                <Layers className="w-10 h-10 mx-auto text-slate-700 mb-4" />
+                <p className="font-medium">No Scope Selected</p>
+                <p className="text-xs">Please select a batch or course to view active announcements.</p>
               </div>
             ) : isAnnouncementsLoading ? (
               <div className="p-12 text-center text-slate-500 flex flex-col items-center gap-2">

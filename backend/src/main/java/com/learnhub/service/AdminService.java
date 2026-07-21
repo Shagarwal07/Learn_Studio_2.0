@@ -11,6 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.*;
 import java.util.*;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.csv.CSVPrinter;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -43,34 +48,28 @@ public class AdminService {
     }
 
     public UserDTO createUser(UserDTO dto, String password) {
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new RuntimeException("Email already registered: " + dto.getEmail());
+        if (userRepository.existsByEmail(dto.email())) {
+            throw new RuntimeException("Email already registered: " + dto.email());
         }
 
         String plainPassword = (password == null || password.isBlank()) ? "LearnStudio123" : password;
 
         User user = User.builder()
-                .name(dto.getName())
-                .email(dto.getEmail())
+                .name(dto.name())
+                .email(dto.email())
                 .password(passwordEncoder.encode(plainPassword))
-                .role(User.Role.valueOf(dto.getRole().toUpperCase()))
+                .role(User.Role.valueOf(dto.role().toUpperCase()))
                 .build();
 
-        if (user.getRole() == User.Role.STUDENT && dto.getBatchId() != null) {
-            Batch batch = batchRepository.findById(dto.getBatchId())
-                    .orElseThrow(() -> new RuntimeException("Batch not found with ID: " + dto.getBatchId()));
+        if (user.getRole() == User.Role.STUDENT && dto.batchId() != null) {
+            Batch batch = batchRepository.findById(dto.batchId())
+                    .orElseThrow(() -> new RuntimeException("Batch not found with ID: " + dto.batchId()));
             user.setBatch(batch);
         }
 
         User saved = userRepository.save(user);
 
-        if (dto.getLinkedGoogleEmail() != null && !dto.getLinkedGoogleEmail().trim().isEmpty()) {
-            UserIdentityProfile p = UserIdentityProfile.builder()
-                .user(saved)
-                .googleEmail(dto.getLinkedGoogleEmail().trim())
-                .build();
-            userIdentityProfileRepository.save(p);
-        }
+        updateGoogleProfiles(saved, dto.primaryGoogleEmail(), dto.secondaryGoogleEmail());
 
         return toDTO(saved);
     }
@@ -79,22 +78,22 @@ public class AdminService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + id));
 
-        if (!user.getEmail().equalsIgnoreCase(dto.getEmail()) && userRepository.existsByEmail(dto.getEmail())) {
-            throw new RuntimeException("Email already in use: " + dto.getEmail());
+        if (!user.getEmail().equalsIgnoreCase(dto.email()) && userRepository.existsByEmail(dto.email())) {
+            throw new RuntimeException("Email already in use: " + dto.email());
         }
 
-        user.setName(dto.getName());
-        user.setEmail(dto.getEmail());
-        user.setRole(User.Role.valueOf(dto.getRole().toUpperCase()));
+        user.setName(dto.name());
+        user.setEmail(dto.email());
+        user.setRole(User.Role.valueOf(dto.role().toUpperCase()));
 
         if (password != null && !password.isBlank() && !password.equals("[ENCRYPTED]")) {
             user.setPassword(passwordEncoder.encode(password));
         }
 
         if (user.getRole() == User.Role.STUDENT) {
-            if (dto.getBatchId() != null) {
-                Batch batch = batchRepository.findById(dto.getBatchId())
-                        .orElseThrow(() -> new RuntimeException("Batch not found with ID: " + dto.getBatchId()));
+            if (dto.batchId() != null) {
+                Batch batch = batchRepository.findById(dto.batchId())
+                        .orElseThrow(() -> new RuntimeException("Batch not found with ID: " + dto.batchId()));
                 user.setBatch(batch);
             } else {
                 user.setBatch(null);
@@ -105,25 +104,7 @@ public class AdminService {
 
         User saved = userRepository.save(user);
 
-        if (dto.getLinkedGoogleEmail() != null) {
-            String linkedEmail = dto.getLinkedGoogleEmail().trim();
-            Optional<UserIdentityProfile> existingProfile = userIdentityProfileRepository.findByUserId(user.getId());
-            if (linkedEmail.isEmpty()) {
-                existingProfile.ifPresent(userIdentityProfileRepository::delete);
-            } else {
-                if (existingProfile.isPresent()) {
-                    UserIdentityProfile p = existingProfile.get();
-                    p.setGoogleEmail(linkedEmail);
-                    userIdentityProfileRepository.save(p);
-                } else {
-                    UserIdentityProfile p = UserIdentityProfile.builder()
-                        .user(saved)
-                        .googleEmail(linkedEmail)
-                        .build();
-                    userIdentityProfileRepository.save(p);
-                }
-            }
-        }
+        updateGoogleProfiles(saved, dto.primaryGoogleEmail(), dto.secondaryGoogleEmail());
 
         return toDTO(saved);
     }
@@ -260,22 +241,44 @@ public class AdminService {
         userRepository.delete(user);
     }
 
-    // Export current database users as CSV String content
     public String exportUsersToCsvContent() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("ID,Name,Email,Password,Role,BatchName\n");
-        for (User u : userRepository.findByActiveTrue()) {
-            String batchName = u.getBatch() != null ? u.getBatch().getName() : "";
-            sb.append(String.format("%s,%s,%s,%s,%s,%s\n",
-                    u.getId(),
-                    escapeCsv(u.getName()),
-                    escapeCsv(u.getEmail()),
-                    "[ENCRYPTED]",
-                    u.getRole().name(),
-                    escapeCsv(batchName)
-            ));
+        try (StringWriter sw = new StringWriter();
+             CSVPrinter printer = new CSVPrinter(sw, CSVFormat.DEFAULT.builder().setHeader("ID", "Name", "Email", "Password", "Role", "BatchName", "Primary Google Email", "Secondary Google Email").build())) {
+            
+            for (User u : userRepository.findByActiveTrue()) {
+                String batchName = u.getBatch() != null ? u.getBatch().getName() : "";
+                List<UserIdentityProfile> profiles = userIdentityProfileRepository.findByUserId(u.getId());
+                String primaryGoogleEmail = "";
+                String secondaryGoogleEmail = "";
+                for (UserIdentityProfile p : profiles) {
+                    if (p.isPrimary()) {
+                        primaryGoogleEmail = p.getGoogleEmail();
+                    } else if (secondaryGoogleEmail.isEmpty()) {
+                        secondaryGoogleEmail = p.getGoogleEmail();
+                    }
+                }
+                if (primaryGoogleEmail.isEmpty() && !profiles.isEmpty()) {
+                    primaryGoogleEmail = profiles.get(0).getGoogleEmail();
+                    if (profiles.size() > 1) {
+                        secondaryGoogleEmail = profiles.get(1).getGoogleEmail();
+                    }
+                }
+                
+                printer.printRecord(
+                        u.getId(),
+                        u.getName(),
+                        u.getEmail(),
+                        "[ENCRYPTED]",
+                        u.getRole().name(),
+                        batchName,
+                        primaryGoogleEmail,
+                        secondaryGoogleEmail
+                );
+            }
+            return sw.toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Error exporting users to CSV", e);
         }
-        return sb.toString();
     }
 
     private String generateStudentPassword(String name, Set<String> batchPasswords) {
@@ -293,6 +296,18 @@ public class AdminService {
         return pwd;
     }
 
+    private String getHeaderCaseInsensitive(Map<String, Integer> headerMap, String... candidates) {
+        if (headerMap == null) return null;
+        for (String candidate : candidates) {
+            for (String key : headerMap.keySet()) {
+                if (key.trim().equalsIgnoreCase(candidate)) {
+                    return key;
+                }
+            }
+        }
+        return null;
+    }
+
     // Sync database from a CSV input stream and return sync statistics
     public Map<String, Object> importUsersFromCsvContent(java.io.InputStream inputStream, boolean deleteUnfound) {
         int createdCount = 0;
@@ -302,44 +317,89 @@ public class AdminService {
         Set<String> generatedPasswords = new HashSet<>();
         List<Map<String, Object>> failedRows = new ArrayList<>();
 
-        try (BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8))) {
-            String headerLine = reader.readLine(); 
-            if (headerLine == null) {
+        try (BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8));
+             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setIgnoreHeaderCase(true).setTrim(true).build())) {
+            
+            List<CSVRecord> allRows = csvParser.getRecords();
+            if (allRows.isEmpty()) {
                 throw new RuntimeException("CSV file is empty");
             }
             
-            String[] headers = headerLine.split(",");
-            int nameIdx = -1;
-            int emailIdx = -1;
-            int passwordIdx = -1;
-            int roleIdx = -1;
-            int batchIdx = -1;
+            Map<String, Integer> headerMap = csvParser.getHeaderMap();
+            String nameHeader = getHeaderCaseInsensitive(headerMap, "name");
+            String emailHeader = getHeaderCaseInsensitive(headerMap, "email", "learnstudio email");
+            String passwordHeader = getHeaderCaseInsensitive(headerMap, "password");
+            String roleHeader = getHeaderCaseInsensitive(headerMap, "role");
+            String batchHeader = getHeaderCaseInsensitive(headerMap, "batchname", "batch");
+            String primaryGoogleHeader = getHeaderCaseInsensitive(headerMap, "primary google email", "google email", "googleemail");
+            String secondaryGoogleHeader = getHeaderCaseInsensitive(headerMap, "secondary google email");
 
-            for (int i = 0; i < headers.length; i++) {
-                String h = headers[i].trim().toLowerCase();
-                if (h.equals("name")) nameIdx = i;
-                else if (h.equals("email")) emailIdx = i;
-                else if (h.equals("password")) passwordIdx = i;
-                else if (h.equals("role")) roleIdx = i;
-                else if (h.equals("batchname") || h.equals("batch")) batchIdx = i;
-            }
-
-            if (nameIdx == -1 || emailIdx == -1) {
+            if (nameHeader == null || emailHeader == null) {
                 throw new RuntimeException("Missing required headers: 'name' and 'email' must be present.");
             }
 
-            String line;
-            int rowNumber = 1; // Header is row 1
-            while ((line = reader.readLine()) != null) {
+            // Pre-validation pass
+            Set<String> csvGoogleEmails = new HashSet<>();
+            int rowNumber = 1;
+            boolean hasValidationErrors = false;
+            for (CSVRecord record : allRows) {
                 rowNumber++;
-                if (line.trim().isBlank()) continue;
-                String[] parts = line.split(",", -1);
+                String email = record.isSet(emailHeader) ? record.get(emailHeader).toLowerCase() : "";
+                String primaryGoogleEmail = (primaryGoogleHeader != null && record.isSet(primaryGoogleHeader)) ? record.get(primaryGoogleHeader).toLowerCase() : "";
+                String secondaryGoogleEmail = (secondaryGoogleHeader != null && record.isSet(secondaryGoogleHeader)) ? record.get(secondaryGoogleHeader).toLowerCase() : "";
 
-                String name = parts.length > nameIdx ? unescapeCsv(parts[nameIdx].trim()) : "";
-                String email = parts.length > emailIdx ? unescapeCsv(parts[emailIdx].trim()).toLowerCase() : "";
-                String password = (passwordIdx != -1 && parts.length > passwordIdx) ? parts[passwordIdx].trim() : "";
-                String roleStr = (roleIdx != -1 && parts.length > roleIdx) ? parts[roleIdx].trim().toUpperCase() : "";
-                String batchName = (batchIdx != -1 && parts.length > batchIdx) ? unescapeCsv(parts[batchIdx].trim()) : "";
+                // Email format validation relaxed to support usernames like 'the_og_admin_07'
+                if (email.isEmpty()) {
+                    failedCount++;
+                    Map<String, Object> failedRow = new LinkedHashMap<>();
+                    failedRow.put("rowNumber", rowNumber);
+                    failedRow.put("email", email);
+                    failedRow.put("reason", "Email/Username cannot be empty");
+                    failedRows.add(failedRow);
+                    hasValidationErrors = true;
+                }
+                
+                String[] gEmails = {primaryGoogleEmail, secondaryGoogleEmail};
+                for (String gEmail : gEmails) {
+                    if (!gEmail.isEmpty()) {
+                        if (!gEmail.contains("@")) {
+                            failedCount++;
+                            Map<String, Object> failedRow = new LinkedHashMap<>();
+                            failedRow.put("rowNumber", rowNumber);
+                            failedRow.put("email", email);
+                            failedRow.put("reason", "Invalid Google Email format: " + gEmail);
+                            failedRows.add(failedRow);
+                            hasValidationErrors = true;
+                        }
+                        // Duplicates allowed: removed validation.
+                    }
+                }
+            }
+
+            if (hasValidationErrors) {
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("createdCount", 0);
+                result.put("updatedCount", 0);
+                result.put("successCount", 0);
+                result.put("failedCount", failedCount);
+                result.put("failedRows", failedRows);
+                result.put("unfoundCount", 0);
+                result.put("deleted", false);
+                result.put("unfoundUsers", Collections.emptyList());
+                return result;
+            }
+
+            rowNumber = 1;
+            for (CSVRecord record : allRows) {
+                rowNumber++;
+
+                String name = record.isSet(nameHeader) ? record.get(nameHeader) : "";
+                String email = record.isSet(emailHeader) ? record.get(emailHeader).toLowerCase() : "";
+                String password = (passwordHeader != null && record.isSet(passwordHeader)) ? record.get(passwordHeader) : "";
+                String roleStr = (roleHeader != null && record.isSet(roleHeader)) ? record.get(roleHeader).toUpperCase() : "";
+                String batchName = (batchHeader != null && record.isSet(batchHeader)) ? record.get(batchHeader) : "";
+                String primaryGoogleEmail = (primaryGoogleHeader != null && record.isSet(primaryGoogleHeader)) ? record.get(primaryGoogleHeader).toLowerCase() : "";
+                String secondaryGoogleEmail = (secondaryGoogleHeader != null && record.isSet(secondaryGoogleHeader)) ? record.get(secondaryGoogleHeader).toLowerCase() : "";
 
                 if (name.isEmpty()) {
                     failedCount++;
@@ -425,25 +485,26 @@ public class AdminService {
                             .batch(batch)
                             .active(true)
                             .build();
-                    userRepository.save(newUser);
+                    user = userRepository.save(newUser);
                     createdCount++;
                 }
+                
+                updateGoogleProfiles(user, primaryGoogleEmail, secondaryGoogleEmail);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse CSV stream: " + e.getMessage(), e);
         }
 
-        // Identify unfound users (excluding ADMINs to prevent lockouts)
-        List<User> allDbUsers = userRepository.findByActiveTrue();
-        List<UserDTO> unfoundUsers = new ArrayList<>();
-
-        for (User u : allDbUsers) {
-            if (u.getRole() == User.Role.ADMIN) {
-                continue;
-            }
-            if (!csvEmails.contains(u.getEmail().toLowerCase())) {
-                unfoundUsers.add(toDTO(u));
-                if (deleteUnfound) {
+        List<User> unfoundUsers = new ArrayList<>();
+        int unfoundCount = 0;
+        
+        if (deleteUnfound) {
+            List<User> allUsers = userRepository.findAll();
+            for (User u : allUsers) {
+                if (u.getRole() == User.Role.ADMIN) continue;
+                if (!csvEmails.contains(u.getEmail().toLowerCase())) {
+                    unfoundUsers.add(u);
+                    unfoundCount++;
                     deleteUser(u.getId());
                 }
             }
@@ -455,34 +516,40 @@ public class AdminService {
         result.put("successCount", createdCount + updatedCount);
         result.put("failedCount", failedCount);
         result.put("failedRows", failedRows);
-        result.put("unfoundCount", unfoundUsers.size());
+        result.put("unfoundCount", unfoundCount);
         result.put("deleted", deleteUnfound);
-        result.put("unfoundUsers", deleteUnfound ? Collections.emptyList() : unfoundUsers);
+        
+        List<Map<String, String>> unfoundList = new ArrayList<>();
+        for (User u : unfoundUsers) {
+            Map<String, String> m = new LinkedHashMap<>();
+            m.put("name", u.getName());
+            m.put("email", u.getEmail());
+            unfoundList.add(m);
+        }
+        result.put("unfoundUsers", unfoundList);
 
         return result;
     }
 
-    private String escapeCsv(String val) {
-        if (val == null) return "";
-        if (val.contains(",") || val.contains("\"") || val.contains("\n")) {
-            return "\"" + val.replace("\"", "\"\"") + "\"";
-        }
-        return val;
-    }
 
-    private String unescapeCsv(String val) {
-        if (val == null) return "";
-        String clean = val.trim();
-        if (clean.startsWith("\"") && clean.endsWith("\"") && clean.length() >= 2) {
-            clean = clean.substring(1, clean.length() - 1);
-            clean = clean.replace("\"\"", "\"");
-        }
-        return clean;
-    }
 
     private UserDTO toDTO(User u) {
-        Optional<UserIdentityProfile> profile = userIdentityProfileRepository.findByUserId(u.getId());
-        String linkedGoogleEmail = profile.isPresent() ? profile.get().getGoogleEmail() : null;
+        List<UserIdentityProfile> profiles = userIdentityProfileRepository.findByUserId(u.getId());
+        String primaryGoogleEmail = null;
+        String secondaryGoogleEmail = null;
+        for (UserIdentityProfile p : profiles) {
+            if (p.isPrimary()) {
+                primaryGoogleEmail = p.getGoogleEmail();
+            } else if (secondaryGoogleEmail == null) {
+                secondaryGoogleEmail = p.getGoogleEmail();
+            }
+        }
+        if (primaryGoogleEmail == null && !profiles.isEmpty()) {
+            primaryGoogleEmail = profiles.get(0).getGoogleEmail();
+            if (profiles.size() > 1) {
+                secondaryGoogleEmail = profiles.get(1).getGoogleEmail();
+            }
+        }
 
         return UserDTO.builder()
                 .id(u.getId())
@@ -494,7 +561,43 @@ public class AdminService {
                 .active(u.isActive())
                 .deletedAt(u.getDeletedAt() != null ? u.getDeletedAt().toString() : null)
                 .deletedBy(u.getDeletedBy())
-                .linkedGoogleEmail(linkedGoogleEmail)
+                .primaryGoogleEmail(primaryGoogleEmail)
+                .secondaryGoogleEmail(secondaryGoogleEmail)
                 .build();
+    }
+
+    private void updateGoogleProfiles(User user, String primary, String secondary) {
+        List<UserIdentityProfile> existing = userIdentityProfileRepository.findByUserId(user.getId());
+        
+        Set<String> newEmails = new HashSet<>();
+        if (primary != null && !primary.trim().isEmpty()) newEmails.add(primary.trim().toLowerCase());
+        if (secondary != null && !secondary.trim().isEmpty()) newEmails.add(secondary.trim().toLowerCase());
+        
+        // Remove ones not in newEmails
+        for (UserIdentityProfile p : existing) {
+            if (!newEmails.contains(p.getGoogleEmail())) {
+                userIdentityProfileRepository.delete(p);
+            }
+        }
+        
+        // Add or update existing
+        for (String email : newEmails) {
+            
+            boolean isPrim = email.equals(primary != null ? primary.trim().toLowerCase() : null);
+            
+            Optional<UserIdentityProfile> existingForUser = existing.stream().filter(e -> e.getGoogleEmail().equals(email)).findFirst();
+            if (existingForUser.isPresent()) {
+                UserIdentityProfile p = existingForUser.get();
+                p.setPrimary(isPrim);
+                userIdentityProfileRepository.save(p);
+            } else {
+                UserIdentityProfile p = UserIdentityProfile.builder()
+                        .user(user)
+                        .googleEmail(email)
+                        .isPrimary(isPrim)
+                        .build();
+                userIdentityProfileRepository.save(p);
+            }
+        }
     }
 }

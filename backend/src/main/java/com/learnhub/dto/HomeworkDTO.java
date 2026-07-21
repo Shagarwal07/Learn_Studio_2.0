@@ -1,28 +1,25 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 import java.time.LocalDateTime;
 
-@Data 
 @Builder 
-@NoArgsConstructor 
-@AllArgsConstructor
-public class HomeworkDTO {
-    private Long id;
-    private String title;
-    private String description;
-    private Long courseId;
-    private String courseTitle;
-    private Long lessonId;
-    private String lessonTitle;
-    private String fileUrl;
-    private String publicId;
-    private LocalDateTime dueDate;
-    private Long createdById;
-    private String createdByName;
-    private Boolean isVisible;
-    private Long batchId;
-    private String batchName;
-    private String subjectName;
-    private LocalDateTime createdAt;
-}
+public record HomeworkDTO(
+    Long id,
+    String title,
+    String description,
+    Long courseId,
+    String courseTitle,
+    Long lessonId,
+    String lessonTitle,
+    String fileUrl,
+    String publicId,
+    LocalDateTime dueDate,
+    Long createdById,
+    String createdByName,
+    Boolean isVisible,
+    Long batchId,
+    String batchName,
+    String subjectName,
+    LocalDateTime createdAt
+) {}

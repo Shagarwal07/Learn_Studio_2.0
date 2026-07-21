@@ -1,7 +1,7 @@
 package com.learnhub.controller;
 
 import com.learnhub.dto.ApiResponse;
-import com.learnhub.service.CloudinaryService;
+import com.learnhub.service.GoogleCloudStorageService;
 import com.learnhub.repository.NoteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +16,7 @@ import java.util.HashMap;
 @RequiredArgsConstructor
 public class MediaController {
 
-    private final CloudinaryService cloudinaryService;
+    private final GoogleCloudStorageService gcsService;
     private final NoteRepository noteRepository;
 
     @PostMapping("/upload")
@@ -25,7 +25,7 @@ public class MediaController {
             @RequestParam(value = "folder", defaultValue = "general") String folder) {
         try {
             @SuppressWarnings("rawtypes")
-            java.util.Map uploadResult = cloudinaryService.uploadFileRaw(file, folder);
+            java.util.Map uploadResult = gcsService.uploadFileRaw(file, folder);
             String secureUrl = uploadResult.get("secure_url").toString();
             String publicId  = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : "";
             return ResponseEntity.ok(ApiResponse.success(
@@ -41,13 +41,13 @@ public class MediaController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> debugSync() {
         try {
             long databaseNotesCount = noteRepository.count();
-            int cloudinaryAssetsCount = cloudinaryService.getCloudinaryAssetCount();
+            int gcsAssetsCount = -1; // Not supported directly in GCS without iteration
 
             Map<String, Object> stats = new HashMap<>();
             stats.put("databaseNotesCount", databaseNotesCount);
-            stats.put("cloudinaryAssetsCount", cloudinaryAssetsCount);
+            stats.put("gcsAssetsCount", gcsAssetsCount);
             stats.put("status", "Synchronized");
-            stats.put("message", "Note: Seeded notes using public demo PDFs are not in your own Cloudinary dashboard.");
+            stats.put("message", "Note: Asset count not supported directly for GCS.");
 
             return ResponseEntity.ok(ApiResponse.success(stats, "Debug sync report compiled successfully"));
         } catch (Exception e) {

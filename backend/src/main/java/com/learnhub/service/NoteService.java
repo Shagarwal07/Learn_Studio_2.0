@@ -36,7 +36,7 @@ public class NoteService {
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
-    private final CloudinaryService cloudinaryService;
+    // Cloudinary removed
     private final AiService aiService;
     private final GoogleDriveSyncService googleDriveSyncService;
 
@@ -54,15 +54,36 @@ public class NoteService {
         var lesson = lessonId != null ? lessonRepository.findById(lessonId).orElse(null) : null;
 
         try {
-            System.out.println("Starting Cloudinary upload for course note: " + title);
-            // 1. Upload to Cloudinary
-            @SuppressWarnings("rawtypes")
-            Map uploadResult = cloudinaryService.uploadFileRaw(file, "notes");
-            String secureUrl = uploadResult.get("secure_url").toString();
-            String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
-            String resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
+            System.out.println("Starting Google Drive upload for course note: " + title);
+            String secureUrl = null;
+            String publicId = null;
+            String resourceType = "pdf";
 
-            System.out.println("Cloudinary upload success for course note: " + title + ", publicId: " + publicId);
+            if (googleDriveSyncService != null && file.getOriginalFilename() != null) {
+                try {
+                    byte[] fileBytes = file.getBytes();
+                    String driveFileId = googleDriveSyncService.uploadFileToDrive(
+                            course.getTitle(),
+                            "Notes",
+                            lesson != null ? lesson.getTitle() : "General",
+                            file.getOriginalFilename(),
+                            fileBytes,
+                            file.getContentType() != null ? file.getContentType() : "application/pdf"
+                    );
+                    if (driveFileId != null) {
+                        publicId = driveFileId;
+                        secureUrl = String.format("https://drive.google.com/file/d/%s/view?usp=drivesdk", driveFileId);
+                        System.out.println("Google Drive upload success for course note: " + title + ", fileId: " + driveFileId);
+                    } else {
+                        throw new RuntimeException("Drive file ID returned null");
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Google Drive upload failed for course note: " + ex.getMessage());
+                    throw ex;
+                }
+            } else {
+                throw new RuntimeException("Google Drive Sync Service is not available or filename is null");
+            }
 
             // 2. Extract Text from PDF using PDFBox
             String extractedText = "";
@@ -106,6 +127,15 @@ public class NoteService {
             boolean enrolled = enrollmentRepository.existsByUserIdAndCourseId(user.getId(), courseId);
             if (!enrolled) {
                 throw new RuntimeException("You must be enrolled in this course to access notes");
+            }
+            if (user.getBatch() != null) {
+                return noteRepository.findByCourseIdAndBatchIdOrBatchNull(courseId, user.getBatch().getId()).stream()
+                        .map(this::toDTO)
+                        .toList();
+            } else {
+                return noteRepository.findByCourseIdAndBatchIsNull(courseId).stream()
+                        .map(this::toDTO)
+                        .toList();
             }
         }
 
@@ -210,24 +240,7 @@ public class NoteService {
                     }
                 }
             } else {
-                // Cloudinary note
-                if (note.getPublicId() != null && !note.getPublicId().isBlank()) {
-                    try {
-                        // Extract version from fileUrl if available (e.g. v1782482454)
-                        String version = null;
-                        if (note.getFileUrl() != null) {
-                            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("/v(\\d+)/");
-                            java.util.regex.Matcher matcher = pattern.matcher(note.getFileUrl());
-                            if (matcher.find()) {
-                                version = matcher.group(1);
-                            }
-                        }
-                        // Enforce "image" resourceType for PDFs in Cloudinary to avoid signature mismatch
-                        pdfBytes = cloudinaryService.downloadFile(note.getPublicId(), version, "image");
-                    } catch (Exception ex) {
-                        System.err.println("Signed Cloudinary download failed: " + ex.getMessage() + ". Trying public fallback URL...");
-                    }
-                }
+                throw new RuntimeException("Note is not a Google Drive file, legacy Cloudinary notes are no longer supported.");
             }
 
             // Fallback for either if pdfBytes is still null
@@ -366,7 +379,7 @@ public class NoteService {
             if (note.getFileUrl() != null && note.getFileUrl().contains("drive.google.com")) {
                 googleDriveSyncService.deleteFileFromDrive(note.getPublicId());
             } else {
-                cloudinaryService.deleteFile(note.getPublicId());
+                System.err.println("Legacy Cloudinary note deletion is no longer supported.");
             }
         }
 

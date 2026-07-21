@@ -7,6 +7,10 @@ import com.learnhub.entity.User;
 import com.learnhub.repository.AnnouncementRepository;
 import com.learnhub.repository.CourseRepository;
 import com.learnhub.repository.UserRepository;
+import com.learnhub.repository.BatchRepository;
+import com.learnhub.repository.EnrollmentRepository;
+import com.learnhub.entity.Batch;
+import com.learnhub.mapper.AnnouncementMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,29 +24,37 @@ public class AnnouncementService {
     private final AnnouncementRepository announcementRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final BatchRepository batchRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final AnnouncementMapper announcementMapper;
 
     @Transactional
     public AnnouncementDTO createAnnouncement(String email, AnnouncementDTO dto) {
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Creator not found"));
 
-        Course course = dto.getCourseId() != null 
-                ? courseRepository.findById(dto.getCourseId()).orElse(null) 
+        Course course = dto.courseId() != null 
+                ? courseRepository.findById(dto.courseId()).orElse(null) 
+                : null;
+
+        Batch batch = dto.batchId() != null 
+                ? batchRepository.findById(dto.batchId()).orElse(null) 
                 : null;
 
         Announcement announcement = Announcement.builder()
-                .title(dto.getTitle())
-                .message(dto.getMessage())
-                .imageUrl(dto.getImageUrl())
-                .targetRole(dto.getTargetRole() != null ? dto.getTargetRole() : Announcement.TargetRole.ALL)
+                .title(dto.title())
+                .message(dto.message())
+                .imageUrl(dto.imageUrl())
+                .targetRole(dto.targetRole() != null ? dto.targetRole() : Announcement.TargetRole.ALL)
                 .course(course)
-                .instagramUrl(dto.getInstagramUrl())
-                .externalLink(dto.getExternalLink())
-                .pinned(dto.getPinned() != null ? dto.getPinned() : false)
+                .batch(batch)
+                .instagramUrl(dto.instagramUrl())
+                .externalLink(dto.externalLink())
+                .pinned(dto.pinned() != null ? dto.pinned() : false)
                 .createdBy(creator)
                 .build();
 
-        return toDTO(announcementRepository.save(announcement));
+        return announcementMapper.toDTO(announcementRepository.save(announcement));
     }
 
     public List<AnnouncementDTO> getAnnouncements(String email, Long courseId) {
@@ -62,7 +74,25 @@ public class AnnouncementService {
             announcements = announcementRepository.findByTargetRoleInOrderByPinnedDescCreatedAtDesc(targetRoles);
         }
 
-        return announcements.stream().map(this::toDTO).toList();
+        if (user.getRole() == User.Role.STUDENT) {
+            List<Long> enrolledCourseIds = enrollmentRepository.findByUserId(user.getId()).stream()
+                    .map(e -> e.getCourse().getId())
+                    .toList();
+            Long studentBatchId = user.getBatch() != null ? user.getBatch().getId() : null;
+
+            announcements = announcements.stream().filter(a -> {
+                if (a.getCourse() == null && a.getBatch() == null) return true;
+                if (a.getCourse() != null && a.getBatch() == null) {
+                    return enrolledCourseIds.contains(a.getCourse().getId());
+                }
+                if (a.getBatch() != null) {
+                    return studentBatchId != null && a.getBatch().getId().equals(studentBatchId);
+                }
+                return false;
+            }).toList();
+        }
+
+        return announcements.stream().map(announcementMapper::toDTO).toList();
     }
 
     public AnnouncementDTO getAnnouncementById(String email, Long id) {
@@ -73,7 +103,7 @@ public class AnnouncementService {
         Announcement announcement = announcementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Announcement not found"));
 
-        return toDTO(announcement);
+        return announcementMapper.toDTO(announcement);
     }
 
     @Transactional
@@ -89,26 +119,33 @@ public class AnnouncementService {
             throw new RuntimeException("Unauthorized");
         }
 
-        announcement.setTitle(dto.getTitle());
-        announcement.setMessage(dto.getMessage());
-        announcement.setImageUrl(dto.getImageUrl());
-        if (dto.getTargetRole() != null) {
-            announcement.setTargetRole(dto.getTargetRole());
+        announcement.setTitle(dto.title());
+        announcement.setMessage(dto.message());
+        announcement.setImageUrl(dto.imageUrl());
+        if (dto.targetRole() != null) {
+            announcement.setTargetRole(dto.targetRole());
         }
-        if (dto.getPinned() != null) {
-            announcement.setPinned(dto.getPinned());
+        if (dto.pinned() != null) {
+            announcement.setPinned(dto.pinned());
         }
-        announcement.setInstagramUrl(dto.getInstagramUrl());
-        announcement.setExternalLink(dto.getExternalLink());
+        announcement.setInstagramUrl(dto.instagramUrl());
+        announcement.setExternalLink(dto.externalLink());
 
-        if (dto.getCourseId() != null) {
-            Course course = courseRepository.findById(dto.getCourseId()).orElse(null);
+        if (dto.courseId() != null) {
+            Course course = courseRepository.findById(dto.courseId()).orElse(null);
             announcement.setCourse(course);
-        } else if (dto.getCourseId() == null) {
+        } else if (dto.courseId() == null) {
             announcement.setCourse(null);
         }
 
-        return toDTO(announcementRepository.save(announcement));
+        if (dto.batchId() != null) {
+            Batch batch = batchRepository.findById(dto.batchId()).orElse(null);
+            announcement.setBatch(batch);
+        } else if (dto.batchId() == null) {
+            announcement.setBatch(null);
+        }
+
+        return announcementMapper.toDTO(announcementRepository.save(announcement));
     }
 
     @Transactional
@@ -126,22 +163,5 @@ public class AnnouncementService {
         announcementRepository.delete(announcement);
     }
 
-    public AnnouncementDTO toDTO(Announcement announcement) {
-        if (announcement == null) return null;
-        return AnnouncementDTO.builder()
-                .id(announcement.getId())
-                .title(announcement.getTitle())
-                .message(announcement.getMessage())
-                .imageUrl(announcement.getImageUrl())
-                .targetRole(announcement.getTargetRole())
-                .courseId(announcement.getCourse() != null ? announcement.getCourse().getId() : null)
-                .courseTitle(announcement.getCourse() != null ? announcement.getCourse().getTitle() : null)
-                .instagramUrl(announcement.getInstagramUrl())
-                .externalLink(announcement.getExternalLink())
-                .pinned(announcement.getPinned())
-                .createdById(announcement.getCreatedBy().getId())
-                .createdByName(announcement.getCreatedBy().getName())
-                .createdAt(announcement.getCreatedAt())
-                .build();
-    }
+
 }

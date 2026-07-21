@@ -87,7 +87,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Batches', href: '/dashboard/instructor/batches', icon: BookOpen },
       { name: 'Auto-TA Generator', href: '/dashboard/instructor/auto-ta', icon: Bot },
       { name: 'Schedule', href: scheduleHref, icon: Calendar },
-      { name: 'Attendance', href: attendanceHref, icon: ClipboardCheck },
+      // { name: 'Attendance', href: attendanceHref, icon: ClipboardCheck },
       { name: 'Notes', href: '/dashboard/notes', icon: FileText },
       { name: 'Homework', href: '/dashboard/homework', icon: ClipboardList },
       { name: 'Announcements', href: '/dashboard/announcements', icon: Megaphone },
@@ -98,14 +98,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     menuItems = [
       { name: 'Home', href: '/', icon: Home },
       { name: 'Dashboard', href: '/dashboard', icon: Grid },
-      { name: 'My Courses', href: '/dashboard/my-courses', icon: PlayCircle },
+      // { name: 'My Courses', href: '/dashboard/my-courses', icon: PlayCircle },
       { name: 'Explore Courses', href: '/courses', icon: Compass, locked: true },
       { name: 'Schedule', href: '/dashboard/schedule', icon: Calendar },
-      { name: 'Attendance', href: '/dashboard/attendance', icon: ClipboardCheck },
+      // { name: 'Attendance', href: '/dashboard/attendance', icon: ClipboardCheck },
       { name: 'Notes', href: '/dashboard/notes', icon: FileText },
       { name: 'Homework', href: '/dashboard/homework', icon: ClipboardList },
       { name: 'Announcements', href: '/dashboard/announcements', icon: Megaphone },
-      { name: 'Certificates', href: '/dashboard/certificates', icon: Award },
+      // { name: 'Certificates', href: '/dashboard/certificates', icon: Award },
       { name: 'AI Assistant', href: '/dashboard/ai', icon: Bot },
       { name: 'Settings', href: '/dashboard/settings', icon: Settings },
     ];
@@ -313,7 +313,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Dynamic Content */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-background transition-colors duration-200 scrollbar-thin">
-          {children}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="min-h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
       </div>

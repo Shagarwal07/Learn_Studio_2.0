@@ -28,40 +28,22 @@ export default function SettingsPage() {
   const [fetching, setFetching] = useState(false);
 
   // Accounts state
-  const [googleLinked, setGoogleLinked] = useState<boolean>(!!(user as any)?.linkedGoogleEmail);
-  const [linkedEmail, setLinkedEmail] = useState<string | null>((user as any)?.linkedGoogleEmail || null);
-
-  useEffect(() => {
-    if (activeTab === 'keys') {
-      fetchKeys();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'accounts') {
-      if (typeof window !== 'undefined' && (window as any).google) {
-        (window as any).google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "713303798993-9qf4g8m6j493m9c490m1l5h6j7u5a2n6.apps.googleusercontent.com",
-          callback: handleGoogleResponse
-        });
-      } else {
-        // dynamically load google script if not present
-        const script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          if ((window as any).google) {
-            (window as any).google.accounts.id.initialize({
-              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "713303798993-9qf4g8m6j493m9c490m1l5h6j7u5a2n6.apps.googleusercontent.com",
-              callback: handleGoogleResponse
-            });
-          }
-        };
-        document.body.appendChild(script);
+  const primaryEmail = (user as any)?.primaryGoogleEmail;
+  const secondaryEmail = (user as any)?.secondaryGoogleEmail;
+  const [googleLinked, setGoogleLinked] = useState<boolean>(!!(primaryEmail || secondaryEmail));
+  const [linkedEmail, setLinkedEmail] = useState<string | null>(primaryEmail || secondaryEmail || null);
+  const fetchKeys = async () => {
+    setFetching(true);
+    try {
+      const res = await api.get('/ai-credentials');
+      if (res.data && res.data.success) {
+        setKeys(res.data.data || []);
       }
+    } catch (e) {
+      console.error(e);
     }
-  }, [activeTab]);
+    setFetching(false);
+  };
 
   const handleGoogleResponse = async (response: any) => {
     setLoading(true);
@@ -81,25 +63,46 @@ export default function SettingsPage() {
     }
   };
 
+  const selfLinkEnabled = process.env.NEXT_PUBLIC_GOOGLE_SELF_LINK_ENABLED === 'true';
+
+  useEffect(() => {
+    if (activeTab === 'keys') {
+      fetchKeys();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'accounts') {
+      if (typeof window !== 'undefined' && (window as any).google) {
+        (window as any).google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+          callback: handleGoogleResponse
+        });
+      } else {
+        // dynamically load google script if not present
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          if ((window as any).google) {
+            (window as any).google.accounts.id.initialize({
+              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+              callback: handleGoogleResponse
+            });
+          }
+        };
+        document.body.appendChild(script);
+      }
+    }
+  }, [activeTab]);
+
   const triggerGoogleLink = () => {
     if (typeof window !== 'undefined' && (window as any).google) {
       (window as any).google.accounts.id.prompt();
     } else {
       alert("Google Login is not available at the moment. Please refresh.");
     }
-  };
-
-  const fetchKeys = async () => {
-    setFetching(true);
-    try {
-      const res = await api.get('/ai-credentials');
-      if (res.data && res.data.success) {
-        setKeys(res.data.data || []);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setFetching(false);
   };
 
   const handleAddKey = async (e: React.FormEvent) => {
@@ -244,7 +247,10 @@ export default function SettingsPage() {
                       <h4 className="text-sm font-semibold text-slate-200">Google Account</h4>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {googleLinked ? (
-                          <span className="text-teal-400 font-medium">Linked ({linkedEmail})</span>
+                          <div className="flex flex-col gap-1">
+                            {primaryEmail && <span className="text-teal-400 font-medium">Primary: {primaryEmail}</span>}
+                            {secondaryEmail && <span className="text-teal-400 font-medium">Secondary: {secondaryEmail}</span>}
+                          </div>
                         ) : (
                           "Not linked"
                         )}
@@ -252,18 +258,20 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   
-                  <button
-                    onClick={triggerGoogleLink}
-                    disabled={loading}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                      googleLinked 
-                        ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' 
-                        : 'bg-white text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    {googleLinked ? 'Change Link' : 'Link Google Account'}
-                  </button>
+                  {selfLinkEnabled && (
+                    <button
+                      onClick={triggerGoogleLink}
+                      disabled={loading}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                        googleLinked 
+                          ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' 
+                          : 'bg-white text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                      {googleLinked ? 'Change Link' : 'Link Google Account'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

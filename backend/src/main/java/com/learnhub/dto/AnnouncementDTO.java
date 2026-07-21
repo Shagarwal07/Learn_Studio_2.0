@@ -1,27 +1,24 @@
 package com.learnhub.dto;
 
 import com.learnhub.entity.Announcement;
-import lombok.*;
+import lombok.Builder;
 import java.time.LocalDateTime;
 
-@Data 
 @Builder 
-@NoArgsConstructor 
-@AllArgsConstructor
-public class AnnouncementDTO {
-    private Long id;
-    private String title;
-    private String message;
-    private String imageUrl;
-    private Announcement.TargetRole targetRole;
-    private Long courseId;
-    private String courseTitle;
-    private String instagramUrl;
-    private String externalLink;
-    private Boolean pinned;
-    private Long createdById;
-    private String createdByName;
-    private Long batchId;
-    private String batchName;
-    private LocalDateTime createdAt;
-}
+public record AnnouncementDTO(
+    Long id,
+    String title,
+    String message,
+    String imageUrl,
+    Announcement.TargetRole targetRole,
+    Long courseId,
+    String courseTitle,
+    String instagramUrl,
+    String externalLink,
+    Boolean pinned,
+    Long createdById,
+    String createdByName,
+    Long batchId,
+    String batchName,
+    LocalDateTime createdAt
+) {}

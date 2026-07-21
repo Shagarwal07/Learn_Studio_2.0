@@ -1,17 +1,14 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class StudentAttendanceSummaryDTO {
-    private double overallRate;
-    private double offlineRate;
-    private double onlineRate;
-    private int offlinePresent;
-    private int offlineAbsent;
-    private int offlineTotal;
-    private String badge;
-}
+public record StudentAttendanceSummaryDTO(
+    double overallRate,
+    double offlineRate,
+    double onlineRate,
+    int offlinePresent,
+    int offlineAbsent,
+    int offlineTotal,
+    String badge
+) {}

@@ -24,9 +24,10 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final com.learnhub.mapper.CourseMapper courseMapper;
 
     public List<CourseDTO> getAllCourses() {
-        return courseRepository.findAll().stream().map(this::toDTO).toList();
+        return courseRepository.findAll().stream().map(courseMapper::toDTO).toList();
     }
 
     public Page<CourseDTO> getCourses(String search, Course.Level level, Pageable pageable) {
@@ -40,41 +41,41 @@ public class CourseService {
         } else {
             coursePage = courseRepository.findAll(pageable);
         }
-        return coursePage.map(this::toDTO);
+        return coursePage.map(courseMapper::toDTO);
     }
 
     public CourseDTO getCourseById(Long id) {
         return courseRepository.findById(id)
-                .map(this::toDTO)
+                .map(courseMapper::toDTO)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
     }
 
     public List<CourseDTO> searchCourses(String keyword) {
-        return courseRepository.searchByTitle(keyword).stream().map(this::toDTO).toList();
+        return courseRepository.searchByTitle(keyword).stream().map(courseMapper::toDTO).toList();
     }
 
     public CourseDTO createCourse(CourseDTO dto, String instructorEmail) {
         var instructor = userRepository.findByEmail(instructorEmail)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
         Course course = Course.builder()
-                .title(dto.getTitle())
-                .description(dto.getDescription())
-                .price(dto.getPrice())
-                .thumbnail(dto.getThumbnail())
-                .level(dto.getLevel())
+                .title(dto.title())
+                .description(dto.description())
+                .price(dto.price())
+                .thumbnail(dto.thumbnail())
+                .level(dto.level())
                 .instructor(instructor)
                 .build();
-        return toDTO(courseRepository.save(course));
+        return courseMapper.toDTO(courseRepository.save(course));
     }
 
     public CourseDTO updateCourse(Long id, CourseDTO dto) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
-        course.setTitle(dto.getTitle());
-        course.setDescription(dto.getDescription());
-        course.setPrice(dto.getPrice());
-        course.setLevel(dto.getLevel());
-        return toDTO(courseRepository.save(course));
+        course.setTitle(dto.title());
+        course.setDescription(dto.description());
+        course.setPrice(dto.price());
+        course.setLevel(dto.level());
+        return courseMapper.toDTO(courseRepository.save(course));
     }
 
     public void deleteCourse(Long id) {
@@ -94,8 +95,8 @@ public class CourseService {
         Review review = Review.builder()
                 .user(user)
                 .course(course)
-                .rating(dto.getRating())
-                .comment(dto.getComment())
+                .rating(dto.rating())
+                .comment(dto.comment())
                 .build();
                 
         Review saved = reviewRepository.save(review);
@@ -150,36 +151,7 @@ public class CourseService {
                 .build();
     }
 
-    private CourseDTO toDTO(Course c) {
-        CourseDTO dto = new CourseDTO();
-        dto.setId(c.getId());
-        dto.setTitle(c.getTitle());
-        dto.setDescription(c.getDescription());
-        dto.setPrice(c.getPrice());
-        dto.setThumbnail(c.getThumbnail());
-        dto.setLevel(c.getLevel());
-        dto.setInstructorName(c.getInstructor() != null ? c.getInstructor().getName() : "");
-        dto.setTotalLessons(c.getLessons() != null ? c.getLessons().size() : 0);
-        
-        // Compute reviews metrics
-        List<Review> reviews = reviewRepository.findByCourseId(c.getId());
-        dto.setTotalReviews(reviews.size());
-        if (!reviews.isEmpty()) {
-            double avg = reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
-            dto.setAverageRating(Math.round(avg * 10.0) / 10.0);
-        } else {
-            dto.setAverageRating(0.0);
-        }
 
-        // First lesson's videoUrl as course preview
-        if (c.getLessons() != null && !c.getLessons().isEmpty()) {
-            c.getLessons().stream()
-                .filter(l -> l.getVideoUrl() != null && !l.getVideoUrl().isBlank())
-                .findFirst()
-                .ifPresent(l -> dto.setPreviewVideoUrl(l.getVideoUrl()));
-        }
-        return dto;
-    }
 
     private ReviewDTO toReviewDTO(Review r) {
         return ReviewDTO.builder()

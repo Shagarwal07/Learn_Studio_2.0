@@ -131,7 +131,7 @@ public class AttendanceService {
                     .present(subPresent)
                     .total(subTotal)
                     .build();
-        }).sorted(Comparator.comparingDouble(SubjectStatsDTO::getPercentage).reversed()).toList();
+        }).sorted(Comparator.comparingDouble(SubjectStatsDTO::percentage).reversed()).toList();
 
         List<AttendanceDTO> recordDTOs = records.stream()
                 .map(this::convertToOfflineDTO)
@@ -242,22 +242,23 @@ public class AttendanceService {
     // ────────────────────────────────────────────────────────────────────────
 
     public AttendanceDTO markAttendance(InstructorAttendanceMarkRequest request) {
-        User student = userRepository.findById(request.getStudentId())
+        User student = userRepository.findById(request.studentId())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        if (student.getRole() != User.Role.STUDENT) {
-            throw new RuntimeException("Attendance can only be marked for students.");
+        if (student.getBatch() == null) {
+            throw new RuntimeException("Student is not assigned to any batch");
         }
 
-        String dayOfWeek = request.getDate().getDayOfWeek()
-                .getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+        String dayOfWeek = request.date().getDayOfWeek()
+                .name().substring(0, 1) + request.date().getDayOfWeek().name().substring(1).toLowerCase();
 
         Attendance attendance = Attendance.builder()
                 .student(student)
-                .subjectName(request.getSubjectName())
-                .date(request.getDate())
+                .batch(student.getBatch())
+                .subjectName(request.subjectName())
+                .date(request.date())
                 .day(dayOfWeek)
-                .status(Attendance.Status.valueOf(request.getStatus().toUpperCase()))
+                .status(Attendance.Status.valueOf(request.status().toUpperCase()))
                 .build();
 
         Attendance saved = attendanceRepository.save(attendance);
@@ -623,7 +624,7 @@ public class AttendanceService {
                     .present(subPresent)
                     .total(subTotal)
                     .build();
-        }).sorted(Comparator.comparingDouble(SubjectStatsDTO::getPercentage).reversed()).toList();
+        }).sorted(Comparator.comparingDouble(SubjectStatsDTO::percentage).reversed()).toList();
 
         List<AttendanceDTO> recordDTOs = records.stream()
                 .map(this::convertToOfflineDTO)

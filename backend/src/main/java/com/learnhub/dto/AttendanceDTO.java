@@ -1,18 +1,15 @@
 package com.learnhub.dto;
 
-import lombok.*;
+import lombok.Builder;
 import java.time.LocalDate;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AttendanceDTO {
-    private Long id;
-    private Long studentId;
-    private String studentName;
-    private String subjectName;
-    private LocalDate date;
-    private String day;
-    private String status;
-}
+public record AttendanceDTO(
+    Long id,
+    Long studentId,
+    String studentName,
+    String subjectName,
+    LocalDate date,
+    String day,
+    String status
+) {}
