@@ -789,65 +789,65 @@ export default function Home() {
             {/* Main Decorative Grid Background */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.06)_0%,transparent_70%)] pointer-events-none" />
 
-            {/* Overlapping Deck Layout */}
-            <div className="relative w-full max-w-[420px] h-[340px] sm:h-[380px] mx-auto">
+            {/* Right Student Image Cards Deck - Responsive Stack on Mobile, Overlap on Desktop */}
+            <div className="relative w-full max-w-sm sm:max-w-[420px] h-auto sm:h-[380px] mx-auto flex flex-col sm:block gap-4 sm:gap-0 mt-8 sm:mt-0">
 
-              {/* Card 1: Gunjan Salecha (Overlapping Bottom Left) */}
+              {/* Card 1: Gunjan Salecha */}
               <motion.div
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="absolute left-4 bottom-4 w-[160px] sm:w-[190px] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-3 flex flex-col gap-3 z-10"
+                className="relative sm:absolute sm:left-4 sm:bottom-4 w-full sm:w-[190px] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-3 flex flex-row sm:flex-col items-center sm:items-stretch gap-4 sm:gap-3 z-10"
               >
-                <div className="relative h-28 sm:h-36 w-full bg-slate-950 rounded-xl overflow-hidden">
+                <div className="relative h-20 w-20 sm:h-36 sm:w-full bg-slate-950 rounded-xl overflow-hidden shrink-0">
                   <Image
                     src="/STUDENT_PNG/GunjanSalecha.jpg"
                     alt="Gunjan Salecha"
                     fill
-                    sizes="190px"
+                    sizes="(max-width: 640px) 80px, 190px"
                     style={{ objectFit: 'cover' }}
                   />
-                  <div className="absolute top-2 left-2 bg-amber-500 text-[8px] font-black text-slate-950 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                  <div className="absolute top-1 sm:top-2 left-1 sm:left-2 bg-amber-500 text-[8px] font-black text-slate-950 px-1.5 py-0.5 rounded uppercase tracking-wider">
                     92.0%
                   </div>
                 </div>
-                <div className="text-left space-y-0.5">
-                  <h4 className="text-[11px] font-black text-white truncate">Gunjan Salecha</h4>
-                  <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">1st Rank 10th</p>
+                <div className="text-left space-y-0.5 flex-1">
+                  <h4 className="text-sm sm:text-[11px] font-black text-white truncate">Gunjan Salecha</h4>
+                  <p className="text-[10px] sm:text-[9px] text-indigo-400 font-bold uppercase tracking-widest">1st Rank 10th</p>
                 </div>
               </motion.div>
 
-              {/* Card 2: Yashvi Jain (Overlapping Top Right - Featured Center) */}
+              {/* Card 2: Yashvi Jain (Featured) */}
               <motion.div
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="absolute right-4 top-4 w-[180px] sm:w-[210px] bg-slate-900 border border-indigo-500/30 rounded-3xl overflow-hidden shadow-2xl p-4 flex flex-col gap-3 z-25"
+                className="relative sm:absolute sm:right-4 sm:top-4 w-full sm:w-[210px] bg-slate-900 border border-indigo-500/30 rounded-3xl overflow-hidden shadow-2xl p-4 flex flex-row-reverse sm:flex-col items-center sm:items-stretch gap-4 sm:gap-3 z-25"
                 style={{ boxShadow: '0 20px 40px -15px rgba(99, 102, 241, 0.25)' }}
               >
-                <div className="relative h-32 sm:h-40 w-full bg-slate-950 rounded-2xl overflow-hidden">
+                <div className="relative h-24 w-24 sm:h-40 sm:w-full bg-slate-950 rounded-2xl overflow-hidden shrink-0">
                   <Image
                     src="/STUDENT_PNG/YashviJain.jpg"
                     alt="Yashvi Jain"
                     fill
-                    sizes="210px"
+                    sizes="(max-width: 640px) 96px, 210px"
                     style={{ objectFit: 'cover' }}
                   />
-                  <div className="absolute top-2.5 left-2.5 bg-indigo-500 text-[9px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
+                  <div className="absolute top-1.5 sm:top-2.5 left-1.5 sm:left-2.5 bg-indigo-500 text-[9px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-wider shadow-md">
                     90.0%
                   </div>
                 </div>
-                <div className="text-left space-y-0.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-xs font-black text-white truncate">Yashvi Jain</h4>
-                    <Trophy className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <div className="text-left sm:text-left space-y-0.5 flex-1">
+                  <div className="flex items-center justify-between sm:justify-between gap-2">
+                    <h4 className="text-[15px] sm:text-xs font-black text-white truncate">Yashvi Jain</h4>
+                    <Trophy className="hidden sm:block w-3.5 h-3.5 text-indigo-400 shrink-0" />
                   </div>
-                  <p className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider">2nd Rank 10th</p>
+                  <p className="text-[11px] sm:text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider">2nd Rank 10th</p>
                 </div>
               </motion.div>
 
-              {/* Card 3: Vanshika Choudhary (Overlapping Back Center Right) */}
+              {/* Card 3: Vanshika Choudhary */}
               <motion.div
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="absolute left-[38%] top-12 w-[140px] sm:w-[170px] bg-slate-900/60 backdrop-blur-sm border border-slate-850/60 rounded-2xl overflow-hidden shadow-xl p-3 flex flex-col gap-2.5 z-0 opacity-70"
+                className="hidden sm:flex absolute left-[38%] top-12 w-[170px] bg-slate-900/60 backdrop-blur-sm border border-slate-850/60 rounded-2xl overflow-hidden shadow-xl p-3 flex-col gap-2.5 z-0 opacity-70"
               >
-                <div className="relative h-24 sm:h-30 w-full bg-slate-950 rounded-xl overflow-hidden">
+                <div className="relative h-30 w-full bg-slate-950 rounded-xl overflow-hidden">
                   <Image
                     src="/STUDENT_PNG/Vanshikach.jpg"
                     alt="Vanshika Choudhary"

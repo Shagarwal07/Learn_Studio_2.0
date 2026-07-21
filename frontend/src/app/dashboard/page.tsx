@@ -219,24 +219,24 @@ export default function StudentDashboardPage() {
       className="space-y-8 max-w-6xl mx-auto text-foreground pb-20"
     >
       {/* Top Section: Welcome & Orb */}
-      <div className="relative overflow-hidden glass-card p-6 lg:p-10 rounded-3xl border border-border-color shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-96 h-96 bg-accent-grape/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden glass-card p-5 sm:p-6 lg:p-10 rounded-2xl md:rounded-3xl border border-border-color shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 md:w-96 md:h-96 bg-accent-grape/15 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 space-y-3 max-w-xl">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-success bg-success/10 px-3 py-1 rounded-full border border-success/20 uppercase tracking-wider">
+        <div className="relative z-10 space-y-3 max-w-xl text-center md:text-left">
+          <span className="inline-flex items-center justify-center md:justify-start gap-1.5 text-[10px] font-bold text-success bg-success/10 px-3 py-1 rounded-full border border-success/20 uppercase tracking-wider mx-auto md:mx-0">
             <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" /> Learning Portal Active
           </span>
-          <h2 className="text-3xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-            Welcome back,<br />{user?.name || 'Student'} 👋
+          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+            Welcome back,<br className="hidden md:block" /> {user?.name || 'Student'} 👋
           </h2>
-          <p className="text-text-secondary text-sm leading-relaxed mt-2">
+          <p className="text-text-secondary text-xs sm:text-sm leading-relaxed mt-2">
             Continue your learning journey, track your progress and unlock certificates.
           </p>
-          <div className="flex items-center gap-4 pt-4">
-            <Link href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} className="px-6 py-3 bg-gradient-to-r from-accent-blue to-accent-grape text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 sm:gap-4 pt-4">
+            <Link href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} className="w-full sm:w-auto justify-center px-6 py-3 bg-gradient-to-r from-accent-blue to-accent-grape text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
               <Play className="w-4 h-4" /> Continue Learning
             </Link>
-            <Link href="/dashboard/ai" className="px-6 py-3 bg-white/5 border border-border-color text-white text-xs font-bold rounded-full hover:bg-white/10 transition-colors flex items-center gap-2">
+            <Link href="/dashboard/ai" className="w-full sm:w-auto justify-center px-6 py-3 bg-white/5 border border-border-color text-white text-xs font-bold rounded-full hover:bg-white/10 transition-colors flex items-center gap-2">
               <Zap className="w-4 h-4" /> Ask AI Tutor
             </Link>
           </div>
@@ -273,9 +273,9 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {/* Grade */}
-        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
           <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
             <BookOpen className="w-5 h-5 text-accent-grape" />
           </div>
@@ -290,7 +290,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Attendance */}
-        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div className="w-10 h-10 bg-secondary-blue/20 rounded-xl flex items-center justify-center border border-secondary-blue/30">
               <CheckCircle2 className="w-5 h-5 text-secondary-blue" />
@@ -313,7 +313,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Average Quiz Score */}
-        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
               <Award className="w-5 h-5 text-accent-grape" />
@@ -336,7 +336,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Study Streak */}
-        <div className="glass-card p-6 rounded-3xl space-y-4 border border-border-color relative overflow-hidden">
+        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div className="w-10 h-10 bg-warning/20 rounded-xl flex items-center justify-center border border-warning/30">
               <Zap className="w-5 h-5 text-warning" />
