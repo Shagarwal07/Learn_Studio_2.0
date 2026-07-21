@@ -161,8 +161,8 @@ export default function AnnouncementsPage() {
       instagramUrl: instagramInput || null,
       externalLink: externalInput || null,
       imageUrl: imageInput || null,
-      courseId: scope === 'COURSE' ? Number(selectedCourseId) : null,
-      batchId: scope === 'BATCH' ? Number(selectedBatchId) : null
+      courseId: scope === 'COURSE' ? Number(selectedCourseId) : undefined,
+      batchId: scope === 'BATCH' ? Number(selectedBatchId) : undefined
     });
   };
 
