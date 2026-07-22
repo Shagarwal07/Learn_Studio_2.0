@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ProfileDropdown from '@/components/ProfileDropdown';
-import ThemeToggle from '@/components/ThemeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Grid,
@@ -134,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const activeGrad = 'bg-accent-grape/10 text-accent-grape border-l-[3px] border-accent-grape dark:bg-gradient-to-r dark:from-accent-grape/15 dark:to-primary-blue/5 dark:text-white shadow-[inset_0_0_8px_rgba(150,52,132,0.08)]';
-  const inactiveGrad = 'text-text-secondary hover:text-foreground hover:bg-white/5 border-l-[3px] border-transparent';
+  const inactiveGrad = 'text-text-secondary hover:text-foreground hover:bg-card border-l-[3px] border-transparent';
 
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300">
@@ -146,7 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-slate-955/60 backdrop-blur-md lg:hidden"
+            className="fixed inset-0 z-40 bg-card backdrop-blur-md lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -172,7 +171,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
               <button 
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 hover:bg-white/5 rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer"
+                className="p-2 hover:bg-card rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
@@ -196,8 +195,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       }
                     }}
                     className={`flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                      isActive ? activeGrad : inactiveGrad
-                    }`}
+isActive ? activeGrad : inactiveGrad
+}`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 mr-3 ${isActive ? 'text-accent-grape' : ''}`} />
                     <span>{item.name}</span>
@@ -253,13 +252,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }
                 }}
                 className={`flex items-center py-2.5 rounded-xl text-[13px] font-semibold transition-all group ${
-                  collapsed ? 'justify-center px-0' : 'px-4'
-                } ${isActive ? activeGrad : inactiveGrad}`}
+collapsed ? 'justify-center px-0' : 'px-4'
+} ${isActive ? activeGrad : inactiveGrad}`}
                 title={collapsed ? (item.locked ? `${item.name} (Locked)` : item.name) : undefined}
               >
                 <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${
-                  isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
-                }`} />
+isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
+}`} />
                 {!collapsed && (
                   <motion.span 
                     initial={{ opacity: 0 }}
@@ -281,7 +280,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="p-4 border-t border-border-color">
           <button
             onClick={toggleCollapse}
-            className="w-full flex items-center justify-center p-2.5 bg-background hover:bg-white/5 border border-border-color rounded-xl text-text-secondary hover:text-foreground transition-all cursor-pointer shadow-sm"
+            className="w-full flex items-center justify-center p-2.5 bg-background hover:bg-card border border-border-color rounded-xl text-text-secondary hover:text-foreground transition-all cursor-pointer shadow-sm"
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -293,26 +292,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         {/* Top Header */}
         <header className="h-16 bg-bg-secondary/70 backdrop-blur-md border-b border-border-color flex items-center justify-between px-6 lg:px-8 z-30 transition-colors duration-200">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button 
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2.5 hover:bg-white/5 rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer"
+              className="lg:hidden p-2 hover:bg-black/5 dark:hover:bg-card rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer shrink-0"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-sm font-bold tracking-tight text-white uppercase">
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-foreground uppercase truncate min-w-0">
               {getPageTitle()}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            <div className="w-[1px] h-5 bg-border-color" />
+          <div className="flex items-center gap-4 shrink-0">
             <ProfileDropdown />
           </div>
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-background transition-colors duration-200 scrollbar-thin">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 bg-background transition-colors duration-200 scrollbar-thin">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -320,7 +317,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="min-h-full"
+              className="min-h-full w-full max-w-7xl mx-auto"
             >
               {children}
             </motion.div>

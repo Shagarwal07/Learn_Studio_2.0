@@ -57,21 +57,21 @@ export default function AutoTaDashboard() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-6 max-w-7xl mx-auto text-foreground relative z-10"
+      className="space-y-6 text-xs sm:text-sm animate-in fade-in duration-300 text-foreground relative z-10"
     >
       {/* Ambient background glow for premium feel */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-accent-grape/20 blur-[120px] rounded-full -z-10 pointer-events-none opacity-50 dark:opacity-30"></div>
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border-color pb-5">
+      <div className="hero-header-card">
         <div>
           <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-accent-blue bg-accent-blue/10 px-2.5 py-1 rounded-md border border-accent-blue/20">
             Advanced Multi-Agent Pipeline
           </span>
-          <h2 className="text-2xl font-black text-white mt-2.5 tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight drop-shadow-sm">
             Auto-TA Exam Generator
           </h2>
-          <p className="text-xs text-text-secondary mt-1.5 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-indigo-100 mt-2 leading-relaxed max-w-2xl font-medium">
             Orchestrate Theory, Mathematics, and Question Bank agents in parallel to compile, deduplicate, and format high-quality exam papers.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default function AutoTaDashboard() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleRefresh}
-            className="flex items-center justify-center w-10 h-10 bg-white/5 border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl transition-all cursor-pointer"
+            className="flex items-center justify-center w-10 h-10 bg-card border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl transition-all cursor-pointer"
             disabled={refreshing}
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-accent-grape' : ''}`} />
@@ -97,42 +97,42 @@ export default function AutoTaDashboard() {
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        <div className="glass-card hover-lift p-5 rounded-2xl flex items-center gap-4">
+        <div className="interactive-card flex items-center gap-4">
           <div className="w-12 h-12 bg-accent-grape/10 text-accent-grape border border-accent-grape/20 rounded-xl flex items-center justify-center shrink-0">
             <Cpu className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Total Generated</p>
-            <h3 className="text-xl font-black text-white mt-0.5">{totalPapers}</h3>
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Total Generated</p>
+            <h3 className="text-xl font-black text-foreground mt-0.5">{totalPapers}</h3>
           </div>
         </div>
 
-        <div className="glass-card hover-lift p-5 rounded-2xl flex items-center gap-4">
+        <div className="interactive-card flex items-center gap-4">
           <div className="w-12 h-12 bg-warning/10 text-warning border border-warning/20 rounded-xl flex items-center justify-center shrink-0">
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Under Review</p>
-            <h3 className="text-xl font-black text-white mt-0.5">{underReview}</h3>
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Under Review</p>
+            <h3 className="text-xl font-black text-foreground mt-0.5">{underReview}</h3>
           </div>
         </div>
 
-        <div className="glass-card hover-lift p-5 rounded-2xl flex items-center gap-4">
+        <div className="interactive-card flex items-center gap-4">
           <div className="w-12 h-12 bg-success/10 text-success border border-success/20 rounded-xl flex items-center justify-center shrink-0">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Approved Papers</p>
-            <h3 className="text-xl font-black text-white mt-0.5">{approved}</h3>
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Approved Papers</p>
+            <h3 className="text-xl font-black text-foreground mt-0.5">{approved}</h3>
           </div>
         </div>
 
-        <div className="glass-card hover-lift p-5 rounded-2xl flex items-center gap-4">
+        <div className="interactive-card flex items-center gap-4">
           <div className="w-12 h-12 bg-accent-blue/10 text-accent-blue border border-accent-blue/20 rounded-xl flex items-center justify-center shrink-0">
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Multi-Agent State</p>
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Multi-Agent State</p>
             <h3 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-accent-blue to-accent-grape mt-0.5 animate-pulse">Running</h3>
           </div>
         </div>
@@ -182,8 +182,8 @@ export default function AutoTaDashboard() {
               </thead>
               <tbody className="divide-y divide-border-color/60">
                 {papers.map((paper) => (
-                  <tr key={paper.id} className="hover:bg-white/5 transition-colors group rounded-xl">
-                    <td className="py-4.5 px-4 font-black text-white leading-snug">
+                  <tr key={paper.id} className="hover:bg-card transition-colors group rounded-xl">
+                    <td className="py-4.5 px-4 font-black text-foreground leading-snug">
                       {paper.title}
                     </td>
                     <td className="py-4.5 px-4 text-text-secondary font-semibold">
@@ -194,12 +194,12 @@ export default function AutoTaDashboard() {
                     </td>
                     <td className="py-4.5 px-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
-                        paper.status === 'APPROVED' || paper.status === 'PUBLISHED'
-                          ? 'bg-success/10 text-success border-success/20'
-                          : paper.status === 'REVISION_NEEDED'
-                          ? 'bg-error/10 text-error border-error/20'
-                          : 'bg-warning/10 text-warning border-warning/20'
-                      }`}>
+paper.status === 'APPROVED' || paper.status === 'PUBLISHED'
+? 'bg-success/10 text-success border-success/20'
+: paper.status === 'REVISION_NEEDED'
+? 'bg-error/10 text-error border-error/20'
+: 'bg-warning/10 text-warning border-warning/20'
+}`}>
                         {paper.status === 'APPROVED' || paper.status === 'PUBLISHED' ? (
                           <CheckCircle2 className="w-3 h-3" />
                         ) : (

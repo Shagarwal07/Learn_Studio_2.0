@@ -216,27 +216,27 @@ export default function StudentDashboardPage() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-8 max-w-6xl mx-auto text-foreground pb-20"
+      className="space-y-8 text-foreground pb-20"
     >
       {/* Top Section: Welcome & Orb */}
-      <div className="relative overflow-hidden glass-card p-5 sm:p-6 lg:p-10 rounded-2xl md:rounded-3xl border border-border-color shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="hero-header-card flex-col md:flex-row justify-between gap-6">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 md:w-96 md:h-96 bg-accent-grape/15 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 space-y-3 max-w-xl text-center md:text-left">
           <span className="inline-flex items-center justify-center md:justify-start gap-1.5 text-[10px] font-bold text-success bg-success/10 px-3 py-1 rounded-full border border-success/20 uppercase tracking-wider mx-auto md:mx-0">
             <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" /> Learning Portal Active
           </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-foreground leading-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-white leading-tight">
             Welcome back,<br className="hidden md:block" /> {user?.name || 'Student'} 👋
           </h2>
-          <p className="text-text-secondary text-xs sm:text-sm leading-relaxed mt-2">
+          <p className="text-indigo-100 text-xs sm:text-sm leading-relaxed mt-2">
             Continue your learning journey, track your progress and unlock certificates.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 sm:gap-4 pt-4">
             <Link href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} className="w-full sm:w-auto justify-center px-6 py-3 bg-gradient-to-r from-accent-blue to-accent-grape text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
               <Play className="w-4 h-4" /> Continue Learning
             </Link>
-            <Link href="/dashboard/ai" className="w-full sm:w-auto justify-center px-6 py-3 bg-black/5 dark:bg-white/5 border border-border-color text-foreground text-xs font-bold rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors flex items-center gap-2">
+            <Link href="/dashboard/ai" className="w-full sm:w-auto justify-center px-6 py-3 bg-black/5 dark:bg-card border border-border-color text-foreground text-xs font-bold rounded-full hover:bg-black/10 dark:hover:bg-card transition-colors flex items-center gap-2">
               <Zap className="w-4 h-4" /> Ask AI Tutor
             </Link>
           </div>
@@ -275,7 +275,7 @@ export default function StudentDashboardPage() {
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Grade */}
-        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
+        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
           <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
             <BookOpen className="w-5 h-5 text-accent-grape" />
           </div>
@@ -290,7 +290,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Attendance */}
-        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
+        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div className="w-10 h-10 bg-secondary-blue/20 rounded-xl flex items-center justify-center border border-secondary-blue/30">
               <CheckCircle2 className="w-5 h-5 text-secondary-blue" />
@@ -313,7 +313,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Average Quiz Score */}
-        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
+        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
               <Award className="w-5 h-5 text-accent-grape" />
@@ -336,7 +336,7 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Study Streak */}
-        <div className="glass-card p-4 sm:p-6 rounded-2xl md:rounded-3xl space-y-3 sm:space-y-4 border border-border-color relative overflow-hidden">
+        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div className="w-10 h-10 bg-warning/20 rounded-xl flex items-center justify-center border border-warning/30">
               <Zap className="w-5 h-5 text-warning" />
@@ -353,7 +353,7 @@ export default function StudentDashboardPage() {
             {currentStreak > 0 && (
               <div className="flex gap-1.5 mt-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className={`w-3 h-3 rounded-full ${i < Math.min(currentStreak, 4) ? 'bg-warning shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 'bg-white/5'}`} />
+                  <div key={i} className={`w-3 h-3 rounded-full ${i < Math.min(currentStreak, 4) ? 'bg-warning shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 'bg-card'}`} />
                 ))}
               </div>
             )}
@@ -364,7 +364,7 @@ export default function StudentDashboardPage() {
       <div className="flex justify-center pt-2 pb-4">
         <button 
           onClick={() => setIsExpanded(!isExpanded)} 
-          className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-border-color rounded-full text-xs font-bold text-text-secondary hover:text-white transition-all shadow-sm"
+          className="flex items-center gap-2 px-6 py-2.5 bg-card hover:bg-card border border-border-color rounded-full text-xs font-bold text-text-secondary hover:text-white transition-all shadow-sm"
         >
           {isExpanded ? 'Hide Full Analytics' : 'View Full Analytics'}
           <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -399,9 +399,9 @@ export default function StudentDashboardPage() {
         <div className="space-y-6">
           {/* Locked Course / Resume Learning */}
           {fallbackResume ? (
-            <div className="glass-card p-6 rounded-3xl flex flex-col sm:flex-row gap-6 border border-border-color items-center">
+            <div className="panel-sidebar flex flex-col sm:flex-row gap-6 items-center">
               <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-[#2E1A47] to-[#121623] flex flex-col items-center justify-center border border-accent-grape/20 shrink-0 relative overflow-hidden">
-                <div className="absolute top-4 left-4 w-12 h-12 bg-white/10 rounded-full blur-xl" />
+                <div className="absolute top-4 left-4 w-12 h-12 bg-card rounded-full blur-xl" />
                 <Compass className="w-10 h-10 text-white mb-2" />
                 <span className="text-xs font-bold text-white text-center px-2 line-clamp-2">{fallbackResume.courseTitle}</span>
               </div>
@@ -424,15 +424,15 @@ export default function StudentDashboardPage() {
                 </div>
 
                 <div className="pt-2">
-                  <Link href={`/dashboard/course/${fallbackResume.courseId}/learn`} className="inline-block px-4 py-2 bg-black/5 dark:bg-white/5 border border-border-color text-foreground text-xs font-bold rounded-xl hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                  <Link href={`/dashboard/course/${fallbackResume.courseId}/learn`} className="inline-block px-4 py-2 bg-black/5 dark:bg-card border border-border-color text-foreground text-xs font-bold rounded-xl hover:bg-black/10 dark:hover:bg-card transition-colors">
                     Continue lesson
                   </Link>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="glass-card p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-4 border border-border-color h-48">
-              <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center">
+            <div className="interactive-card flex flex-col items-center justify-center text-center gap-4 h-48">
+              <div className="w-12 h-12 bg-card rounded-full flex items-center justify-center">
                 <Compass className="w-6 h-6 text-text-muted" />
               </div>
               <div>
@@ -446,7 +446,7 @@ export default function StudentDashboardPage() {
           )}
 
           {/* AI Study Assistant */}
-          <div className="glass-card p-6 rounded-3xl border border-border-color relative overflow-hidden">
+          <div className="panel-sidebar relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent-blue/5 rounded-full blur-3xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row gap-8 relative z-10">
               <div className="space-y-4 flex-1">
@@ -484,11 +484,11 @@ export default function StudentDashboardPage() {
         </div>
 
         {/* Right Column: Upcoming Classes */}
-        <div className="glass-card p-6 rounded-3xl border border-border-color flex flex-col">
+        <div className="panel-sidebar flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-sm font-extrabold text-foreground">Upcoming Classes</h3>
             {schedules.length > 0 && (
-              <span className="text-[10px] bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full text-foreground font-bold">{schedules.length} Event{schedules.length !== 1 ? 's' : ''}</span>
+              <span className="text-[10px] bg-black/5 dark:bg-card px-2 py-0.5 rounded-full text-foreground font-bold">{schedules.length} Event{schedules.length !== 1 ? 's' : ''}</span>
             )}
           </div>
           
@@ -501,7 +501,7 @@ export default function StudentDashboardPage() {
                 const textColorClass = textColors[idx % textColors.length];
 
                 return (
-                  <div key={event.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group hover:bg-white/5 p-3 -mx-3 rounded-xl transition-colors">
+                  <div key={event.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group hover:bg-card p-3 -mx-3 rounded-xl transition-colors">
                     <div className={`flex items-center justify-center w-3 h-3 rounded-full border-2 border-background ${colorClass} shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 relative z-10`} />
                     <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] pl-4 md:p-0 md:group-even:text-right">
                       <span className={`text-[10px] font-bold uppercase tracking-wider ${textColorClass}`}>
@@ -601,18 +601,18 @@ function InstructorDashboardView() {
     >
       
       {/* Welcome banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-bg-secondary-dark via-card-dark to-surface-dark p-6 lg:p-10 rounded-3xl border border-border-color shadow-2xl">
+      <div className="hero-header-card">
         <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-80 h-80 bg-accent-grape/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-10 left-1/3 w-64 h-64 bg-primary-blue/5 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 space-y-3">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-accent-blue bg-accent-blue/10 px-3 py-1 rounded-full border border-accent-blue/25 uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-white bg-white/20 px-3 py-1 rounded-full border border-white/30 uppercase tracking-wider">
             Academic Operations Panel
           </span>
           <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
             Welcome back, {user?.name}. 👋
           </h2>
-          <p className="text-text-secondary text-xs sm:text-sm max-w-xl leading-relaxed">
+          <p className="text-indigo-100 text-xs sm:text-sm max-w-xl leading-relaxed">
             Coordinate your offline batches, track attendance records, upload secure PDF study notes, and manage homework tasks from your unified control panel.
           </p>
         </div>
@@ -620,37 +620,37 @@ function InstructorDashboardView() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-card hover-lift p-6 rounded-3xl flex items-center gap-5">
+        <div className="panel-sidebar flex items-center gap-5">
           <div className="w-12 h-12 bg-accent-grape/10 text-accent-grape border border-accent-grape/20 rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(150,52,132,0.15)]">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Active Batches</p>
-            <h3 className="text-2xl font-black text-white mt-1">
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Active Batches</p>
+            <h3 className="text-2xl font-black text-foreground mt-1">
               {isBatchesLoading ? '...' : <AnimatedCounter value={batches.length} />}
             </h3>
           </div>
         </div>
 
-        <div className="glass-card hover-lift p-6 rounded-3xl flex items-center gap-5">
+        <div className="panel-sidebar flex items-center gap-5">
           <div className="w-12 h-12 bg-primary-blue/10 text-secondary-blue border border-primary-blue/20 rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(48,102,190,0.15)]">
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Total Students</p>
-            <h3 className="text-2xl font-black text-white mt-1">
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Total Students</p>
+            <h3 className="text-2xl font-black text-foreground mt-1">
               {isBatchesLoading ? '...' : <AnimatedCounter value={totalStudents} />}
             </h3>
           </div>
         </div>
 
-        <div className="glass-card hover-lift p-6 rounded-3xl flex items-center gap-5">
+        <div className="panel-sidebar flex items-center gap-5">
           <div className="w-12 h-12 bg-success/10 text-success border border-success/20 rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.15)]">
             <Calendar className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">Lectures Today</p>
-            <h3 className="text-2xl font-black text-white mt-1">
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Lectures Today</p>
+            <h3 className="text-2xl font-black text-foreground mt-1">
               {isSchedulesLoading ? '...' : <AnimatedCounter value={todaySchedules.length} />}
             </h3>
           </div>
@@ -661,14 +661,14 @@ function InstructorDashboardView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left: Quick Actions (4 cols) */}
-        <div className="lg:col-span-4 glass-card p-6 rounded-3xl space-y-5">
-          <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">
+        <div className="lg:col-span-4 panel-sidebar">
+          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider">
             Quick Actions
           </h3>
           <div className="flex flex-col gap-3">
             <Link 
               href="/dashboard/instructor/batches?tab=attendance"
-              className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 border border-border-color rounded-xl text-xs font-semibold transition-all text-text-secondary hover:text-white group cursor-pointer"
+              className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted border border-border-color rounded-xl text-xs font-semibold transition-all text-muted-foreground hover:text-foreground group cursor-pointer"
             >
               <span className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-4.5 h-4.5 text-accent-grape" />
@@ -679,7 +679,7 @@ function InstructorDashboardView() {
 
             <Link 
               href="/dashboard/instructor/batches?tab=notes"
-              className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 border border-border-color rounded-xl text-xs font-semibold transition-all text-text-secondary hover:text-white group cursor-pointer"
+              className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted border border-border-color rounded-xl text-xs font-semibold transition-all text-muted-foreground hover:text-foreground group cursor-pointer"
             >
               <span className="flex items-center gap-2.5">
                 <FileText className="w-4.5 h-4.5 text-accent-grape" />
@@ -690,7 +690,7 @@ function InstructorDashboardView() {
 
             <Link 
               href="/dashboard/instructor/batches?tab=homework"
-              className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 border border-border-color rounded-xl text-xs font-semibold transition-all text-text-secondary hover:text-white group cursor-pointer"
+              className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted border border-border-color rounded-xl text-xs font-semibold transition-all text-muted-foreground hover:text-foreground group cursor-pointer"
             >
               <span className="flex items-center gap-2.5">
                 <ClipboardList className="w-4.5 h-4.5 text-accent-grape" />
@@ -701,7 +701,7 @@ function InstructorDashboardView() {
 
             <Link 
               href="/dashboard/instructor/announcements"
-              className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 border border-border-color rounded-xl text-xs font-semibold transition-all text-text-secondary hover:text-white group cursor-pointer"
+              className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted border border-border-color rounded-xl text-xs font-semibold transition-all text-muted-foreground hover:text-foreground group cursor-pointer"
             >
               <span className="flex items-center gap-2.5">
                 <Megaphone className="w-4.5 h-4.5 text-accent-grape" />
@@ -714,7 +714,7 @@ function InstructorDashboardView() {
               <button
                 onClick={handleSyncGoogleDrive}
                 disabled={syncingDrive}
-                className="w-full flex items-center justify-between p-3 bg-indigo-650/10 hover:bg-indigo-650/20 disabled:opacity-50 border border-indigo-500/20 rounded-xl text-xs font-semibold transition-all text-indigo-300 hover:text-white cursor-pointer group"
+                className="w-full flex items-center justify-between p-3 bg-indigo-500/10 hover:bg-indigo-500/20 disabled:opacity-50 border border-indigo-500/20 rounded-xl text-xs font-semibold transition-all text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-200 cursor-pointer group"
               >
                 <span className="flex items-center gap-2.5">
                   {syncingDrive ? (
@@ -731,9 +731,9 @@ function InstructorDashboardView() {
         </div>
 
         {/* Right: Today's Classes (8 cols) */}
-        <div className="lg:col-span-8 glass-card p-6 rounded-3xl space-y-4">
+        <div className="lg:col-span-8 panel-sidebar">
           <div className="flex justify-between items-center">
-            <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">
+            <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider">
               Today&rsquo;s Lectures ({todaySchedules.length})
             </h3>
             <Link 
@@ -757,7 +757,7 @@ function InstructorDashboardView() {
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {todaySchedules.map(event => (
-                <div key={event.id} className="p-4 bg-white/5 border border-border-color rounded-2xl flex items-center justify-between gap-4 shadow-sm hover:border-accent-grape/35 hover:bg-white/10 transition-all duration-300">
+                <div key={event.id} className="p-4 bg-card border border-border-color rounded-2xl flex items-center justify-between gap-4 shadow-sm hover:border-accent-grape/35 hover:bg-card transition-all duration-300">
                   <div className="min-w-0">
                     <h4 className="font-black text-sm text-white truncate">
                       {event.title}

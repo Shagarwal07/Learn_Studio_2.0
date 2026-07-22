@@ -12,49 +12,33 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Always lock theme to 'system'
-  const theme: Theme = 'system';
+  const [theme, setThemeState] = useState<Theme>('dark');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Override local storage to keep it synchronized with system default
-    localStorage.setItem('theme', 'system');
+    setMounted(true);
+    // Force dark mode regardless of local storage
+    localStorage.setItem('theme', 'dark');
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     const root = window.document.documentElement;
-
-    const applyTheme = () => {
-      root.classList.remove('light', 'dark');
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.add(isDark ? 'dark' : 'light');
-    };
-
-    applyTheme();
-
-    // Listen to OS theme changes dynamically
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemChange = () => {
-      applyTheme();
-    };
-
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleSystemChange);
-    } else {
-      mediaQuery.addListener(handleSystemChange);
-    }
-
-    return () => {
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener('change', handleSystemChange);
-      } else {
-        mediaQuery.removeListener(handleSystemChange);
-      }
-    };
-  }, []);
+    
+    // Always enforce dark mode
+    root.classList.remove('light');
+    root.classList.add('dark');
+    
+  }, [theme, mounted]);
 
   const setTheme = (newTheme: Theme) => {
-    // Theme is locked to 'system' for everyone, ignore theme modifications
+    setThemeState(newTheme);
+    localStorage.setItem('theme', newTheme);
   };
+
+  if (!mounted) {
+    return <>{children}</>;
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>

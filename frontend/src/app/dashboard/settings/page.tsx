@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import ThemeToggle from '@/components/ThemeToggle';
+import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Settings, Shield, User, Bell, Palette, Key, Plus, Trash2, CheckCircle2, Play, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';

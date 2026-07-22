@@ -4,12 +4,15 @@
 
 :root {
   color-scheme: light;
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --bg-secondary: #f1f5f9;
-  --card-bg: #ffffff;
-  --surface-bg: #f8fafc;
-  --border-color: rgba(15, 23, 42, 0.08);
+  --background: #fcf9ff; /* Soft lavender-tinted cream */
+  --foreground: #2d2a33; /* Deep soft charcoal-purple */
+  --muted: #f4eff7;      /* Muted lavender-gray */
+  --muted-foreground: #6d6675; /* Slate-purple for legibility */
+  --card: #ffffff;       /* Pure white for cards to pop against --background */
+  --card-foreground: #2d2a33;
+  
+  --bg-secondary: #f4eff7;
+  --surface-bg: #ffffff;
   
   --accent-grape: #963484;
   --primary-blue: #3066BE;
@@ -24,10 +27,14 @@
 
 .dark {
   color-scheme: dark;
-  --background: #070B16;
+  --background: #070B16; /* Deep dark background */
   --foreground: #FFFFFF;
+  --muted: #101827;      /* Darker slate for muted elements */
+  --muted-foreground: #94a3b8;
+  --card: #101827;       /* Card background in dark mode */
+  --card-foreground: #FFFFFF;
+  
   --bg-secondary: #101827;
-  --card-bg: #141C2F;
   --surface-bg: #1A2338;
   --border-color: rgba(255, 255, 255, 0.08);
   
@@ -45,8 +52,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
   --color-bg-secondary: var(--bg-secondary);
-  --color-card-bg: var(--card-bg);
   --color-surface-bg: var(--surface-bg);
   --color-border-color: var(--border-color);
   
@@ -87,6 +98,13 @@ body {
   border: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.04);
 }
+
+.force-dark .glass-card, .light .force-dark .glass-card {
+  background: rgba(20, 28, 47, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
 
 /* Premium Card Hover Lift & Glow */
 .hover-lift {
@@ -151,3 +169,27 @@ body {
   background: rgba(150, 52, 132, 0.4);
 }
 
+/* =========================================
+   GLOBAL PREMIUM LAYOUT & COMPONENT CLASSES
+   ========================================= */
+
+/* Hero Header Card */
+.hero-header-card {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 p-6 sm:p-10 bg-gradient-to-br from-indigo-600 via-indigo-700 to-accent-grape rounded-3xl shadow-xl shadow-indigo-600/20 text-white relative overflow-hidden;
+}
+
+/* Sidebar Panels (Distinct from main cards) */
+.panel-sidebar {
+  @apply bg-indigo-50/50 dark:bg-card rounded-3xl p-6 border border-border-color shadow-sm space-y-5;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Base Interactive Card */
+.interactive-card {
+  @apply w-full p-4 rounded-xl border border-border-color transition-all duration-300 bg-card hover:bg-muted shadow-sm hover:shadow-md;
+}
+
+.interactive-card-active {
+  @apply bg-indigo-500/15 border-indigo-500/40 shadow-lg;
+}

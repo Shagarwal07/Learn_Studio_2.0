@@ -267,9 +267,9 @@ export default function StudentSchedulePage() {
 
   if (isLoading) {
     return (
-      <div className="h-[65vh] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-955 text-slate-900 dark:text-white">
+      <div className="h-[65vh] flex flex-col items-center justify-center bg-muted text-foreground dark:text-white">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-650" />
-        <p className="mt-3 text-sm text-slate-500 dark:text-slate-450 font-medium">Loading schedule...</p>
+        <p className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground font-medium">Loading schedule...</p>
       </div>
     );
   }
@@ -278,13 +278,13 @@ export default function StudentSchedulePage() {
     return (
       <div className="p-6 bg-red-550/5 border border-red-200 dark:border-red-900/10 rounded-3xl text-center max-w-xl mx-auto space-y-3">
         <h3 className="font-bold text-red-600 dark:text-red-400 text-lg">Failed to load schedule</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-450">Please check if the backend server is running and try again.</p>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground">Please check if the backend server is running and try again.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto text-slate-900 dark:text-white animate-in fade-in slide-in-from-bottom-3 duration-250">
+    <div className="space-y-8 text-foreground dark:text-white animate-in fade-in slide-in-from-bottom-3 duration-250">
       
       {/* Header and Bulk Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -292,8 +292,8 @@ export default function StudentSchedulePage() {
           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 uppercase tracking-wider mb-2">
             Weekly Calendar & Bookings
           </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Weekly Planner</h2>
-          <p className="text-slate-500 dark:text-slate-450 text-xs sm:text-sm mt-1">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground dark:text-white">Weekly Planner</h2>
+          <p className="text-muted-foreground dark:text-muted-foreground text-xs sm:text-sm mt-1">
             Coordinate online webinars, schedule offline lectures, and configure institutional holidays.
           </p>
         </div>
@@ -310,7 +310,7 @@ export default function StudentSchedulePage() {
       </div>
 
       {/* 7-day Horizontal Calendar Strip */}
-      <div className="grid grid-cols-7 gap-2 sm:gap-3 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-850 p-3 rounded-3xl shadow-sm dark:shadow-md">
+      <div className="grid grid-cols-7 gap-2 sm:gap-3 bg-indigo-50/30 dark:bg-card border border-border-color p-4 sm:p-5 rounded-3xl shadow-sm dark:shadow-md">
         {daysList.map((day) => {
           const isSelected = selectedDate === day.dateStr;
           const dayEvents = scheduleEvents.filter(e => e.eventDate === day.dateStr);
@@ -322,12 +322,12 @@ export default function StudentSchedulePage() {
               key={day.dateStr}
               onClick={() => setSelectedDate(day.dateStr)}
               className={`flex flex-col items-center p-3 rounded-2xl transition-all cursor-pointer relative group ${
-                isSelected
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-[1.03]'
-                  : 'bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800/60 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white'
-              }`}
+isSelected
+? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-[1.03]'
+: 'bg-muted dark:glass-card hover:bg-muted dark:hover:bg-card border border-border-color /60 text-muted-foreground hover:text-foreground dark:hover:text-white'
+}`}
             >
-              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide ${isSelected ? 'text-indigo-105' : 'text-slate-400 dark:text-slate-500'}`}>
+              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wide ${isSelected ? 'text-indigo-105' : 'text-muted-foreground dark:text-muted-foreground'}`}>
                 {day.dayName}
               </span>
               <span className="text-lg sm:text-2xl font-black mt-1 leading-none">
@@ -336,18 +336,18 @@ export default function StudentSchedulePage() {
               
               {eventCount > 0 && (
                 <span className={`mt-2 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${
-                  isSelected 
-                    ? 'bg-indigo-500 text-indigo-100' 
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-750 dark:text-slate-300 border border-slate-300/50 dark:border-slate-700/50'
-                }`}>
+isSelected 
+? 'bg-indigo-500 text-indigo-100' 
+: 'bg-muted dark:bg-card text-slate-750 dark:text-foreground border border-border-color /50'
+}`}>
                   {eventCount}
                 </span>
               )}
 
               {hasTest && (
                 <span className={`absolute top-2 right-2 w-2 h-2 rounded-full animate-pulse ${
-                  isSelected ? 'bg-white' : 'bg-red-500'
-                }`} />
+isSelected ? 'bg-card' : 'bg-red-500'
+}`} />
               )}
             </button>
           );
@@ -358,21 +358,21 @@ export default function StudentSchedulePage() {
         
         {/* Left / Main Section (Timeline details): 7/12 cols if admin, else full 12 cols */}
         <div className={isAdminOrInstructor ? "lg:col-span-7 space-y-5" : "lg:col-span-12 space-y-5"}>
-          <div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-850">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-border-color dark:border-border-color">
             <Calendar className="w-5 h-5 text-indigo-650 dark:text-indigo-400" />
-            <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">
+            <h3 className="font-extrabold text-lg text-foreground dark:text-white">
               Timeline for {new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
             </h3>
           </div>
 
           {filteredEvents.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900/20 border border-slate-200 dark:border-slate-850 py-16 px-6 rounded-3xl text-center space-y-4 max-w-md mx-auto shadow-sm">
-              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-500 rounded-xl flex items-center justify-center mx-auto">
+            <div className="bg-card border border-border-color dark:border-border-color py-16 px-6 rounded-3xl text-center space-y-4 max-w-md mx-auto shadow-sm">
+              <div className="w-12 h-12 bg-muted dark:bg-card border border-border-color dark:border-border-color text-muted-foreground dark:text-muted-foreground rounded-xl flex items-center justify-center mx-auto">
                 <Calendar className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-slate-750 dark:text-slate-400 text-sm">No events scheduled</h4>
-                <p className="text-slate-500 dark:text-slate-550 text-xs font-medium">There are no classes, tests, or holidays mapped to this day.</p>
+                <h4 className="font-bold text-slate-750 dark:text-muted-foreground text-sm">No events scheduled</h4>
+                <p className="text-muted-foreground text-xs font-medium">There are no classes, tests, or holidays mapped to this day.</p>
               </div>
             </div>
           ) : (
@@ -383,23 +383,23 @@ export default function StudentSchedulePage() {
                 const isSpecial = event.eventType === 'SPECIAL';
                 const isHoliday = event.eventType === 'HOLIDAY';
 
-                let cardStyle = "bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-850 hover:border-slate-300 dark:hover:border-slate-800 shadow-sm";
-                let badgeStyle = "bg-slate-100 dark:bg-slate-800/80 text-slate-650 dark:text-slate-300 border-slate-200 dark:border-slate-700/50";
+                let cardStyle = "interactive-card text-foreground shadow-sm hover:border-indigo-500/30";
+                let badgeStyle = "bg-muted  text-slate-650 dark:text-foreground border-border-color /50";
                 let glowStyle = "";
 
                 if (isTest) {
-                  cardStyle = "bg-red-50/45 dark:bg-red-950/10 border border-red-150 dark:border-red-900/20 hover:border-red-300 dark:hover:border-red-800/40 text-slate-900 dark:text-white shadow-sm";
+                  cardStyle = "bg-red-50/45 dark:bg-red-950/10 border border-red-150 dark:border-red-900/20 hover:border-red-300 dark:hover:border-red-800/40 text-foreground dark:text-white shadow-sm";
                   badgeStyle = "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20";
                 } else if (isAssignment) {
-                  cardStyle = "bg-sky-50/45 dark:bg-sky-950/10 border border-sky-150 dark:border-sky-900/20 hover:border-sky-350 dark:hover:border-sky-800/30 text-slate-900 dark:text-white shadow-sm";
+                  cardStyle = "bg-sky-50/45 dark:bg-sky-950/10 border border-sky-150 dark:border-sky-900/20 hover:border-sky-350 dark:hover:border-sky-800/30 text-foreground dark:text-white shadow-sm";
                   badgeStyle = "bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-550/20";
                 } else if (isSpecial) {
-                  cardStyle = "bg-gradient-to-r from-indigo-50/30 via-purple-50/30 to-indigo-50/30 dark:from-indigo-950/15 dark:via-purple-950/15 dark:to-indigo-950/15 border border-purple-200 dark:border-purple-500/20 hover:border-purple-300 dark:hover:border-purple-500/40 shadow-sm text-slate-900 dark:text-white";
+                  cardStyle = "bg-gradient-to-r from-indigo-50/30 via-purple-50/30 to-indigo-50/30 dark:from-indigo-950/15 dark:via-purple-950/15 dark:to-indigo-950/15 border border-purple-200 dark:border-purple-500/20 hover:border-purple-300 dark:hover:border-purple-500/40 shadow-sm text-foreground dark:text-white";
                   badgeStyle = "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30";
                   glowStyle = "text-purple-650 dark:text-purple-400 animate-pulse";
                 } else if (isHoliday) {
-                  cardStyle = "bg-slate-50/70 dark:bg-slate-950/35 border border-slate-200 dark:border-slate-900/80 opacity-60 hover:opacity-75 select-none text-slate-650 dark:text-slate-400";
-                  badgeStyle = "bg-slate-100 dark:bg-slate-900/50 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-800";
+                  cardStyle = "bg-muted  border border-border-color /80 opacity-60 hover:opacity-75 select-none text-slate-650 dark:text-muted-foreground";
+                  badgeStyle = "bg-muted dark:glass-card text-muted-foreground dark:text-muted-foreground border-border-color dark:border-border-color";
                 }
 
                 return (
@@ -415,7 +415,7 @@ export default function StudentSchedulePage() {
                         </span>
 
                         {event.courseTitle && (
-                          <span className="text-[9px] font-extrabold px-2 py-0.5 bg-slate-100 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-850 text-indigo-650 dark:text-indigo-400 rounded-full">
+                          <span className="text-[9px] font-extrabold px-2 py-0.5 bg-muted border border-border-color dark:border-border-color text-indigo-650 dark:text-indigo-400 rounded-full">
                             {event.courseTitle}
                           </span>
                         )}
@@ -447,20 +447,20 @@ export default function StudentSchedulePage() {
 
                       <div className="space-y-1">
                         <h4 className={`text-base font-black tracking-tight ${
-                          event.isCancelled ? 'line-through text-slate-500' : 'text-slate-905 dark:text-white'
-                        } flex items-center gap-1.5`}>
+event.isCancelled ? 'line-through text-muted-foreground' : 'text-slate-905 dark:text-white'
+} flex items-center gap-1.5`}>
                           {event.title}
                           {isSpecial && <Sparkles className={`w-4.5 h-4.5 ${glowStyle}`} />}
                         </h4>
                         {event.description && (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl">{event.description}</p>
+                          <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed max-w-2xl">{event.description}</p>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap gap-y-2 gap-x-4 text-slate-500 dark:text-slate-400 text-xs font-semibold">
+                      <div className="flex flex-wrap gap-y-2 gap-x-4 text-muted-foreground dark:text-muted-foreground text-xs font-semibold">
                         {event.instructorName && (
                           <span className="flex items-center gap-1">
-                            <span className="text-slate-400 dark:text-slate-500 font-medium">Instructor:</span> {event.instructorName}
+                            <span className="text-muted-foreground dark:text-muted-foreground font-medium">Instructor:</span> {event.instructorName}
                           </span>
                         )}
 
@@ -477,20 +477,20 @@ export default function StudentSchedulePage() {
 
                         {event.location && !event.meetingLink && (
                           <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {event.location}
+                            <MapPin className="w-3.5 h-3.5 text-muted-foreground dark:text-muted-foreground" /> {event.location}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row md:flex-col items-start md:items-end justify-between w-full md:w-auto gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-850 shrink-0">
+                    <div className="flex flex-col sm:flex-row md:flex-col items-start md:items-end justify-between w-full md:w-auto gap-4 pt-3 md:pt-0 border-t md:border-t-0 border-border-color dark:border-border-color shrink-0">
                       
                       <div className="space-y-0.5 text-left md:text-right">
                         <div className="flex items-center md:justify-end gap-1 text-indigo-650 dark:text-indigo-400 font-bold text-xs sm:text-sm">
                           <Clock className="w-4 h-4 shrink-0" />
                           <span>{formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
                         </div>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">
+                        <span className="text-[10px] text-muted-foreground dark:text-muted-foreground block font-medium">
                           Duration: {event.startTime && event.endTime ? (
                             (() => {
                               const [h1, m1] = event.startTime.split(':').map(Number);
@@ -523,7 +523,7 @@ export default function StudentSchedulePage() {
                         {!event.isCancelled && (
                           <button
                             onClick={() => handleExportSingle(event)}
-                            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-350 hover:text-slate-900 dark:hover:text-white rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer self-stretch sm:self-auto shadow-sm"
+                            className="px-3 py-1.5 bg-muted hover:bg-muted dark:bg-card dark:hover:bg-card border border-border-color dark:border-border-color hover:border-border-color dark:hover:border-border-color text-muted-foreground hover:text-foreground dark:hover:text-white rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer self-stretch sm:self-auto shadow-sm"
                           >
                             <Download className="w-3 h-3" />
                             Export (.ics)
@@ -542,8 +542,8 @@ export default function StudentSchedulePage() {
         {/* Right Section (Schedules Event Creator Form): 5/12 cols (Visible only to Admin/Instructor) */}
         {isAdminOrInstructor && (
           <div className="lg:col-span-5 space-y-4">
-            <div className="glass-card p-6 rounded-3xl border border-slate-850 space-y-4">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            <div className="glass-card bg-card dark:bg-card rounded-3xl p-6 shadow-sm border border-border-color space-y-6">
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-indigo-400" /> Event Creator Workspace
               </h3>
 
@@ -552,11 +552,11 @@ export default function StudentSchedulePage() {
                 {/* Event Type */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Event Type *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Event Type *</label>
                     <select
                       value={createEventType}
                       onChange={(e) => setCreateEventType(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                       required
                     >
                       <option value="CLASS">CLASS</option>
@@ -569,11 +569,11 @@ export default function StudentSchedulePage() {
 
                   {/* Target Audience */}
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Target Audience *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Target Audience *</label>
                     <select
                       value={createTargetRole}
                       onChange={(e) => setCreateTargetRole(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                       required
                     >
                       <option value="STUDENT">STUDENTS</option>
@@ -585,41 +585,41 @@ export default function StudentSchedulePage() {
 
                 {/* Event Title */}
                 <div className="space-y-1">
-                  <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Title *</label>
+                  <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Title *</label>
                   <input
                     type="text"
                     required
                     value={createTitle}
                     onChange={(e) => setCreateTitle(e.target.value)}
                     placeholder="e.g. Science Revision Session"
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 {/* Event Description */}
                 <div className="space-y-1">
-                  <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Description</label>
+                  <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Description</label>
                   <textarea
                     rows={2}
                     value={createDescription}
                     onChange={(e) => setCreateDescription(e.target.value)}
                     placeholder="Provide guidelines or details about this event..."
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"
+                    className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 resize-none"
                   />
                 </div>
 
                 {/* Resource Mapping Type */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-950/45 p-1 rounded-xl border border-slate-855">
+                <div className="grid grid-cols-3 gap-2 bg-card p-1 rounded-xl border border-border-color">
                   {(['BATCH', 'COURSE', 'GENERAL'] as const).map(type => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setCreateMappingType(type)}
                       className={`py-1.5 rounded-lg font-bold text-[9px] uppercase tracking-wider cursor-pointer transition-all ${
-                        createMappingType === type
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-350'
-                      }`}
+createMappingType === type
+? 'bg-indigo-600 text-white shadow-sm'
+: 'text-muted-foreground hover:text-slate-350'
+}`}
                     >
                       {type}
                     </button>
@@ -630,11 +630,11 @@ export default function StudentSchedulePage() {
                 {createMappingType === 'BATCH' && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Select Batch *</label>
+                      <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Select Batch *</label>
                       <select
                         value={createBatchId}
                         onChange={(e) => setCreateBatchId(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                         required
                       >
                         <option value="">Choose batch...</option>
@@ -645,12 +645,12 @@ export default function StudentSchedulePage() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Subject Name *</label>
+                      <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Subject Name *</label>
                       {selectedBatchObj && selectedBatchObj.subjects.length > 0 ? (
                         <select
                           value={createSubjectName}
                           onChange={(e) => setCreateSubjectName(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-950 border border-slate-855 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                          className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                           required
                         >
                           {selectedBatchObj.subjects.map(s => (
@@ -664,7 +664,7 @@ export default function StudentSchedulePage() {
                           value={createSubjectName}
                           onChange={(e) => setCreateSubjectName(e.target.value)}
                           placeholder="e.g. Mathematics"
-                          className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none"
+                          className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none"
                         />
                       )}
                     </div>
@@ -673,11 +673,11 @@ export default function StudentSchedulePage() {
 
                 {createMappingType === 'COURSE' && (
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Select Enrolled Course *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Select Enrolled Course *</label>
                     <select
                       value={createCourseId}
                       onChange={(e) => setCreateCourseId(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                       required
                     >
                       <option value="">Choose course...</option>
@@ -692,37 +692,37 @@ export default function StudentSchedulePage() {
                 <div className="grid grid-cols-3 gap-2">
                   {/* Date */}
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Date *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Date *</label>
                     <input
                       type="date"
                       required
                       value={createDate}
                       onChange={(e) => setCreateDate(e.target.value)}
-                      className="w-full px-2 py-2 bg-slate-950 border border-slate-855 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-2 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                     />
                   </div>
 
                   {/* Start Time */}
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Start Time *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Start Time *</label>
                     <input
                       type="time"
                       required
                       value={createStartTime}
                       onChange={(e) => setCreateStartTime(e.target.value)}
-                      className="w-full px-2 py-2 bg-slate-950 border border-slate-855 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-2 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                     />
                   </div>
 
                   {/* End Time */}
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">End Time *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">End Time *</label>
                     <input
                       type="time"
                       required
                       value={createEndTime}
                       onChange={(e) => setCreateEndTime(e.target.value)}
-                      className="w-full px-2 py-2 bg-slate-950 border border-slate-855 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-2 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -731,37 +731,37 @@ export default function StudentSchedulePage() {
                   {/* Location or Meeting Link */}
                   {createMappingType !== 'COURSE' ? (
                     <div className="space-y-1 col-span-2">
-                      <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Classroom / Location</label>
+                      <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Classroom / Location</label>
                       <input
                         type="text"
                         value={createLocation}
                         onChange={(e) => setCreateLocation(e.target.value)}
                         placeholder="e.g. Lab 4B or Offline"
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500"
                       />
                     </div>
                   ) : (
                     <div className="space-y-1 col-span-2">
-                      <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Webinar / Zoom Meeting Link</label>
+                      <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Webinar / Zoom Meeting Link</label>
                       <input
                         type="url"
                         value={createMeetingLink}
                         onChange={(e) => setCreateMeetingLink(e.target.value)}
                         placeholder="e.g. https://zoom.us/j/..."
-                        className="w-full px-3 py-2 bg-slate-950 border border-slate-850 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 border-t border-slate-850 pt-3">
+                <div className="grid grid-cols-2 gap-3 border-t border-border-color pt-3">
                   {/* Frequency Selector */}
                   <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase text-[9px] tracking-wider">Frequency *</label>
+                    <label className="block text-muted-foreground font-bold uppercase text-[9px] tracking-wider">Frequency *</label>
                     <select
                       value={createIsRecurring ? 'true' : 'false'}
                       onChange={(e) => setCreateIsRecurring(e.target.value === 'true')}
-                      className="w-full px-3 py-2 bg-slate-950 border border-slate-855 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full px-3 py-2 bg-card border border-border-color rounded-xl text-foreground focus:outline-none focus:border-indigo-500 cursor-pointer"
                     >
                       <option value="true">Weekly Recurring</option>
                       <option value="false">One-time Event</option>
@@ -775,9 +775,9 @@ export default function StudentSchedulePage() {
                       id="notifyStudentsCheck"
                       checked={createNotifyStudents}
                       onChange={(e) => setCreateNotifyStudents(e.target.checked)}
-                      className="rounded border-slate-800 text-indigo-650 focus:ring-indigo-500 bg-slate-950 cursor-pointer w-4 h-4"
+                      className="rounded border-border-color text-indigo-650 focus:ring-indigo-500 bg-card cursor-pointer w-4 h-4"
                     />
-                    <label htmlFor="notifyStudentsCheck" className="text-slate-400 font-bold text-[9px] uppercase tracking-wider cursor-pointer">
+                    <label htmlFor="notifyStudentsCheck" className="text-muted-foreground font-bold text-[9px] uppercase tracking-wider cursor-pointer">
                       Send Email Alert
                     </label>
                   </div>

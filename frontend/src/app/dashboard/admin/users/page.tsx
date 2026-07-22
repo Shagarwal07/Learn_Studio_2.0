@@ -421,13 +421,13 @@ export default function UserManagementPage() {
     <div className="space-y-6 max-w-6xl mx-auto text-foreground">
       
       {/* Header and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="hero-header-card flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-accent-grape" />
+            <Users className="w-6 h-6 text-white" />
             User Management Console
           </h2>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1">
+          <p className="text-xs sm:text-sm text-indigo-100 mt-1 max-w-xl leading-relaxed">
             Provision student and instructor accounts, set credentials, map class batches, and sync database with CSV excel compilation.
           </p>
         </div>

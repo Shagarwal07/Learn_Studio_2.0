@@ -909,38 +909,42 @@ export default function InstructorBatchesPage() {
   // ROLE PROTECTION GUARD
   // ────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-7xl mx-auto text-xs sm:text-sm animate-in fade-in duration-300 text-slate-100">
+    <div className="space-y-6 text-xs sm:text-sm animate-in fade-in duration-300 text-foreground">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800/80 pb-5">
-        <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md border border-indigo-500/20">
+      {/* Header Hero Card */}
+      <div className="hero-header-card">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-card rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent-blue/20 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4"></div>
+
+        <div className="relative z-10">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-white bg-white/20 px-3 py-1.5 rounded-lg backdrop-blur-md border border-white/30 shadow-sm">
             Academic Panel
           </span>
-          <h2 className="text-2xl font-black text-slate-105 mt-2.5 tracking-tight">
-            Batch Management Workspace
+          <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight drop-shadow-sm">
+            Batch Management
           </h2>
-          <p className="text-xs text-slate-400 mt-1.5 leading-normal max-w-2xl">
+          <p className="text-xs sm:text-sm text-indigo-100 mt-2 leading-relaxed max-w-2xl font-medium">
             Configure offline batches, assign academic curriculum subjects, schedule timings, upload secure notes, assign homework, and mark attendance.
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="relative z-10 flex flex-col sm:items-end gap-3 w-full sm:w-auto">
           {user?.role === 'ADMIN' && (
             <button
               onClick={handleSyncGoogleDrive}
               disabled={syncingDrive}
               type="button"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-indigo-50 disabled:opacity-80 text-indigo-600 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
             >
               {syncingDrive ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Syncing Drive...
                 </>
               ) : (
                 <>
-                  <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                  <Folder className="w-4 h-4" />
                   Sync Google Drive
                 </>
               )}
@@ -963,8 +967,8 @@ export default function InstructorBatchesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT COLUMN: Batches List Sidebar (4/12 cols) */}
-        <div className="lg:col-span-4 bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+        <div className="lg:col-span-4 panel-sidebar">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Layers className="w-4 h-4 text-indigo-400" />
             Assigned Offline Batches ({batches.length})
           </h3>
@@ -972,13 +976,13 @@ export default function InstructorBatchesPage() {
           {isBatchesLoading ? (
             <div className="py-16 text-center flex flex-col items-center gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
-              <span className="text-xs text-slate-400 font-medium">Syncing batches...</span>
+              <span className="text-xs text-muted-foreground font-medium">Syncing batches...</span>
             </div>
           ) : batches.length === 0 ? (
-            <div className="py-12 px-4 text-center border border-dashed border-slate-800/85 rounded-xl bg-slate-950/20 text-slate-400 space-y-2">
-              <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs font-bold">No academic batches created</p>
-              <p className="text-[11px] text-slate-500">Administrators can create batches to begin onboarding.</p>
+            <div className="py-12 px-4 text-center border border-dashed border-border-color rounded-xl bg-muted/20 text-muted-foreground space-y-2">
+              <BookOpen className="w-8 h-8 text-muted-foreground mx-auto" />
+              <p className="text-xs font-bold text-foreground">No academic batches created</p>
+              <p className="text-[11px] text-muted-foreground">Administrators can create batches to begin onboarding.</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 scrollbar-thin">
@@ -987,11 +991,9 @@ export default function InstructorBatchesPage() {
                 return (
                   <div
                     key={b.id}
-                    className={`group w-full p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 cursor-pointer select-none ${
-                      isSelected
-                        ? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5'
-                        : 'bg-slate-950/30 border-slate-900 hover:bg-slate-900/40 hover:border-slate-800/80'
-                    }`}
+                    className={`group interactive-card flex items-center justify-between gap-3 cursor-pointer select-none ${
+isSelected ? 'interactive-card-active' : ''
+}`}
                     onClick={() => handleBatchSelect(b.id)}
                   >
                     <div className="min-w-0 space-y-1">
@@ -1000,15 +1002,15 @@ export default function InstructorBatchesPage() {
                           {b.level}
                         </span>
                         <h4 className={`text-xs font-black truncate transition-colors ${
-                          isSelected ? 'text-indigo-400' : 'text-slate-200'
-                        }`}>
+isSelected ? 'text-indigo-500 dark:text-indigo-400' : 'text-foreground'
+}`}>
                           {b.name}
                         </h4>
                       </div>
-                      <div className="text-[10px] text-slate-400 font-medium flex flex-wrap justify-between items-center gap-2">
+                      <div className="text-[10px] text-muted-foreground font-medium flex flex-wrap justify-between items-center gap-2">
                         <span>{b.studentCount} Students</span>
                         <span>
-                          Teacher: <span className="text-slate-350 font-bold">{b.instructorName || 'Unassigned'}</span>
+                          Teacher: <span className="text-foreground font-bold">{b.instructorName || 'Unassigned'}</span>
                         </span>
                       </div>
                     </div>
@@ -1019,7 +1021,7 @@ export default function InstructorBatchesPage() {
                           e.stopPropagation();
                           handleDeleteBatch(b.id);
                         }}
-                        className="p-1.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg cursor-pointer transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        className="p-1.5 bg-card border border-border-color text-muted-foreground hover:text-rose-400 hover:bg-rose-950/30 rounded-lg cursor-pointer transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                         title="Delete Batch"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1036,37 +1038,37 @@ export default function InstructorBatchesPage() {
         <div className="lg:col-span-8">
           
           {!selectedBatchId ? (
-            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 text-center shadow-xl space-y-4 py-20">
+            <div className="glass-card border border-border-color rounded-3xl p-8 text-center shadow-sm space-y-4 py-24 bg-card dark:bg-card">
               <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl flex items-center justify-center mx-auto shadow-inner">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div className="space-y-1.5 max-w-sm mx-auto">
-                <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wide">Batch Console Inactive</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <h3 className="text-xs font-bold text-foreground uppercase tracking-wide">Batch Console Inactive</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Select an offline academic batch from the left sidebar panel to load student rosters, class timetables, attendance registers, and assignments.
                 </p>
               </div>
             </div>
           ) : isDetailsLoading || !batchDetails ? (
-            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl p-20 text-center shadow-xl flex flex-col items-center justify-center gap-3">
+            <div className="glass-card backdrop-blur-md border border-border-color rounded-2xl p-20 text-center shadow-xl flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-indigo-505" />
-              <span className="text-xs text-slate-400 font-medium animate-pulse">Syncing batch workspace details...</span>
+              <span className="text-xs text-muted-foreground font-medium animate-pulse">Syncing batch workspace details...</span>
             </div>
           ) : (
-            <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden flex flex-col animate-in fade-in duration-300">
+            <div className="glass-card backdrop-blur-md border border-border-color rounded-2xl shadow-xl overflow-hidden flex flex-col animate-in fade-in duration-300">
               
               {/* Batch Banner Header */}
-              <div className="p-4 sm:p-5 bg-slate-950/40 border-b border-slate-850/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="p-4 sm:p-5 bg-card border-b border-border-color flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 text-[8px] font-extrabold rounded-full bg-indigo-600 text-white uppercase tracking-wider">
                       {batchDetails.level}
                     </span>
-                    <h3 className="text-base font-black text-slate-100">
+                    <h3 className="text-base font-black text-foreground">
                       {batchDetails.name}
                     </h3>
                   </div>
-                  <p className="text-xs text-slate-400 font-medium flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground font-medium flex items-center gap-2">
                     <span>Instructor (Class Teacher):</span>
                     {user?.role === 'ADMIN' ? (
                       <select
@@ -1075,7 +1077,7 @@ export default function InstructorBatchesPage() {
                           const val = e.target.value;
                           handleAssignInstructor(batchDetails.id, val ? parseInt(val) : null);
                         }}
-                        className="bg-slate-950 border border-slate-800 text-indigo-400 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                        className="bg-card border border-border-color text-indigo-400 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
                       >
                         <option value="">Unassigned</option>
                         {allInstructors.map(inst => (
@@ -1090,7 +1092,7 @@ export default function InstructorBatchesPage() {
 
                 <div className="flex flex-wrap items-center gap-1.5">
                   {batchDetails.subjects.map(s => (
-                    <span key={s} className="px-2 py-0.5 text-[9px] font-bold rounded-lg border border-slate-800 text-slate-300 bg-slate-950/60">
+                    <span key={s} className="px-2 py-0.5 text-[9px] font-bold rounded-lg border border-border-color text-foreground bg-card">
                       {s}
                     </span>
                   ))}
@@ -1103,7 +1105,7 @@ export default function InstructorBatchesPage() {
               </div>
 
               {/* Tabs Navigation */}
-              <div className="flex items-center gap-1 px-4 border-b border-slate-850 bg-slate-955/20 overflow-x-auto scrollbar-none">
+              <div className="flex items-center gap-1 px-4 border-b border-border-color bg-card overflow-x-auto scrollbar-none">
                 {([
                   { id: 'students', label: 'Students' },
                   { id: 'subjects', label: 'Subjects' },
@@ -1120,10 +1122,10 @@ export default function InstructorBatchesPage() {
                       key={tab.id}
                       onClick={() => handleTabSelect(tab.id)}
                       className={`px-3.5 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                        isActive
-                          ? 'border-indigo-500 text-indigo-400 font-extrabold'
-                          : 'border-transparent text-slate-400 hover:text-slate-200'
-                      }`}
+isActive
+? 'border-indigo-500 text-indigo-400 font-extrabold'
+: 'border-transparent text-muted-foreground hover:text-foreground'
+}`}
                     >
                       {tab.label}
                     </button>
@@ -1138,20 +1140,20 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'students' && (
                   <div className="space-y-5 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Student Roster</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Batch Student Roster</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Verify and organize students assigned to this offline cohort. Note that students can belong to only one batch at a time.
                       </p>
                     </div>
 
                     {user?.role === 'ADMIN' ? (
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-955/40 p-3.5 rounded-xl border border-slate-850/80">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-card p-3.5 rounded-xl border border-border-color">
                         <div className="relative flex-1">
-                          <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                          <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                           <select
                             value={selectedStudentToAdd}
                             onChange={(e) => setSelectedStudentToAdd(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-600 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                            className="w-full pl-9 pr-3 py-2 bg-card border border-border-color text-foreground placeholder-slate-600 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                           >
                             <option value="">Select a student to assign...</option>
                             {allStudents
@@ -1176,7 +1178,7 @@ export default function InstructorBatchesPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="p-3.5 bg-slate-955/40 border border-slate-850/80 rounded-xl text-xs text-slate-400 flex items-center gap-2.5 font-medium">
+                      <div className="p-3.5 bg-card border border-border-color rounded-xl text-xs text-muted-foreground flex items-center gap-2.5 font-medium">
                         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 animate-pulse" />
                         <span>Student batch enrollment and assignments are managed at the Administrator level. Instructors have read-only roster access.</span>
                       </div>
@@ -1184,12 +1186,12 @@ export default function InstructorBatchesPage() {
 
                     {/* Students List */}
                     <div className="space-y-3">
-                      <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                         Assigned Student List ({batchDetails.students.length})
                       </h5>
 
                       {batchDetails.students.length === 0 ? (
-                        <div className="py-10 text-center border border-dashed border-slate-850 rounded-xl text-xs text-slate-500 bg-slate-955/10">
+                        <div className="py-10 text-center border border-dashed border-border-color rounded-xl text-xs text-muted-foreground bg-card">
                           No students currently enrolled in this batch.
                         </div>
                       ) : (
@@ -1197,13 +1199,13 @@ export default function InstructorBatchesPage() {
                           {batchDetails.students.map((st) => (
                             <div
                               key={st.id}
-                              className="bg-slate-955/30 border border-slate-900 p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:border-slate-800/80 transition-colors"
+                              className="bg-card border border-border-color p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:border-border-color transition-colors"
                             >
                               <div className="min-w-0 space-y-0.5">
                                 <h4 className="text-xs font-bold text-slate-205 truncate">
                                   {st.name}
                                 </h4>
-                                <p className="text-[10px] text-slate-500 truncate">
+                                <p className="text-[10px] text-muted-foreground truncate">
                                   {st.email}
                                 </p>
                               </div>
@@ -1212,7 +1214,7 @@ export default function InstructorBatchesPage() {
                                 <button
                                   onClick={() => handleRemoveStudent(st.id)}
                                   disabled={assignStudentsMutation.isPending}
-                                  className="p-1.5 text-slate-500 hover:text-rose-455 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
+                                  className="p-1.5 text-muted-foreground hover:text-rose-455 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
                                   title="Remove student from batch"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1230,8 +1232,8 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'subjects' && (
                   <div className="space-y-5 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Active Curriculum Subjects</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Active Curriculum Subjects</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Identify which academic subjects are mapped to this offline batch.
                       </p>
                     </div>
@@ -1245,27 +1247,27 @@ export default function InstructorBatchesPage() {
                             onClick={() => handleToggleSubject(subject)}
                             disabled={assignSubjectsMutation.isPending}
                             className={`p-4 rounded-xl border text-left flex items-center justify-between gap-3 cursor-pointer transition-all ${
-                              isAssigned
-                                ? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
-                                : 'bg-slate-950/30 border-slate-905 hover:border-slate-800/80 hover:bg-slate-900/30'
-                            }`}
+isAssigned
+? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
+: 'bg-background hover:bg-muted border-border-color hover:border-border-color hover:bg-card'
+}`}
                           >
                             <div className="space-y-0.5">
                               <span className={`text-xs font-black block ${
-                                isAssigned ? 'text-indigo-400' : 'text-slate-300'
-                              }`}>
+isAssigned ? 'text-indigo-400' : 'text-foreground'
+}`}>
                                 {subject}
                               </span>
-                              <span className="text-[9px] text-slate-500 block font-bold uppercase tracking-wider">
+                              <span className="text-[9px] text-muted-foreground block font-bold uppercase tracking-wider">
                                 {isAssigned ? 'Active Syllabus' : 'Inactive'}
                               </span>
                             </div>
 
                             <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                              isAssigned
-                                ? 'bg-indigo-600 border-indigo-600 text-white'
-                                : 'border-slate-800 bg-slate-950'
-                            }`}>
+isAssigned
+? 'bg-indigo-600 border-indigo-600 text-white'
+: 'border-border-color bg-card'
+}`}>
                               {isAssigned && <CheckCircle2 className="w-3.5 h-3.5 fill-white text-indigo-600" />}
                             </div>
                           </button>
@@ -1279,8 +1281,8 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'schedule' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Class Timings & Weekly Planner</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Class Timings & Weekly Planner</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Configure weekly classroom schedules for active subjects. Timing edits instantly sync to student timetable feeds.
                       </p>
                     </div>
@@ -1292,19 +1294,19 @@ export default function InstructorBatchesPage() {
                         Please assign at least one active subject in the **Subjects** tab before scheduling class timings.
                       </div>
                     ) : (
-                      <form onSubmit={handleAddSchedule} className="bg-slate-955/40 p-4 rounded-xl border border-slate-850/80 space-y-4 text-xs">
-                        <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <form onSubmit={handleAddSchedule} className="bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
+                        <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                           Schedule New Lecture Timing
                         </h5>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                           {/* Subject */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Subject *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Subject *</label>
                             <select
                               value={scheduleSubject}
                               onChange={(e) => setScheduleSubject(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             >
                               {batchDetails.subjects.map(s => (
                                 <option key={s} value={s}>{s}</option>
@@ -1314,23 +1316,23 @@ export default function InstructorBatchesPage() {
 
                           {/* Start / Event Date */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Date *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Date *</label>
                             <input
                               type="date"
                               required
                               value={scheduleDate}
                               onChange={(e) => setScheduleDate(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             />
                           </div>
 
                           {/* Is Recurring Select */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Frequency *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Frequency *</label>
                             <select
                               value={scheduleIsRecurring ? 'true' : 'false'}
                               onChange={(e) => setScheduleIsRecurring(e.target.value === 'true')}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             >
                               <option value="true">Weekly Recurring Class</option>
                               <option value="false">One-time Class Only</option>
@@ -1339,38 +1341,38 @@ export default function InstructorBatchesPage() {
 
                           {/* Location */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Classroom / Room *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Classroom / Room *</label>
                             <input
                               type="text"
                               required
                               value={scheduleLocation}
                               onChange={(e) => setScheduleLocation(e.target.value)}
                               placeholder="e.g. Room 201"
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
                             />
                           </div>
 
                           {/* Start Time */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Start Time *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Start Time *</label>
                             <input
                               type="time"
                               required
                               value={scheduleStartTime}
                               onChange={(e) => setScheduleStartTime(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             />
                           </div>
 
                           {/* End Time */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">End Time *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">End Time *</label>
                             <input
                               type="time"
                               required
                               value={scheduleEndTime}
                               onChange={(e) => setScheduleEndTime(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             />
                           </div>
 
@@ -1391,12 +1393,12 @@ export default function InstructorBatchesPage() {
 
                     {/* Schedules Timetable view */}
                     <div className="space-y-3">
-                      <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                         Current Weekly Schedule Timetable
                       </h5>
 
                       {batchSchedules.length === 0 ? (
-                        <div className="py-10 text-center border border-dashed border-slate-850 rounded-xl text-xs text-slate-500 bg-slate-955/10">
+                        <div className="py-10 text-center border border-dashed border-border-color rounded-xl text-xs text-muted-foreground bg-card">
                           No class timings scheduled yet for this batch.
                         </div>
                       ) : (
@@ -1406,13 +1408,13 @@ export default function InstructorBatchesPage() {
                             if (dayEvents.length === 0) return null;
 
                             return (
-                              <div key={dayName} className="space-y-2 bg-slate-955/20 p-3.5 rounded-xl border border-slate-850/80">
+                              <div key={dayName} className="space-y-2 bg-card p-3.5 rounded-xl border border-border-color">
                                 <h6 className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">
                                   {dayName}
                                 </h6>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   {dayEvents.map(event => (
-                                    <div key={event.id} className="bg-slate-950/40 border border-slate-900 p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:border-slate-800/85 transition-colors">
+                                    <div key={event.id} className="bg-card border border-border-color p-3 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:border-border-color transition-colors">
                                       <div className="min-w-0 space-y-1">
                                         <div className="flex items-center gap-1.5">
                                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
@@ -1420,7 +1422,7 @@ export default function InstructorBatchesPage() {
                                             {event.subjectName}
                                           </h4>
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9px] text-slate-500 font-semibold">
+                                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[9px] text-muted-foreground font-semibold">
                                           <span className="flex items-center gap-1">
                                             <Clock className="w-3 h-3 text-indigo-400" />
                                             {event.startTime.substring(0, 5)} - {event.endTime.substring(0, 5)}
@@ -1434,7 +1436,7 @@ export default function InstructorBatchesPage() {
 
                                       <button
                                         onClick={() => deleteScheduleMutation.mutate(event.id)}
-                                        className="p-1.5 text-slate-500 hover:text-rose-455 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
+                                        className="p-1.5 text-muted-foreground hover:text-rose-455 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
                                         title="Delete Timing"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -1455,8 +1457,8 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'attendance' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Attendance Register</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Batch Attendance Register</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Conduct attendance checks and review historical logs for the current academic batch.
                       </p>
                     </div>
@@ -1474,14 +1476,14 @@ export default function InstructorBatchesPage() {
                     ) : (
                       <div className="space-y-5">
                         {/* Selector Controls */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-955/40 p-4 rounded-xl border border-slate-850/80 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-card p-4 rounded-xl border border-border-color text-xs">
                           {/* Subject Select */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Select Subject *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Select Subject *</label>
                             <select
                               value={attendanceSubject}
                               onChange={(e) => setAttendanceSubject(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             >
                               {batchDetails.subjects.map(s => (
                                 <option key={s} value={s}>{s}</option>
@@ -1491,12 +1493,12 @@ export default function InstructorBatchesPage() {
 
                           {/* Date Select */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Select Date *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Select Date *</label>
                             <input
                               type="date"
                               value={attendanceDate}
                               onChange={(e) => setAttendanceDate(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             />
                           </div>
                         </div>
@@ -1505,25 +1507,25 @@ export default function InstructorBatchesPage() {
                         <div className="space-y-3">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
                             <div className="flex flex-wrap items-center gap-3 flex-1">
-                              <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                              <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                 Student Marking Roster ({filteredStudentsForAttendance.length} of {batchDetails.students.length})
                               </h5>
                               
                               {/* Search Bar */}
                               <div className="relative flex-1 min-w-[200px] max-w-xs">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                                 <input
                                   type="text"
                                   value={attendanceSearchQuery}
                                   onChange={(e) => setAttendanceSearchQuery(e.target.value)}
                                   placeholder="Search student by name..."
-                                  className="w-full pl-9 pr-8 py-1.5 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-500 rounded-xl text-[11px] font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                                  className="w-full pl-9 pr-8 py-1.5 bg-card border border-border-color text-foreground placeholder-slate-500 rounded-xl text-[11px] font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
                                 />
                                 {attendanceSearchQuery && (
                                   <button
                                     type="button"
                                     onClick={() => setAttendanceSearchQuery('')}
-                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350 text-[10px] font-bold"
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-slate-350 text-[10px] font-bold"
                                   >
                                     Clear
                                   </button>
@@ -1543,7 +1545,7 @@ export default function InstructorBatchesPage() {
                               >
                                 Mark All Present
                               </button>
-                              <span className="text-slate-800">|</span>
+                              <span className="text-foreground">|</span>
                               <button
                                 onClick={() => {
                                   const records: Record<number, 'PRESENT' | 'ABSENT'> = {};
@@ -1559,7 +1561,7 @@ export default function InstructorBatchesPage() {
 
                           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                             {filteredStudentsForAttendance.length === 0 ? (
-                              <div className="py-8 text-center border border-dashed border-slate-850 rounded-xl text-xs text-slate-500 bg-slate-955/10">
+                              <div className="py-8 text-center border border-dashed border-border-color rounded-xl text-xs text-muted-foreground bg-card">
                                 No students found matching "{attendanceSearchQuery}".
                               </div>
                             ) : (
@@ -1570,17 +1572,17 @@ export default function InstructorBatchesPage() {
                                 return (
                                   <div
                                     key={st.id}
-                                    className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-slate-955/20 ${
-                                      isPresent
-                                        ? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
-                                        : 'border-rose-955/40 border-l-4 border-l-rose-500/80'
-                                    }`}
+                                    className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-card ${
+isPresent
+? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
+: 'border-rose-955/40 border-l-4 border-l-rose-500/80'
+}`}
                                   >
                                     <div className="min-w-0 space-y-0.5">
                                       <h4 className="text-xs font-bold text-slate-205 truncate">
                                         {st.name}
                                       </h4>
-                                      <p className="text-[9px] text-slate-500 truncate">
+                                      <p className="text-[9px] text-muted-foreground truncate">
                                         {st.email}
                                       </p>
                                     </div>
@@ -1594,10 +1596,10 @@ export default function InstructorBatchesPage() {
                                         }));
                                       }}
                                       className={`px-3 py-1.5 text-[9px] font-extrabold rounded-lg border uppercase tracking-wider cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${
-                                        isPresent
-                                          ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
-                                          : 'bg-rose-500/10 border-rose-500/10 text-rose-400'
-                                      }`}
+isPresent
+? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
+: 'bg-rose-500/10 border-rose-500/10 text-rose-400'
+}`}
                                     >
                                       {isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                                       {status}
@@ -1624,7 +1626,7 @@ export default function InstructorBatchesPage() {
                         </button>
 
                         {/* Previous Attendance Logs Section */}
-                        <div className="space-y-4 pt-5 border-t border-slate-850/80">
+                        <div className="space-y-4 pt-5 border-t border-border-color">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <h5 className="text-xs font-bold text-slate-205 uppercase tracking-wider">
                               Previous Attendance Logs
@@ -1634,7 +1636,7 @@ export default function InstructorBatchesPage() {
                                 Filtering log records for "{attendanceSearchQuery}"
                               </div>
                             ) : (
-                              <div className="text-[10px] text-slate-400 font-semibold bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
+                              <div className="text-[10px] text-muted-foreground font-semibold bg-card border border-border-color px-2 py-0.5 rounded">
                                 Showing all logs for {batchDetails.name}
                               </div>
                             )}
@@ -1642,7 +1644,7 @@ export default function InstructorBatchesPage() {
 
                           {/* Line Highlight for selected batch OR student match alert */}
                           {attendanceSearchQuery ? (
-                            <div className="p-3 bg-indigo-950/15 border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-slate-300 flex items-center justify-between">
+                            <div className="p-3 bg-indigo-950/15 border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-foreground flex items-center justify-between">
                               <span>Showing previous logs matching student: <strong className="text-indigo-400">"{attendanceSearchQuery}"</strong></span>
                               <button 
                                 onClick={() => setAttendanceSearchQuery('')}
@@ -1652,23 +1654,23 @@ export default function InstructorBatchesPage() {
                               </button>
                             </div>
                           ) : (
-                            <div className="p-3 bg-slate-950/40 border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-slate-300">
+                            <div className="p-3 bg-card border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-foreground">
                               Active Batch Logs: <span className="font-extrabold text-indigo-400">{batchDetails.name}</span> ({batchDetails.level})
                             </div>
                           )}
 
                           {filteredAttendanceLogs.length === 0 ? (
-                            <div className="py-8 text-center border border-dashed border-slate-850 rounded-xl text-slate-500 text-xs bg-slate-955/10">
+                            <div className="py-8 text-center border border-dashed border-border-color rounded-xl text-muted-foreground text-xs bg-card">
                               {attendanceSearchQuery 
                                 ? `No attendance records found matching student "${attendanceSearchQuery}".`
                                 : "No attendance records logged yet for this batch."
                               }
                             </div>
                           ) : (
-                            <div className="overflow-hidden border border-slate-850/80 rounded-xl bg-slate-955/20">
+                            <div className="overflow-hidden border border-border-color rounded-xl bg-card">
                               <div className="max-h-60 overflow-y-auto pr-1">
                                 <table className="w-full border-collapse text-left text-[11px] font-semibold text-slate-305">
-                                  <thead className="bg-slate-900/80 font-bold border-b border-slate-850 text-slate-200">
+                                  <thead className="glass-card font-bold border-b border-border-color text-foreground">
                                     <tr>
                                       <th className="px-4 py-2.5">Date</th>
                                       <th className="px-4 py-2.5">Subject</th>
@@ -1680,16 +1682,16 @@ export default function InstructorBatchesPage() {
                                     {filteredAttendanceLogs.map((log) => {
                                       const isPres = log.status === 'PRESENT';
                                       return (
-                                        <tr key={log.id} className="hover:bg-slate-900/30 transition-colors">
+                                        <tr key={log.id} className="hover:bg-card transition-colors">
                                           <td className="px-4 py-2">{new Date(log.date).toLocaleDateString()} ({log.day})</td>
                                           <td className="px-4 py-2">{log.subjectName}</td>
                                           <td className="px-4 py-2">{log.studentName}</td>
                                           <td className="px-4 py-2 text-right">
                                             <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
-                                              isPres
-                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
-                                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
-                                            }`}>
+isPres
+? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
+: 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
+}`}>
                                               {log.status}
                                             </span>
                                           </td>
@@ -1712,8 +1714,8 @@ export default function InstructorBatchesPage() {
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="space-y-1">
-                        <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Study Notes</h4>
-                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Batch Study Notes</h4>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                           Upload lecture handouts, curriculum PDFs, and study guides directly to students assigned to this batch.
                         </p>
                       </div>
@@ -1721,7 +1723,7 @@ export default function InstructorBatchesPage() {
                         onClick={handleSyncGoogleDrive}
                         disabled={syncingDrive}
                         type="button"
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-card hover:bg-muted disabled:opacity-50 text-white border border-border-color rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98] shrink-0"
                       >
                         {syncingDrive ? (
                           <>
@@ -1746,18 +1748,18 @@ export default function InstructorBatchesPage() {
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                         
                         {/* Notes Form (5/12 cols) */}
-                        <form onSubmit={handleNoteSubmit} className="md:col-span-5 bg-slate-955/40 p-4 rounded-xl border border-slate-850/80 space-y-4 text-xs">
-                          <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <form onSubmit={handleNoteSubmit} className="md:col-span-5 bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
+                          <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                             <UploadCloud className="w-4 h-4 text-indigo-400" /> Publish Study Note
                           </h5>
 
                           {/* Subject */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Subject *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Subject *</label>
                             <select
                               value={noteSubject}
                               onChange={(e) => setNoteSubject(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                               required
                             >
                               <option value="">Select subject...</option>
@@ -1769,33 +1771,33 @@ export default function InstructorBatchesPage() {
 
                           {/* Title */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Document Title *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Document Title *</label>
                             <input
                               type="text"
                               required
                               placeholder="e.g. Chapter 2: Trigonometric Ratios"
                               value={noteTitle}
                               onChange={(e) => setNoteTitle(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
                             />
                           </div>
 
                           {/* Description */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Brief Description</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Brief Description</label>
                             <textarea
                               rows={2}
                               placeholder="Topics covered, revision formulas..."
                               value={noteDescription}
                               onChange={(e) => setNoteDescription(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 resize-none"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 resize-none"
                             />
                           </div>
 
                           {/* File Dropzone */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Select PDF Document *</label>
-                            <div className="relative border border-dashed border-slate-800 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer bg-slate-950/20 transition-colors">
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Select PDF Document *</label>
+                            <div className="relative border border-dashed border-border-color hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer bg-background hover:bg-muted transition-colors">
                               <input
                                 ref={noteFileInputRef}
                                 type="file"
@@ -1804,11 +1806,11 @@ export default function InstructorBatchesPage() {
                                 onChange={handleNoteFileChange}
                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                               />
-                              <UploadCloud className="w-5 h-5 text-slate-500 mx-auto mb-1" />
+                              <UploadCloud className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
                               <p className="font-bold text-[9px] text-slate-350 truncate px-2">
                                 {notePdfFile ? notePdfFile.name : 'Click to select PDF document'}
                               </p>
-                              <p className="text-[8px] text-slate-500 mt-0.5">PDF format only, Max 10MB</p>
+                              <p className="text-[8px] text-muted-foreground mt-0.5">PDF format only, Max 10MB</p>
                             </div>
                           </div>
 
@@ -1845,33 +1847,33 @@ export default function InstructorBatchesPage() {
 
                         {/* Notes List (7/12 cols) */}
                         <div className="md:col-span-7 space-y-3">
-                          <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                             Uploaded Notes List ({batchNotes.length})
                           </h5>
 
                           {batchNotes.length === 0 ? (
-                            <div className="py-16 text-center border border-dashed border-slate-850 rounded-xl text-slate-500 text-xs bg-slate-955/10">
+                            <div className="py-16 text-center border border-dashed border-border-color rounded-xl text-muted-foreground text-xs bg-card">
                               No study notes uploaded yet for this batch.
                             </div>
                           ) : (
                             <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
                               {batchNotes.map(note => (
-                                <div key={note.id} className="bg-slate-950/30 border border-slate-900 p-3.5 rounded-xl flex items-start justify-between gap-4 shadow-sm hover:border-slate-800/80 transition-colors">
+                                <div key={note.id} className="bg-background hover:bg-muted border border-border-color p-3.5 rounded-xl flex items-start justify-between gap-4 shadow-sm hover:border-border-color transition-colors">
                                   <div className="min-w-0 flex-1 space-y-1.5">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className="px-2 py-0.5 text-[8px] font-extrabold rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase">
                                         {note.subjectName}
                                       </span>
-                                      <h4 className="text-xs font-bold text-slate-200 truncate">
+                                      <h4 className="text-xs font-bold text-foreground truncate">
                                         {note.title}
                                       </h4>
                                     </div>
                                     {note.description && (
-                                      <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2">
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
                                         {note.description}
                                       </p>
                                     )}
-                                    <div className="flex items-center gap-2 text-[9px] text-slate-500 font-semibold pt-1 border-t border-slate-900 mt-1">
+                                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-semibold pt-1 border-t border-border-color mt-1">
                                       <span>By: {note.uploadedByName}</span>
                                       <span>&bull;</span>
                                       <span>{new Date(note.createdAt).toLocaleDateString()}</span>
@@ -1882,7 +1884,7 @@ export default function InstructorBatchesPage() {
                                     {(user?.role === 'ADMIN' || note.uploadedById === user?.id) && (
                                       <button
                                         onClick={() => { if (confirm('Are you sure you want to delete this study note?')) deleteNoteMutation.mutate(note.id); }}
-                                        className="p-1.5 bg-slate-905 border border-slate-800 text-slate-400 hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
+                                        className="p-1.5 bg-slate-905 border border-border-color text-muted-foreground hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
                                         title="Delete Note"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -1912,8 +1914,8 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'homework' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Homework Tasks</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Batch Homework Tasks</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Create homework tasks, specify due dates, and optionally attach reference PDF exercise sheets for this batch.
                       </p>
                     </div>
@@ -1927,18 +1929,18 @@ export default function InstructorBatchesPage() {
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                         
                         {/* Homework Form (5/12 cols) */}
-                        <form onSubmit={handleHomeworkSubmit} className="md:col-span-5 bg-slate-955/40 p-4 rounded-xl border border-slate-850/80 space-y-4 text-xs">
-                          <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <form onSubmit={handleHomeworkSubmit} className="md:col-span-5 bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
+                          <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                             <FileText className="w-4 h-4 text-indigo-400" /> Assign Homework
                           </h5>
 
                           {/* Subject */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Subject *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Subject *</label>
                             <select
                               value={hwSubject}
                               onChange={(e) => setHwSubject(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                               required
                             >
                               <option value="">Select subject...</option>
@@ -1950,46 +1952,46 @@ export default function InstructorBatchesPage() {
 
                           {/* Title */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Task Title *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Task Title *</label>
                             <input
                               type="text"
                               required
                               placeholder="e.g. Physics Motion Exercise Sheet"
                               value={hwTitle}
                               onChange={(e) => setHwTitle(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
                             />
                           </div>
 
                           {/* Description */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Instructions & Syllabus *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Instructions & Syllabus *</label>
                             <textarea
                               rows={2}
                               required
                               placeholder="Solve exercises on page 24-25. Show detailed steps..."
                               value={hwDescription}
                               onChange={(e) => setHwDescription(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 resize-none"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 resize-none"
                             />
                           </div>
 
                           {/* Due Date */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Submission Due Date *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Submission Due Date *</label>
                             <input
                               type="date"
                               required
                               value={hwDueDate}
                               onChange={(e) => setHwDueDate(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             />
                           </div>
 
                           {/* File Dropzone */}
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Reference Attachment (Optional)</label>
-                            <div className="relative border border-dashed border-slate-800 hover:border-indigo-500 rounded-xl p-3 text-center cursor-pointer bg-slate-955/20 transition-colors">
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Reference Attachment (Optional)</label>
+                            <div className="relative border border-dashed border-border-color hover:border-indigo-500 rounded-xl p-3 text-center cursor-pointer bg-card transition-colors">
                               <input
                                 ref={hwFileInputRef}
                                 type="file"
@@ -1997,11 +1999,11 @@ export default function InstructorBatchesPage() {
                                 onChange={handleHwFileChange}
                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                               />
-                              <UploadCloud className="w-5 h-5 text-slate-500 mx-auto mb-1" />
-                              <p className="font-bold text-[9px] text-slate-300 truncate px-2">
+                              <UploadCloud className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+                              <p className="font-bold text-[9px] text-foreground truncate px-2">
                                 {hwPdfFile ? hwPdfFile.name : 'Attach exercise sheet PDF'}
                               </p>
-                              <p className="text-[8px] text-slate-500 mt-0.5">PDF format only, Max 10MB</p>
+                              <p className="text-[8px] text-muted-foreground mt-0.5">PDF format only, Max 10MB</p>
                             </div>
                           </div>
 
@@ -2038,31 +2040,31 @@ export default function InstructorBatchesPage() {
 
                         {/* Homework List (7/12 cols) */}
                         <div className="md:col-span-7 space-y-3">
-                          <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                          <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                             Assigned Homework Tasks ({batchHomeworks.length})
                           </h5>
 
                           {batchHomeworks.length === 0 ? (
-                            <div className="py-16 text-center border border-dashed border-slate-850 rounded-xl text-slate-500 text-xs bg-slate-950/10">
+                            <div className="py-16 text-center border border-dashed border-border-color rounded-xl text-muted-foreground text-xs bg-card">
                               No homework tasks assigned yet for this batch.
                             </div>
                           ) : (
                             <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
                               {batchHomeworks.map(hw => (
-                                <div key={hw.id} className="bg-slate-955/30 border border-slate-900 p-3.5 rounded-xl flex items-start justify-between gap-4 shadow-sm hover:border-slate-800/80 transition-colors">
+                                <div key={hw.id} className="bg-card border border-border-color p-3.5 rounded-xl flex items-start justify-between gap-4 shadow-sm hover:border-border-color transition-colors">
                                   <div className="min-w-0 flex-1 space-y-1.5">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className="px-2 py-0.5 text-[8px] font-extrabold rounded bg-amber-500/10 text-amber-405 border border-amber-500/20 uppercase">
                                         {hw.subjectName}
                                       </span>
-                                      <h4 className="text-xs font-bold text-slate-200 truncate">
+                                      <h4 className="text-xs font-bold text-foreground truncate">
                                         {hw.title}
                                       </h4>
                                     </div>
-                                    <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2">
+                                    <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
                                       {hw.description}
                                     </p>
-                                    <div className="flex items-center justify-between gap-2 text-[9px] text-slate-500 font-semibold pt-1.5 border-t border-slate-900 mt-1.5">
+                                    <div className="flex items-center justify-between gap-2 text-[9px] text-muted-foreground font-semibold pt-1.5 border-t border-border-color mt-1.5">
                                       <span>By: {hw.createdByName}</span>
                                       <span className="flex items-center gap-1 text-indigo-400">
                                         <Calendar className="w-3.5 h-3.5" />
@@ -2075,7 +2077,7 @@ export default function InstructorBatchesPage() {
                                     {(user?.role === 'ADMIN' || hw.createdById === user?.id) && (
                                       <button
                                         onClick={() => { if (confirm('Are you sure you want to delete this homework assignment?')) deleteHomeworkMutation.mutate(hw.id); }}
-                                        className="p-1.5 bg-slate-905 border border-slate-800 text-slate-400 hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
+                                        className="p-1.5 bg-slate-905 border border-border-color text-muted-foreground hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
                                         title="Delete Homework"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -2107,8 +2109,8 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'tests' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Academic Tests</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Batch Academic Tests</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Schedule and coordinate offline unit assessments, quizzes, and term exams for this batch.
                       </p>
                     </div>
@@ -2119,30 +2121,30 @@ export default function InstructorBatchesPage() {
                         Please assign at least one active subject in the **Subjects** tab before scheduling tests.
                       </div>
                     ) : (
-                      <form onSubmit={handleAddTest} className="bg-slate-955/40 p-4 rounded-xl border border-slate-850/80 space-y-4 text-xs">
-                        <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <form onSubmit={handleAddTest} className="bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
+                        <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                           Schedule New Academic Assessment
                         </h5>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Test Title *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Test Title *</label>
                             <input
                               type="text"
                               required
                               placeholder="e.g. Unit Test 1: Calculus"
                               value={testTitle}
                               onChange={(e) => setTestTitle(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
                             />
                           </div>
 
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Subject *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Subject *</label>
                             <select
                               value={testSubject}
                               onChange={(e) => setTestSubject(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-foreground rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             >
                               <option value="">Select subject...</option>
                               {batchDetails.subjects.map(s => (
@@ -2152,36 +2154,36 @@ export default function InstructorBatchesPage() {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Test Date *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Test Date *</label>
                             <input
                               type="date"
                               required
                               value={testDate}
                               onChange={(e) => setTestDate(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer"
                             />
                           </div>
 
                           <div className="space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Maximum Marks *</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Maximum Marks *</label>
                             <input
                               type="number"
                               required
                               min={1}
                               value={testMaxMarks}
                               onChange={(e) => setTestMaxMarks(parseInt(e.target.value))}
-                              className="w-full px-3 py-2 bg-slate-955/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
+                              className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20"
                             />
                           </div>
 
                           <div className="md:col-span-4 space-y-1">
-                            <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Syllabus / Details</label>
+                            <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Syllabus / Details</label>
                             <textarea
                               rows={2}
                               placeholder="Topics, formula requirements, exam rules..."
                               value={testDescription}
                               onChange={(e) => setTestDescription(e.target.value)}
-                              className="w-full px-3.5 py-2.5 bg-slate-955/60 border border-slate-800 text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 resize-none"
+                              className="w-full px-3.5 py-2.5 bg-card border border-border-color text-slate-202 placeholder-slate-650 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 resize-none"
                             />
                           </div>
                         </div>
@@ -2199,33 +2201,33 @@ export default function InstructorBatchesPage() {
 
                     {/* Tests List */}
                     <div className="space-y-3">
-                      <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                         Scheduled Tests List ({batchTests.length})
                       </h5>
 
                       {batchTests.length === 0 ? (
-                        <div className="py-10 text-center border border-dashed border-slate-850 rounded-xl text-xs text-slate-500 bg-slate-950/10">
+                        <div className="py-10 text-center border border-dashed border-border-color rounded-xl text-xs text-muted-foreground bg-card">
                           No exams or tests scheduled yet.
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {batchTests.map(test => (
-                            <div key={test.id} className="bg-slate-955/30 border border-slate-900 p-3.5 rounded-xl flex items-start justify-between gap-4 shadow-sm hover:border-slate-800/80 transition-colors">
+                            <div key={test.id} className="bg-card border border-border-color p-3.5 rounded-xl flex items-start justify-between gap-4 shadow-sm hover:border-border-color transition-colors">
                               <div className="min-w-0 space-y-1.5 flex-1">
                                 <div className="flex items-center gap-2">
                                   <Award className="w-4 h-4 text-rose-400 shrink-0" />
-                                  <h4 className="text-xs font-bold text-slate-200 truncate">
+                                  <h4 className="text-xs font-bold text-foreground truncate">
                                     {test.title}
                                   </h4>
                                 </div>
                                 {test.description && (
-                                  <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">
+                                  <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
                                     {test.description}
                                   </p>
                                 )}
-                                <div className="flex items-center justify-between gap-2 text-[9px] font-bold text-slate-500 pt-2 border-t border-slate-900 mt-1">
+                                <div className="flex items-center justify-between gap-2 text-[9px] font-bold text-muted-foreground pt-2 border-t border-border-color mt-1">
                                   <span className="uppercase text-rose-400">{test.subjectName} &bull; {test.maxMarks} Marks</span>
-                                  <span className="flex items-center gap-1 text-slate-400">
+                                  <span className="flex items-center gap-1 text-muted-foreground">
                                     <Calendar className="w-3.5 h-3.5 text-indigo-400" />
                                     Date: {new Date(test.testDate).toLocaleDateString()}
                                   </span>
@@ -2234,7 +2236,7 @@ export default function InstructorBatchesPage() {
 
                               <button
                                 onClick={() => deleteTestMutation.mutate(test.id)}
-                                className="p-1.5 text-slate-500 hover:text-rose-405 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
+                                className="p-1.5 text-muted-foreground hover:text-rose-405 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
                                 title="Delete Test"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -2251,40 +2253,40 @@ export default function InstructorBatchesPage() {
                 {activeTab === 'announcements' && (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Batch Announcements</h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Batch Announcements</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                         Broadcast alert notices and academic updates pinned directly to this batch's student dashboard stream.
                       </p>
                     </div>
 
                     {/* Announcement Form */}
-                    <form onSubmit={handleAddAnnouncement} className="bg-slate-955/40 p-4 rounded-xl border border-slate-850/80 space-y-4 text-xs">
-                      <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <form onSubmit={handleAddAnnouncement} className="bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
+                      <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                         <Megaphone className="w-4 h-4 text-indigo-400" /> Broadcast Batch Notice
                       </h5>
 
                       <div className="space-y-4">
                         <div className="space-y-1">
-                          <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Notice Title *</label>
+                          <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Notice Title *</label>
                           <input
                             type="text"
                             required
                             placeholder="e.g. Special Practical Class Scheduled"
                             value={annTitle}
                             onChange={(e) => setAnnTitle(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-3 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Broadcast message details *</label>
+                          <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Broadcast message details *</label>
                           <textarea
                             rows={3}
                             required
                             placeholder="Type details, rules, or requirements..."
                             value={annMessage}
                             onChange={(e) => setAnnMessage(e.target.value)}
-                            className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                            className="w-full px-3.5 py-2.5 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
                           />
                         </div>
                       </div>
@@ -2301,20 +2303,20 @@ export default function InstructorBatchesPage() {
 
                     {/* Announcements List */}
                     <div className="space-y-3">
-                      <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
                         Current Batch Notices ({batchAnnouncements.length})
                       </h5>
 
                       {batchAnnouncements.length === 0 ? (
-                        <div className="py-10 text-center border border-dashed border-slate-850 rounded-xl text-xs text-slate-500 bg-slate-950/10">
+                        <div className="py-10 text-center border border-dashed border-border-color rounded-xl text-xs text-muted-foreground bg-card">
                           No batch notices broadcasted yet.
                         </div>
                       ) : (
                         <div className="space-y-3">
                           {batchAnnouncements.map(ann => (
-                            <div key={ann.id} className="bg-slate-955/30 border border-slate-900 p-4 rounded-xl shadow-sm space-y-2 hover:border-slate-800/85 transition-colors">
+                            <div key={ann.id} className="bg-card border border-border-color p-4 rounded-xl shadow-sm space-y-2 hover:border-border-color transition-colors">
                               <div className="flex items-center justify-between gap-4">
-                                <h4 className="text-xs font-bold text-slate-200">
+                                <h4 className="text-xs font-bold text-foreground">
                                   {ann.title}
                                 </h4>
                                 <div className="flex items-center gap-2">
@@ -2324,7 +2326,7 @@ export default function InstructorBatchesPage() {
                                   {(user?.role === 'ADMIN' || user?.role === 'INSTRUCTOR') && (
                                     <button
                                       onClick={() => { if (confirm('Delete announcement?')) deleteAnnouncementMutation.mutate(ann.id); }}
-                                      className="p-1 bg-slate-905 border border-slate-800 text-slate-400 hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
+                                      className="p-1 bg-slate-905 border border-border-color text-muted-foreground hover:text-rose-455 hover:bg-rose-955/25 rounded-lg cursor-pointer transition-colors"
                                       title="Delete Announcement"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -2335,7 +2337,7 @@ export default function InstructorBatchesPage() {
                               <p className="text-xs text-slate-405 leading-relaxed">
                                 {ann.message}
                               </p>
-                              <div className="text-[9px] font-bold text-slate-500 pt-2 border-t border-slate-900 mt-1.5 flex items-center gap-2">
+                              <div className="text-[9px] font-bold text-muted-foreground pt-2 border-t border-border-color mt-1.5 flex items-center gap-2">
                                 <span>Broadcast by {ann.createdByName}</span>
                                 <span>&bull;</span>
                                 <span>{new Date(ann.createdAt).toLocaleDateString()}</span>
@@ -2359,16 +2361,16 @@ export default function InstructorBatchesPage() {
 
       {/* CREATE BATCH DIALOG MODAL (ADMIN ONLY) */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-card backdrop-blur-sm animate-in fade-in duration-200">
           <div
             className="fixed inset-0"
             onClick={() => setShowCreateModal(false)}
           />
           
-          <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 space-y-5">
+          <div className="relative bg-card border border-border-color rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 space-y-5">
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide">Create Offline Academic Batch</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Create Offline Academic Batch</h3>
+              <p className="text-xs text-muted-foreground">
                 Setup a new offline batch level.
               </p>
             </div>
@@ -2376,24 +2378,24 @@ export default function InstructorBatchesPage() {
             <form onSubmit={handleCreateBatch} className="space-y-4 text-xs">
               {/* Batch Name */}
               <div className="space-y-1.5">
-                <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Batch Name *</label>
+                <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Batch Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Class IX Evening Cohort"
                   value={newBatchName}
                   onChange={(e) => setNewBatchName(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-950/60 border border-slate-800 text-slate-200 placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-550"
+                  className="w-full px-3.5 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-550"
                 />
               </div>
 
               {/* Level */}
               <div className="space-y-1.5">
-                <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Batch Grade Level *</label>
+                <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Batch Grade Level *</label>
                 <select
                   value={newBatchLevel}
                   onChange={(e) => setNewBatchLevel(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                 >
                   {BATCH_LEVELS.map(level => (
                     <option key={level} value={level}>{level}</option>
@@ -2403,11 +2405,11 @@ export default function InstructorBatchesPage() {
 
               {/* Assign Instructor */}
               <div className="space-y-1.5">
-                <label className="block text-slate-400 font-bold text-[10px] uppercase tracking-wider">Assign Instructor (Class Teacher)</label>
+                <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Assign Instructor (Class Teacher)</label>
                 <select
                   value={newBatchInstructorId}
                   onChange={(e) => setNewBatchInstructorId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950/60 border border-slate-800 text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                 >
                   <option value="">Unassigned</option>
                   {allInstructors.map(inst => (
@@ -2428,7 +2430,7 @@ export default function InstructorBatchesPage() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-slate-850 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl font-bold transition-all cursor-pointer"
+                  className="px-4 py-2 bg-card hover:bg-card text-foreground border border-border-color rounded-xl font-bold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
