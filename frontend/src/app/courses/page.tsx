@@ -99,17 +99,17 @@ export default function CourseCatalogPage() {
   const totalPages = data?.totalPages || 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
+    <div className="min-h-screen bg-muted text-foreground pb-16">
       
       {/* Header Banner */}
-      <div className="bg-slate-900 text-white py-12 px-6 border-b border-slate-800 shadow-inner">
+      <div className="bg-card text-white py-12 px-6 border-b border-border-color shadow-inner">
         <div className="max-w-7xl mx-auto space-y-4">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white transition-colors">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-white transition-colors">
             ← Home
           </Link>
           <div className="space-y-1">
             <h2 className="text-3xl font-black tracking-tight">Explore Learning Paths</h2>
-            <p className="text-slate-400 text-sm max-w-xl">
+            <p className="text-muted-foreground text-sm max-w-xl">
               Learn advanced software engineering, backend development, design systems, and cloud management from industry professionals.
             </p>
           </div>
@@ -119,7 +119,7 @@ export default function CourseCatalogPage() {
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8">
         
         {/* Filters and Search Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-border-color shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
           {/* Search bar */}
           <div className="relative w-full md:max-w-md">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-405">
@@ -130,13 +130,13 @@ export default function CourseCatalogPage() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               placeholder="Search courses by title..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-slate-800"
+              className="w-full pl-10 pr-4 py-2.5 bg-muted border border-border-color rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-foreground"
             />
           </div>
 
           {/* Level Filter */}
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto py-1 scrollbar-none">
-            <span className="text-xs font-bold text-slate-400 flex items-center gap-1 shrink-0">
+            <span className="text-xs font-bold text-muted-foreground flex items-center gap-1 shrink-0">
               <Filter className="w-3.5 h-3.5" /> Difficulty:
             </span>
             {['ALL', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED'].map((lvl) => (
@@ -144,10 +144,10 @@ export default function CourseCatalogPage() {
                 key={lvl}
                 onClick={() => { setLevel(lvl); setPage(0); }}
                 className={`px-3 py-1.5 border rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                  level === lvl
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
-                }`}
+level === lvl
+? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+: 'bg-muted border-border-color text-muted-foreground hover:border-border-color'
+}`}
               >
                 {lvl}
               </button>
@@ -172,13 +172,13 @@ export default function CourseCatalogPage() {
 
         {/* Empty state */}
         {!isLoading && !error && courses.length === 0 && (
-          <div className="bg-white py-16 px-6 rounded-2xl border border-slate-200 shadow-sm text-center max-w-lg mx-auto space-y-4">
-            <div className="w-12 h-12 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl flex items-center justify-center mx-auto">
+          <div className="bg-white py-16 px-6 rounded-2xl border border-border-color shadow-sm text-center max-w-lg mx-auto space-y-4">
+            <div className="w-12 h-12 bg-muted border border-border-color text-muted-foreground rounded-xl flex items-center justify-center mx-auto">
               <Compass className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-base font-bold text-slate-900">No courses match your criteria</h4>
-              <p className="text-xs text-slate-500">Try adjusting your search terms or difficulty filter.</p>
+              <h4 className="text-base font-bold text-foreground">No courses match your criteria</h4>
+              <p className="text-xs text-muted-foreground">Try adjusting your search terms or difficulty filter.</p>
             </div>
           </div>
         )}
@@ -191,10 +191,10 @@ export default function CourseCatalogPage() {
               return (
                 <div 
                   key={course.id}
-                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group"
+                  className="bg-white rounded-2xl border border-border-color overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group"
                 >
                   {/* Thumbnail / Level */}
-                  <div className="relative aspect-video bg-slate-100 overflow-hidden border-b border-slate-150">
+                  <div className="relative aspect-video bg-muted overflow-hidden border-b border-slate-150">
                     {course.thumbnail ? (
                       <img 
                         src={course.thumbnail} 
@@ -202,11 +202,11 @@ export default function CourseCatalogPage() {
                         className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-350 bg-slate-100">
+                      <div className="w-full h-full flex items-center justify-center text-slate-350 bg-muted">
                         <BookOpen className="w-10 h-10" />
                       </div>
                     )}
-                    <span className="absolute top-3 left-3 px-2 py-0.5 bg-slate-900/85 backdrop-blur-sm text-white border border-slate-800 rounded-md text-[9px] font-extrabold tracking-wider uppercase">
+                    <span className="absolute top-3 left-3 px-2 py-0.5 bg-slate-900/85 backdrop-blur-sm text-white border border-border-color rounded-md text-[9px] font-extrabold tracking-wider uppercase">
                       {course.level}
                     </span>
                   </div>
@@ -214,7 +214,7 @@ export default function CourseCatalogPage() {
                   {/* Body */}
                   <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                         <span>By {course.instructorName}</span>
                         <span>•</span>
                         <span>{course.totalLessons} Lessons</span>
@@ -222,24 +222,24 @@ export default function CourseCatalogPage() {
                       <h4 className="text-lg font-extrabold text-slate-950 leading-snug line-clamp-2 group-hover:text-indigo-650 transition-colors">
                         {course.title}
                       </h4>
-                      <p className="text-slate-500 text-xs leading-relaxed line-clamp-3">
+                      <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3">
                         {course.description}
                       </p>
                     </div>
 
                     {/* Review Ratings */}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <div className="flex items-center text-amber-500">
                         <Star className="w-4 h-4 fill-current" />
                       </div>
-                      <span className="font-bold text-slate-800">{course.averageRating || '0.0'}</span>
-                      <span className="text-slate-400">({course.totalReviews} ratings)</span>
+                      <span className="font-bold text-foreground">{course.averageRating || '0.0'}</span>
+                      <span className="text-muted-foreground">({course.totalReviews} ratings)</span>
                     </div>
                   </div>
 
                   {/* Footer Actions */}
-                  <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-4">
-                    <span className="text-lg font-black text-slate-900">${course.price}</span>
+                  <div className="px-6 py-4 bg-muted border-t border-border-color flex items-center justify-between gap-4">
+                    <span className="text-lg font-black text-foreground">${course.price}</span>
                     {isEnrolled ? (
                       <Link
                         href={`/dashboard/course/${course.id}/learn`}
@@ -270,21 +270,21 @@ export default function CourseCatalogPage() {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-6 border-t border-slate-200">
+          <div className="flex items-center justify-center gap-2 pt-6 border-t border-border-color">
             <button
               disabled={page === 0}
               onClick={() => setPage(prev => Math.max(0, prev - 1))}
-              className="px-4 py-2 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-slate-50 text-slate-750 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="px-4 py-2 border border-border-color disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-muted text-slate-750 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               Previous
             </button>
-            <span className="text-xs font-semibold text-slate-400">
+            <span className="text-xs font-semibold text-muted-foreground">
               Page {page + 1} of {totalPages}
             </span>
             <button
               disabled={page + 1 >= totalPages}
               onClick={() => setPage(prev => prev + 1)}
-              className="px-4 py-2 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-slate-50 text-slate-750 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="px-4 py-2 border border-border-color disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-muted text-slate-750 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               Next
             </button>

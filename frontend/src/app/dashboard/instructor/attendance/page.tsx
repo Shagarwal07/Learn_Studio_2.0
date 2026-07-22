@@ -12,7 +12,7 @@ export default function RedirectPage() {
   }, [router]);
 
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center text-slate-400">
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-muted-foreground">
       <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
       <p className="text-xs font-medium">Redirecting to Batch Management Attendance...</p>
     </div>

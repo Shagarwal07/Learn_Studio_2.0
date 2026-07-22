@@ -33,7 +33,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-900 dark:bg-[#070B16] dark:text-white transition-colors duration-300">
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300">
         <Providers>{children}</Providers>
       </body>
     </html>

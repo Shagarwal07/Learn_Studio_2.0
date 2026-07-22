@@ -115,9 +115,9 @@ export default function CourseDetailPage() {
 
   if (courseLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-card text-white">
         <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
-        <p className="mt-4 text-slate-400 font-medium text-sm">Loading course details...</p>
+        <p className="mt-4 text-muted-foreground font-medium text-sm">Loading course details...</p>
       </div>
     );
   }
@@ -139,17 +139,17 @@ export default function CourseDetailPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
+    <div className="min-h-screen bg-card text-foreground pb-20">
       
       {/* Upper banner section */}
-      <div className="relative bg-slate-900 border-b border-slate-800/80 py-12 px-6 sm:px-12">
+      <div className="relative bg-card border-b border-border-color py-12 px-6 sm:px-12">
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8 items-center">
           
           {/* Left Side Info */}
           <div className="flex-1 space-y-4">
             <button 
               onClick={() => router.push('/courses')}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-semibold mb-2"
+              className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors text-sm font-semibold mb-2"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Catalog
@@ -160,14 +160,14 @@ export default function CourseDetailPage() {
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
               {course.title}
             </h1>
-            <p className="text-slate-400 text-sm sm:text-base max-w-2xl">
+            <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
               {course.description}
             </p>
             
             <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-350 pt-2">
               <span className="flex items-center gap-1">
                 <GraduationCap className="w-4 h-4 text-indigo-450" />
-                Instructor: <strong className="text-slate-200">{course.instructorName}</strong>
+                Instructor: <strong className="text-foreground">{course.instructorName}</strong>
               </span>
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -181,7 +181,7 @@ export default function CourseDetailPage() {
           </div>
 
           {/* Right Side: Card Thumbnail & Buy Button */}
-          <div className="w-full lg:w-96 shrink-0 bg-slate-850 border border-slate-750 p-5 rounded-3xl shadow-xl space-y-5">
+          <div className="w-full lg:w-96 shrink-0 bg-card border border-slate-750 p-5 rounded-3xl shadow-xl space-y-5">
             <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-700/65">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img 
@@ -193,7 +193,7 @@ export default function CourseDetailPage() {
             
             <div className="flex items-end justify-between">
               <div>
-                <span className="text-xs text-slate-450 uppercase block font-bold">Lifetime Access</span>
+                <span className="text-xs text-muted-foreground uppercase block font-bold">Lifetime Access</span>
                 <span className="text-2xl font-extrabold text-white">${course.price}</span>
               </div>
               <span className="text-xs text-emerald-450 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/10">
@@ -242,7 +242,7 @@ export default function CourseDetailPage() {
           {/* Description */}
           <div className="bg-slate-900/45 border border-slate-850/80 rounded-3xl p-6 sm:p-8 space-y-4">
             <h3 className="text-lg font-bold text-white">Course Overview</h3>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed whitespace-pre-line">
               {course.description}
             </p>
             
@@ -275,17 +275,17 @@ export default function CourseDetailPage() {
               Course Curriculum & Chapters
             </h3>
             
-            <div className="bg-slate-900/60 border border-slate-850 rounded-3xl overflow-hidden divide-y divide-slate-800/80 shadow-md">
+            <div className="glass-card border border-border-color rounded-3xl overflow-hidden divide-y divide-slate-800/80 shadow-md">
               {progress && progress.lessons && progress.lessons.length > 0 ? (
                 progress.lessons.map((lesson: any, idx: number) => (
-                  <div key={lesson.id} className="flex items-center justify-between p-4 px-6 hover:bg-slate-900/90 transition-colors">
+                  <div key={lesson.id} className="flex items-center justify-between p-4 px-6 hover:glass-card transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-6 h-6 bg-slate-800/85 text-xs font-bold text-slate-400 rounded-full flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 bg-slate-800/85 text-xs font-bold text-muted-foreground rounded-full flex items-center justify-center shrink-0">
                         {idx + 1}
                       </div>
                       <p className="text-sm font-semibold text-slate-250 truncate">{lesson.title}</p>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-450 shrink-0 font-medium">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 font-medium">
                       <span>{lesson.duration}</span>
                       {lesson.completed && (
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -294,13 +294,13 @@ export default function CourseDetailPage() {
                   </div>
                 ))
               ) : (
-                <div className="p-8 text-center text-xs text-slate-450 bg-slate-955/20 rounded-3xl">
+                <div className="p-8 text-center text-xs text-muted-foreground bg-slate-955/20 rounded-3xl">
                   {course.totalLessons === 0 ? (
-                    <p className="font-semibold text-slate-300">No lessons have been uploaded for this course yet.</p>
+                    <p className="font-semibold text-foreground">No lessons have been uploaded for this course yet.</p>
                   ) : (
                     <div className="space-y-3">
-                      <p className="font-semibold text-slate-200">This course contains {course.totalLessons} lessons.</p>
-                      <p className="text-slate-450">Please enroll in the course to view the full curriculum and start learning.</p>
+                      <p className="font-semibold text-foreground">This course contains {course.totalLessons} lessons.</p>
+                      <p className="text-muted-foreground">Please enroll in the course to view the full curriculum and start learning.</p>
                     </div>
                   )}
                 </div>
@@ -314,7 +314,7 @@ export default function CourseDetailPage() {
         <div className="space-y-6">
           <div className="bg-slate-900/65 border border-slate-855 rounded-3xl p-6 space-y-4 shadow-md">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">What you will learn</h3>
-            <ul className="space-y-3 text-sm text-slate-400">
+            <ul className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
                 Comprehensive coverage of all industry-standard topics and frameworks.
@@ -339,7 +339,7 @@ export default function CourseDetailPage() {
             <div className="flex items-center gap-3">
               <Award className="w-8 h-8 text-indigo-500 shrink-0" />
               <div>
-                <h4 className="text-xs font-bold text-slate-200">Verified Credentials</h4>
+                <h4 className="text-xs font-bold text-foreground">Verified Credentials</h4>
                 <p className="text-xs text-slate-455 mt-0.5">Upon finishing 100% of curriculum and milestones.</p>
               </div>
             </div>

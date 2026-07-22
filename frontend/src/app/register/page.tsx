@@ -171,10 +171,10 @@ export default function RegisterPage() {
                 disabled={true}
                 onClick={() => setRole('STUDENT')}
                 className={`py-3.5 px-4 border rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider cursor-not-allowed ${
-                  role === 'STUDENT'
-                    ? 'bg-white/5 border-accent-grape/40 text-slate-400'
-                    : 'bg-white/5 border-border-color text-text-secondary'
-                }`}
+role === 'STUDENT'
+? 'bg-white/5 border-accent-grape/40 text-muted-foreground'
+: 'bg-white/5 border-border-color text-text-secondary'
+}`}
               >
                 <GraduationCap className="w-4.5 h-4.5" />
                 Student
@@ -184,10 +184,10 @@ export default function RegisterPage() {
                 disabled={true}
                 onClick={() => setRole('INSTRUCTOR')}
                 className={`py-3.5 px-4 border rounded-xl flex items-center justify-center gap-2 transition-all text-xs font-bold uppercase tracking-wider cursor-not-allowed ${
-                  role === 'INSTRUCTOR'
-                    ? 'bg-white/5 border-accent-grape/40 text-slate-400'
-                    : 'bg-white/5 border-border-color text-text-secondary'
-                }`}
+role === 'INSTRUCTOR'
+? 'bg-white/5 border-accent-grape/40 text-muted-foreground'
+: 'bg-white/5 border-border-color text-text-secondary'
+}`}
               >
                 <User className="w-4.5 h-4.5" />
                 Instructor
@@ -198,9 +198,9 @@ export default function RegisterPage() {
           <button
             type="button"
             disabled={true}
-            className="w-full py-3.5 mt-4 bg-slate-800 border border-slate-700/60 text-slate-500 font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
+            className="w-full py-3.5 mt-4 bg-card border border-slate-700/60 text-muted-foreground font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
           >
-            <Lock className="w-4 h-4 text-slate-500" />
+            <Lock className="w-4 h-4 text-muted-foreground" />
             Registration Locked
           </button>
         </form>

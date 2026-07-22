@@ -142,7 +142,7 @@ export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: Secu
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-[75vh] bg-slate-950 border border-border-color rounded-3xl overflow-hidden select-none flex flex-col"
+      className="relative w-full h-[75vh] bg-card border border-border-color rounded-3xl overflow-hidden select-none flex flex-col"
     >
       
       {/* 1. Secure Watermark Overlay (pointer-events-none, covers the entire viewport) */}
@@ -158,7 +158,7 @@ export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: Secu
       </div>
 
       {/* 2. PDF Viewer Header Control Bar */}
-      <div className="z-20 bg-slate-900/90 backdrop-blur-md px-4 py-3 border-b border-border-color flex items-center justify-between select-none">
+      <div className="z-20 glass-card backdrop-blur-md px-4 py-3 border-b border-border-color flex items-center justify-between select-none">
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
             <Lock className="w-3 h-3" />
@@ -197,8 +197,8 @@ export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: Secu
         <iframe
           src={viewerUrl}
           className={`w-full h-full border-0 z-10 relative transition-all duration-300 ${
-            pdfDark ? 'invert hue-rotate-180 brightness-95 contrast-105 bg-[#070B16]' : 'bg-white'
-          }`}
+pdfDark ? 'invert hue-rotate-180 brightness-95 contrast-105 bg-[#070B16]' : 'bg-white'
+}`}
           title={noteTitle}
         />
       </div>

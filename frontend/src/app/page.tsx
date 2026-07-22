@@ -230,10 +230,10 @@ function TopperCard({ topper, year }: { topper: Topper; year: string }) {
     <motion.div
       initial={{ opacity: 1, y: 0 }}
       whileHover={{ y: -6, scale: 1.01 }}
-      className="group flex flex-col bg-slate-900 text-white rounded-3xl overflow-hidden shadow-xl border border-slate-800 w-full max-w-[340px] sm:max-w-none mx-auto relative cursor-pointer h-auto"
+      className="group flex flex-col bg-card text-white rounded-3xl overflow-hidden shadow-xl border border-border-color w-full max-w-[340px] sm:max-w-none mx-auto relative cursor-pointer h-auto"
     >
       {/* Top Image Part with Responsive fixed heights */}
-      <div className="relative w-full h-[260px] sm:h-[300px] lg:h-[340px] overflow-hidden bg-slate-100 shrink-0">
+      <div className="relative w-full h-[260px] sm:h-[300px] lg:h-[340px] overflow-hidden bg-muted shrink-0">
         {topper.image && !imgError ? (
           <Image
             src={topper.image}
@@ -275,22 +275,22 @@ function TopperCard({ topper, year }: { topper: Topper; year: string }) {
       </div>
 
       {/* Bottom Text Part */}
-      <div className="p-5 flex-1 flex flex-col justify-between bg-slate-900 relative gap-4">
+      <div className="p-5 flex-1 flex flex-col justify-between bg-card relative gap-4">
         <div className="space-y-1 text-left">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">
+          <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground block">
             Class 10th Board
           </span>
           <h4 className="font-black text-white text-lg leading-tight transition-colors duration-300 group-hover:text-indigo-400 truncate">
             {topper.name}
           </h4>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-muted-foreground font-medium">
             Board Score: <strong className="text-indigo-650 font-black text-sm">{topper.score}</strong>
           </p>
         </div>
 
         {/* Marks Footer */}
         {availableMarks.length > 0 && (
-          <div className="border-t border-slate-100 pt-3 mt-1 flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+          <div className="border-t border-slate-100 pt-3 mt-1 flex justify-between items-center text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
             {availableMarks.map((m, idx) => (
               <div
                 key={m.label}
@@ -304,7 +304,7 @@ function TopperCard({ topper, year }: { topper: Topper; year: string }) {
                         : "text-center"
                 }
               >
-                <span className="block text-[8px] text-slate-400 font-bold">{m.label}</span>
+                <span className="block text-[8px] text-muted-foreground font-bold">{m.label}</span>
                 <span className="text-white font-black">{m.value}</span>
               </div>
             ))}
@@ -332,14 +332,14 @@ function MemoryCard({ index, defaultText, angle, imageSrc }: { index: number; de
   return (
     <motion.div
       whileHover={{ y: -15, scale: 1.08, zIndex: 40 }}
-      className="bg-white text-slate-800 p-3.5 pb-6 sm:p-4 sm:pb-8 rounded-2xl shadow-2xl border border-slate-200 flex flex-col gap-3.5 w-44 sm:w-52 md:w-56 shrink-0 transition-shadow duration-300 relative select-none cursor-pointer"
+      className="bg-white text-foreground p-3.5 pb-6 sm:p-4 sm:pb-8 rounded-2xl shadow-2xl border border-border-color flex flex-col gap-3.5 w-44 sm:w-52 md:w-56 shrink-0 transition-shadow duration-300 relative select-none cursor-pointer"
       style={{
         transform: `rotate(${angle})`,
         boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.4)'
       }}
     >
       {/* Polaroid Image Box */}
-      <div className="relative aspect-[4/3] w-full bg-slate-100 rounded-xl overflow-hidden shadow-inner border border-slate-100">
+      <div className="relative aspect-[4/3] w-full bg-muted rounded-xl overflow-hidden shadow-inner border border-slate-100">
         {!imgError ? (
           <Image
             src={imageSrc}
@@ -362,7 +362,7 @@ function MemoryCard({ index, defaultText, angle, imageSrc }: { index: number; de
 
       {/* Polaroid Title Footer */}
       <div className="text-center">
-        <span className="font-serif italic text-slate-500 text-xs sm:text-sm tracking-wide block">
+        <span className="font-serif italic text-muted-foreground text-xs sm:text-sm tracking-wide block">
           {defaultText}
         </span>
       </div>
@@ -388,7 +388,7 @@ export default function Home() {
   const activeBatch = batchResultsData[selectedBatch];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between font-sans selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+    <div className="force-dark min-h-screen bg-card text-white flex flex-col justify-between font-sans selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
 
       {/* Custom Styles for Floating Fluid Glows, Morphs & Scrollbar */}
       <style dangerouslySetInnerHTML={{
@@ -520,10 +520,10 @@ export default function Home() {
 
       {/* Header/Navbar */}
       <header className={`fixed top-0 left-0 right-0 h-20 transition-all duration-300 z-50 ${scrolled ? 'bg-slate-950/90 backdrop-blur-md border-b border-slate-900/80 shadow-lg shadow-black/20' : 'bg-transparent'
-        }`}>
-        <div className="max-w-7xl h-full mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+}`}>
+        <div className="max-w-7xl h-full mx-auto px-6 sm:px-8 lg:px-10 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group relative z-50">
-            <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/15 group-hover:scale-105 transition-transform border border-slate-800">
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-indigo-500/15 group-hover:scale-105 transition-transform border border-border-color">
               <Image
                 src="/images/logo.png"
                 alt="R.K Coaching Classes Logo"
@@ -565,7 +565,7 @@ export default function Home() {
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 lg:px-5 py-2.5 bg-white hover:bg-slate-100 text-slate-950 font-bold rounded-xl transition-all text-xs uppercase tracking-wider cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm shadow-white/10"
+                  className="px-4 lg:px-5 py-2.5 bg-white hover:bg-muted text-slate-950 font-bold rounded-xl transition-all text-xs uppercase tracking-wider cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-sm shadow-white/10"
                 >
                   Join Now
                 </Link>
@@ -576,7 +576,7 @@ export default function Home() {
           {/* Mobile Hamburger Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="block md:hidden p-2 text-slate-400 hover:text-white focus:outline-none relative z-50 transition-colors"
+            className="block md:hidden p-2 text-muted-foreground hover:text-white focus:outline-none relative z-50 transition-colors"
           >
             {mobileMenuOpen ? <X className="w-6 h-6 animate-in spin-in-90 duration-200" /> : <Menu className="w-6 h-6 animate-in fade-in" />}
           </button>
@@ -590,9 +590,9 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.25 }}
-              className="absolute top-20 left-0 right-0 bg-slate-950 border-b border-slate-900 shadow-2xl p-6 flex flex-col gap-6 md:hidden z-45"
+              className="absolute top-20 left-0 right-0 bg-card border-b border-border-color shadow-2xl p-6 flex flex-col gap-6 md:hidden z-45"
             >
-              <div className="flex flex-col gap-4 text-sm font-semibold text-slate-300">
+              <div className="flex flex-col gap-4 text-sm font-semibold text-foreground">
                 <a href="#home" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors py-1.5 border-b border-slate-900/60 text-left">Home</a>
                 <a href="#why-choose" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors py-1.5 border-b border-slate-900/60 text-left">Why RK</a>
                 <a href="#results" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors py-1.5 border-b border-slate-900/60 text-left">Results</a>
@@ -602,7 +602,7 @@ export default function Home() {
                 <a href="#contact" onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors py-1.5 text-left">Contact</a>
               </div>
 
-              <div className="border-t border-slate-900 pt-4 flex flex-col gap-3">
+              <div className="border-t border-border-color pt-4 flex flex-col gap-3">
                 {user ? (
                   <Link
                     href="/dashboard"
@@ -616,14 +616,14 @@ export default function Home() {
                     <Link
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full py-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs uppercase tracking-wider text-center transition-all"
+                      className="w-full py-3 bg-card hover:bg-card border border-border-color text-foreground font-bold rounded-xl text-xs uppercase tracking-wider text-center transition-all"
                     >
                       Sign In
                     </Link>
                     <Link
                       href="/register"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full py-3 bg-white hover:bg-slate-100 text-slate-955 font-bold rounded-xl text-xs uppercase tracking-wider text-center transition-all shadow-sm"
+                      className="w-full py-3 bg-white hover:bg-muted text-slate-955 font-bold rounded-xl text-xs uppercase tracking-wider text-center transition-all shadow-sm"
                     >
                       Join Now
                     </Link>
@@ -639,7 +639,7 @@ export default function Home() {
       <main className="w-full relative z-10 flex-1">
 
         {/* HERO SECTION */}
-        <section id="home" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-4 lg:pt-24 lg:pb-8 grid grid-cols-1 lg:grid-cols-[54%_46%] gap-8 lg:gap-12 items-center relative z-10">
+        <section id="home" className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pt-32 pb-8 lg:pt-40 lg:pb-12 grid grid-cols-1 lg:grid-cols-[54%_46%] gap-8 lg:gap-12 items-center relative z-10">
           {/* Left Hero Content */}
           <div className="w-full space-y-6 text-center lg:text-left flex flex-col justify-center order-1">
             <div>
@@ -653,7 +653,7 @@ export default function Home() {
               </h1>
             </div>
 
-            <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
+            <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
               Welcome to <strong>R.K Coaching Classes</strong>. We empower students to learn, grow, and excel through concept-based teaching, regular evaluations, and personalized attention.
             </p>
 
@@ -683,21 +683,21 @@ export default function Home() {
               </Link>
               <a
                 href="#resources"
-                className="w-full sm:w-auto px-8 py-4 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl transition-all text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-8 py-4 bg-card hover:bg-card border border-border-color hover:border-slate-700 text-foreground rounded-xl transition-all text-sm font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Compass className="w-4.5 h-4.5 text-slate-400" /> Explore Resources
+                <Compass className="w-4.5 h-4.5 text-muted-foreground" /> Explore Resources
               </a>
             </div>
           </div>
 
           {/* Right Hero / Charlie Mascot Image */}
-          <div className="relative w-full h-[260px] sm:h-[320px] md:h-[400px] lg:h-[550px] xl:h-[620px] flex items-end justify-center pointer-events-none select-none z-10 mt-6 lg:mt-0 order-2">
+          <div className="relative w-full h-[200px] sm:h-[320px] md:h-[400px] lg:h-[550px] xl:h-[620px] flex items-end justify-center pointer-events-none select-none z-10 mt-0 lg:mt-0 order-2">
             {/* Soft purple/blue radial glow behind Charlie (less intense/opacity on mobile) */}
             <div className="absolute w-[280px] sm:w-[450px] lg:w-[600px] h-[280px] sm:h-[450px] lg:h-[600px] rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.22)_0%,rgba(168,85,247,0.12)_50%,transparent_70%)] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50 sm:opacity-90 blur-2xl pointer-events-none z-0" />
 
             {/* Realistic Floor Shadow Beneath Charlie */}
-            <div className="absolute w-[100px] sm:w-[160px] h-[5px] sm:h-[8px] bg-black/90 rounded-full blur-[2px] bottom-[10%] left-1/2 -translate-x-1/2 z-0" />
-            <div className="absolute w-[160px] sm:w-[260px] h-[10px] sm:h-[14px] bg-black/55 rounded-full blur-[6px] bottom-[9.5%] left-1/2 -translate-x-1/2 z-0 animate-pulse duration-[5000ms]" />
+            <div className="absolute w-[100px] sm:w-[160px] h-[5px] sm:h-[8px] bg-black/90 rounded-full blur-[2px] bottom-[5%] left-1/2 -translate-x-1/2 z-0" />
+            <div className="absolute w-[160px] sm:w-[260px] h-[10px] sm:h-[14px] bg-black/55 rounded-full blur-[6px] bottom-[4.5%] left-1/2 -translate-x-1/2 z-0 animate-pulse duration-[5000ms]" />
 
             {/* Floating Bubble 1: Charlie (Only visible on desktop) */}
             <motion.div
@@ -710,7 +710,7 @@ export default function Home() {
               </div>
               <div className="text-left">
                 <h4 className="text-[11px] font-black text-white leading-tight">Charlie</h4>
-                <p className="text-[9px] text-slate-400 font-semibold leading-none mt-0.5">AI Study Mentor</p>
+                <p className="text-[9px] text-muted-foreground font-semibold leading-none mt-0.5">AI Study Mentor</p>
               </div>
             </motion.div>
 
@@ -725,7 +725,7 @@ export default function Home() {
               </div>
               <div className="text-left">
                 <h4 className="text-[11px] font-black text-white leading-tight">AI Guru Ji</h4>
-                <p className="text-[9px] text-slate-400 font-semibold leading-none mt-0.5">24/7 Doubt Assistant</p>
+                <p className="text-[9px] text-muted-foreground font-semibold leading-none mt-0.5">24/7 Doubt Assistant</p>
               </div>
             </motion.div>
 
@@ -733,7 +733,7 @@ export default function Home() {
             <motion.div
               animate={{ y: [0, -12, 0] }}
               transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-              className="relative h-[80%] aspect-[3/4] flex items-end justify-center z-10 bottom-[10%] filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.5)] drop-shadow-[0_30px_60px_rgba(99,102,241,0.22)]"
+              className="relative h-[95%] aspect-[3/4] flex items-end justify-center z-10 bottom-[5%] filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.5)] drop-shadow-[0_30px_60px_rgba(99,102,241,0.22)]"
             >
               <Image
                 src="/images/charlie-ai.png"
@@ -748,7 +748,7 @@ export default function Home() {
         </section>
 
         {/* INTRO SHOWCASE SECTION (NEW SECTION AFTER HERO) */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 border-t border-slate-900 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative overflow-hidden">
+        <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-8 sm:py-10 lg:py-12 border-t border-border-color grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative overflow-hidden">
           {/* Background visuals */}
           <div className="absolute top-1/4 left-1/3 w-72 h-72 bg-indigo-600/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 right-0 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl pointer-events-none" />
@@ -764,7 +764,7 @@ export default function Home() {
               Building Strong Fundamentals
             </h2>
 
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
+            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
               For more than ten years, RK Coaching Classes has stood as a hallmark of student success in Balotra. We nurture mathematical curiosity and analytical skills from playgroup up to Grade X. We teach concepts, not just formulas, to ensure your child builds lifelong academic competence.
             </p>
 
@@ -777,7 +777,7 @@ export default function Home() {
               </Link>
               <a
                 href="#instructors"
-                className="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-slate-800 text-slate-350 rounded-xl text-xs font-bold uppercase tracking-wider text-center transition-colors"
+                className="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-border-color text-slate-350 rounded-xl text-xs font-bold uppercase tracking-wider text-center transition-colors"
               >
                 Meet Tutors
               </a>
@@ -795,9 +795,9 @@ export default function Home() {
               {/* Card 1: Gunjan Salecha */}
               <motion.div
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="relative sm:absolute sm:left-4 sm:bottom-4 w-full sm:w-[190px] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl p-3 flex flex-row sm:flex-col items-center sm:items-stretch gap-4 sm:gap-3 z-10"
+                className="relative sm:absolute sm:left-4 sm:bottom-4 w-full sm:w-[190px] bg-card border border-border-color rounded-2xl overflow-hidden shadow-2xl p-3 flex flex-row sm:flex-col items-center sm:items-stretch gap-4 sm:gap-3 z-10"
               >
-                <div className="relative h-20 w-20 sm:h-36 sm:w-full bg-slate-950 rounded-xl overflow-hidden shrink-0">
+                <div className="relative h-20 w-20 sm:h-36 sm:w-full bg-card rounded-xl overflow-hidden shrink-0">
                   <Image
                     src="/STUDENT_PNG/GunjanSalecha.jpg"
                     alt="Gunjan Salecha"
@@ -818,10 +818,10 @@ export default function Home() {
               {/* Card 2: Yashvi Jain (Featured) */}
               <motion.div
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="relative sm:absolute sm:right-4 sm:top-4 w-full sm:w-[210px] bg-slate-900 border border-indigo-500/30 rounded-3xl overflow-hidden shadow-2xl p-4 flex flex-row-reverse sm:flex-col items-center sm:items-stretch gap-4 sm:gap-3 z-25"
+                className="relative sm:absolute sm:right-4 sm:top-4 w-full sm:w-[210px] bg-card border border-indigo-500/30 rounded-3xl overflow-hidden shadow-2xl p-4 flex flex-row-reverse sm:flex-col items-center sm:items-stretch gap-4 sm:gap-3 z-25"
                 style={{ boxShadow: '0 20px 40px -15px rgba(99, 102, 241, 0.25)' }}
               >
-                <div className="relative h-24 w-24 sm:h-40 sm:w-full bg-slate-950 rounded-2xl overflow-hidden shrink-0">
+                <div className="relative h-24 w-24 sm:h-40 sm:w-full bg-card rounded-2xl overflow-hidden shrink-0">
                   <Image
                     src="/STUDENT_PNG/YashviJain.jpg"
                     alt="Yashvi Jain"
@@ -845,9 +845,9 @@ export default function Home() {
               {/* Card 3: Vanshika Choudhary */}
               <motion.div
                 whileHover={{ y: -6, scale: 1.02 }}
-                className="hidden sm:flex absolute left-[38%] top-12 w-[170px] bg-slate-900/60 backdrop-blur-sm border border-slate-850/60 rounded-2xl overflow-hidden shadow-xl p-3 flex-col gap-2.5 z-0 opacity-70"
+                className="hidden sm:flex absolute left-[38%] top-12 w-[170px] glass-card backdrop-blur-sm border border-slate-850/60 rounded-2xl overflow-hidden shadow-xl p-3 flex-col gap-2.5 z-0 opacity-70"
               >
-                <div className="relative h-30 w-full bg-slate-950 rounded-xl overflow-hidden">
+                <div className="relative h-30 w-full bg-card rounded-xl overflow-hidden">
                   <Image
                     src="/STUDENT_PNG/Vanshikach.jpg"
                     alt="Vanshika Choudhary"
@@ -860,8 +860,8 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="text-left">
-                  <h4 className="text-[10px] font-bold text-slate-300 truncate">Vanshika Ch.</h4>
-                  <p className="text-[8px] text-slate-500 font-bold uppercase">3rd Rank 10th</p>
+                  <h4 className="text-[10px] font-bold text-foreground truncate">Vanshika Ch.</h4>
+                  <p className="text-[8px] text-muted-foreground font-bold uppercase">3rd Rank 10th</p>
                 </div>
               </motion.div>
 
@@ -870,10 +870,10 @@ export default function Home() {
         </section>
 
         {/* WHY CHOOSE SECTION */}
-        <section id="why-choose" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 border-t border-slate-900 space-y-12">
+        <section id="why-choose" className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 sm:py-16 lg:py-20 border-t border-border-color space-y-12">
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">Why Choose RK Coaching Classes?</h2>
-            <p className="text-slate-400 text-xs sm:text-sm">Explore the unique features that set us apart, helping your child secure a competitive edge.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">Explore the unique features that set us apart, helping your child secure a competitive edge.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
@@ -901,13 +901,13 @@ export default function Home() {
         </section>
 
         {/* PILLARS OF ACADEMIC EXCELLENCE (FEATURE SECTION) */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 border-t border-slate-900 space-y-16 lg:space-y-24 relative overflow-hidden">
+        <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 lg:py-16 border-t border-border-color space-y-16 lg:space-y-24 relative overflow-hidden">
           <div className="absolute top-10 right-10 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/25">Core Pillars</span>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase mt-3">Our Pillars of Academic Excellence</h2>
-            <p className="text-slate-400 text-xs sm:text-sm text-center">A balanced approach to teaching that empowers students to grasp concepts, build skill, and excel.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm text-center">A balanced approach to teaching that empowers students to grasp concepts, build skill, and excel.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-6xl mx-auto">
@@ -915,7 +915,7 @@ export default function Home() {
             {/* Card 1: Smart Learning */}
             <motion.div
               whileHover={{ y: -8 }}
-              className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-blue-500/40"
+              className="glass-card border border-border-color rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-blue-500/40"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-xl pointer-events-none" />
               <div className="space-y-4 text-left">
@@ -926,11 +926,11 @@ export default function Home() {
                   <h3 className="text-lg font-black text-white">Smart Learning</h3>
                   <span className="text-[9px] font-extrabold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Interactive</span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   Tech-integrated digital tools, interactive visual diagrams, and conceptual mind-maps make complex science and math topics extremely simple to grasp.
                 </p>
               </div>
-              <div className="border-t border-slate-850 pt-4 flex items-center gap-1.5 text-[9px] font-bold text-blue-400 uppercase tracking-widest">
+              <div className="border-t border-border-color pt-4 flex items-center gap-1.5 text-[9px] font-bold text-blue-400 uppercase tracking-widest">
                 <span>Modern Syllabus</span>
                 <ArrowRight className="w-3 h-3" />
               </div>
@@ -939,7 +939,7 @@ export default function Home() {
             {/* Card 2: Personal Attention */}
             <motion.div
               whileHover={{ y: -8 }}
-              className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-purple-500/40"
+              className="glass-card border border-border-color rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-purple-500/40"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
               <div className="space-y-4 text-left">
@@ -950,11 +950,11 @@ export default function Home() {
                   <h3 className="text-lg font-black text-white">Personal Attention</h3>
                   <span className="text-[9px] font-extrabold text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Individualized</span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   One-on-one doubt resolution sessions and tailored mentorship schedules ensure that no child feels left behind in their daily academic progress.
                 </p>
               </div>
-              <div className="border-t border-slate-850 pt-4 flex items-center gap-1.5 text-[9px] font-bold text-purple-400 uppercase tracking-widest">
+              <div className="border-t border-border-color pt-4 flex items-center gap-1.5 text-[9px] font-bold text-purple-400 uppercase tracking-widest">
                 <span>Tailored Support</span>
                 <ArrowRight className="w-3 h-3" />
               </div>
@@ -963,7 +963,7 @@ export default function Home() {
             {/* Card 3: Small Batch Size */}
             <motion.div
               whileHover={{ y: -8 }}
-              className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-amber-500/40"
+              className="glass-card border border-border-color rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-amber-500/40"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-xl pointer-events-none" />
               <div className="space-y-4 text-left">
@@ -974,11 +974,11 @@ export default function Home() {
                   <h3 className="text-lg font-black text-white">Small Batch Size</h3>
                   <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Focused Cohort</span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   Strictly limited student intake per classroom cohort enables highly interactive classrooms, prompt homework reviews, and healthy competitive discussions.
                 </p>
               </div>
-              <div className="border-t border-slate-850 pt-4 flex items-center gap-1.5 text-[9px] font-bold text-amber-400 uppercase tracking-widest">
+              <div className="border-t border-border-color pt-4 flex items-center gap-1.5 text-[9px] font-bold text-amber-400 uppercase tracking-widest">
                 <span>Focused Mentorship</span>
                 <ArrowRight className="w-3 h-3" />
               </div>
@@ -987,7 +987,7 @@ export default function Home() {
             {/* Card 4: Weekly Tests */}
             <motion.div
               whileHover={{ y: -8 }}
-              className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-emerald-500/40"
+              className="glass-card border border-border-color rounded-3xl p-6 flex flex-col justify-between gap-6 shadow-xl relative overflow-hidden hover:border-emerald-500/40"
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
               <div className="space-y-4 text-left">
@@ -998,11 +998,11 @@ export default function Home() {
                   <h3 className="text-lg font-black text-white">Weekly Tests</h3>
                   <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-50/10 border border-emerald-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">Evaluated</span>
                 </div>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   Weekly board-aligned tests, progress metrics, and conceptual oral quizzes build solid exam temperaments and eliminate general test anxiety.
                 </p>
               </div>
-              <div className="border-t border-slate-850 pt-4 flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
+              <div className="border-t border-border-color pt-4 flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
                 <span>Proven Performance</span>
                 <ArrowRight className="w-3 h-3" />
               </div>
@@ -1012,7 +1012,7 @@ export default function Home() {
         </section>
 
         {/* RESULTS SECTION (RESTORED TO ORIGINAL BATCH SYSTEM LAYOUT WITH MODULAR CARDS) */}
-        <section id="results" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 border-t border-slate-900 space-y-12 relative overflow-hidden">
+        <section id="results" className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 sm:py-16 lg:py-20 border-t border-border-color space-y-12 relative overflow-hidden">
 
           <div className="absolute right-0 top-1/4 w-[350px] h-[350px] border border-purple-500/10 rounded-full pointer-events-none -mr-40 z-0" />
           <div className="absolute right-12 top-1/3 w-[250px] h-[250px] border border-indigo-500/5 rounded-full pointer-events-none z-0" />
@@ -1021,7 +1021,7 @@ export default function Home() {
           <div className="relative z-10 text-center space-y-3 max-w-xl mx-auto">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/25">Results</span>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase mt-3">Our Top Results</h2>
-            <p className="text-slate-400 text-xs sm:text-sm text-center">Meet our star performers who achieved academic excellence through dedication and guidance.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm text-center">Meet our star performers who achieved academic excellence through dedication and guidance.</p>
           </div>
 
           {/* Batch Selector Tabs */}
@@ -1031,9 +1031,9 @@ export default function Home() {
                 key={year}
                 onClick={() => setSelectedBatch(year)}
                 className={`px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${selectedBatch === year
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/15'
-                    : 'bg-slate-900 hover:bg-slate-850 text-slate-400 border border-slate-800'
-                  }`}
+? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/15'
+: 'bg-card hover:bg-card text-muted-foreground border border-border-color'
+}`}
               >
                 Batch {year}
               </button>
@@ -1065,10 +1065,10 @@ export default function Home() {
         </section>
 
         {/* STUDY RESOURCES SECTION */}
-        <section id="resources" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 border-t border-slate-900 space-y-12">
+        <section id="resources" className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 sm:py-16 lg:py-20 border-t border-border-color space-y-12">
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">Study Resources</h2>
-            <p className="text-slate-400 text-xs sm:text-sm">Access top-quality learning materials compiled by our educators to elevate school scores.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">Access top-quality learning materials compiled by our educators to elevate school scores.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1076,13 +1076,13 @@ export default function Home() {
             <div className="glass-card hover-lift p-6 rounded-3xl border bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border-blue-500/15 text-blue-400 flex flex-col justify-between gap-6 shadow-md">
               <div className="space-y-3 text-left">
                 <h3 className="text-lg font-black text-white">Reference Books</h3>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   A carefully curated list of essential reference textbooks for standard board syllabi, matching school lessons.
                 </p>
               </div>
               <button
                 disabled
-                className="self-start px-4 py-2 border border-slate-800/80 bg-slate-900/50 text-slate-500 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-not-allowed select-none"
+                className="self-start px-4 py-2 border border-border-color glass-card text-muted-foreground rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-not-allowed select-none"
               >
                 Coming Soon
               </button>
@@ -1092,7 +1092,7 @@ export default function Home() {
             <div className="glass-card hover-lift p-6 rounded-3xl border bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-500/15 text-amber-400 flex flex-col justify-between gap-6 shadow-md">
               <div className="space-y-3 text-left">
                 <h3 className="text-lg font-black text-white">NCERT Solutions</h3>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   Step-by-step solved solutions for all textbook exercise questions, compiled cleanly for revisions.
                 </p>
               </div>
@@ -1105,7 +1105,7 @@ export default function Home() {
             <div className="glass-card hover-lift p-6 rounded-3xl border bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-500/15 text-emerald-400 flex flex-col justify-between gap-6 shadow-md">
               <div className="space-y-3 text-left">
                 <h3 className="text-lg font-black text-white">Class Notes</h3>
-                <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                <p className="text-muted-foreground text-xs leading-relaxed font-medium">
                   Highly detailed, organized chapter notes written by our tutors to aid in better concept retention.
                 </p>
               </div>
@@ -1117,11 +1117,11 @@ export default function Home() {
         </section>
 
         {/* OUR INSTRUCTORS SECTION */}
-        <section id="instructors" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 border-t border-slate-900 space-y-12">
+        <section id="instructors" className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 lg:py-16 border-t border-border-color space-y-12">
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/25">Mentors</span>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase mt-3">Our Core Faculty</h2>
-            <p className="text-slate-400 text-xs sm:text-sm text-center">Learn from dedicated teaching professionals who build core fundamentals with care and focus.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm text-center">Learn from dedicated teaching professionals who build core fundamentals with care and focus.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -1154,18 +1154,18 @@ export default function Home() {
               <motion.div
                 key={idx}
                 whileHover={{ y: -8 }}
-                className="group flex flex-col justify-between bg-slate-900/50 hover:bg-slate-900 border border-slate-900 hover:border-indigo-500/25 rounded-3xl p-6 shadow-xl transition-colors duration-300 h-full"
+                className="group flex flex-col justify-between glass-card hover:bg-card border border-border-color hover:border-indigo-500/25 rounded-3xl p-6 shadow-xl transition-colors duration-300 h-full"
               >
                 <div className="space-y-5 text-left">
                   {/* Avatar Layout with circular gradient frame */}
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 text-indigo-400 border border-slate-800 flex items-center justify-center shrink-0 shadow-lg relative group-hover:border-indigo-500/35 transition-colors">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 text-indigo-400 border border-border-color flex items-center justify-center shrink-0 shadow-lg relative group-hover:border-indigo-500/35 transition-colors">
                       <GraduationCap className="w-7 h-7" />
                       <div className="absolute inset-0 bg-indigo-500/5 rounded-2xl filter blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div>
                       <h4 className="font-black text-white text-base leading-tight group-hover:text-indigo-400 transition-colors">{inst.name}</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{inst.role}</p>
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">{inst.role}</p>
                     </div>
                   </div>
 
@@ -1184,22 +1184,22 @@ export default function Home() {
                     {inst.qualifications.map((q, qidx) => (
                       <span
                         key={qidx}
-                        className="text-[9px] font-bold text-slate-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800"
+                        className="text-[9px] font-bold text-muted-foreground bg-card px-2.5 py-0.5 rounded-lg border border-border-color"
                       >
                         {q}
                       </span>
                     ))}
                   </div>
 
-                  <p className="text-slate-400 text-xs leading-relaxed font-medium pt-1">
+                  <p className="text-muted-foreground text-xs leading-relaxed font-medium pt-1">
                     {inst.bio}
                   </p>
                 </div>
 
                 {/* Footer Icon Grid to balance card space */}
-                <div className="border-t border-slate-900 pt-4 mt-6 flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                  <span className="text-[9px] text-slate-500 uppercase font-black">RK Coaching Classes</span>
-                  <div className="flex items-center gap-2 text-slate-500">
+                <div className="border-t border-border-color pt-4 mt-6 flex items-center justify-between text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  <span className="text-[9px] text-muted-foreground uppercase font-black">RK Coaching Classes</span>
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <CheckCircle className="w-3.5 h-3.5 text-indigo-400" />
                     <span>Active Educator</span>
                   </div>
@@ -1210,10 +1210,10 @@ export default function Home() {
         </section>
 
         {/* SOCIAL STATS SECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 border-t border-slate-900 space-y-12">
+        <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 lg:py-16 border-t border-border-color space-y-12">
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">Connect With Us</h2>
-            <p className="text-slate-400 text-xs sm:text-sm">Join our growing learning community on online channels.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">Join our growing learning community on online channels.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -1222,7 +1222,7 @@ export default function Home() {
                 channel: 'Instagram',
                 value: '91+',
                 desc: 'Follow for class updates & toppers stories',
-                color: 'text-pink-400 hover:shadow-[0_0_15px_rgba(244,63,94,0.15)] border-slate-900 hover:border-pink-500/25',
+                color: 'text-pink-400 hover:shadow-[0_0_15px_rgba(244,63,94,0.15)] border-border-color hover:border-pink-500/25',
                 icon: Instagram,
                 url: 'https://www.instagram.com/rk.coachings20?igsh=ajl5am10cTlyaGw5'
               },
@@ -1230,7 +1230,7 @@ export default function Home() {
                 channel: 'YouTube',
                 value: '186+',
                 desc: 'Subscribe for visual physics & math lectures',
-                color: 'text-rose-500 hover:shadow-[0_0_15px_rgba(225,29,72,0.15)] border-slate-900 hover:border-rose-500/25',
+                color: 'text-rose-500 hover:shadow-[0_0_15px_rgba(225,29,72,0.15)] border-border-color hover:border-rose-500/25',
                 icon: Youtube,
                 url: 'https://youtube.com/@rkcoachingclasses?si=KfYdwL2LGWjAbTTm'
               },
@@ -1238,7 +1238,7 @@ export default function Home() {
                 channel: 'Facebook',
                 value: '100+',
                 desc: 'Connect for parenting tips & study resources',
-                color: 'text-blue-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] border-slate-900 hover:border-blue-500/25',
+                color: 'text-blue-500 hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] border-border-color hover:border-blue-500/25',
                 icon: Facebook,
                 url: '#'
               }
@@ -1256,8 +1256,8 @@ export default function Home() {
                     <Icon className="w-6 h-6" />
                   </div>
                   <h3 className="text-3xl font-black text-white">{social.value}</h3>
-                  <p className="text-xs font-bold text-slate-300">{social.channel}</p>
-                  <p className="text-[10px] text-slate-500">{social.desc}</p>
+                  <p className="text-xs font-bold text-foreground">{social.channel}</p>
+                  <p className="text-[10px] text-muted-foreground">{social.desc}</p>
                 </a>
               );
             })}
@@ -1265,13 +1265,13 @@ export default function Home() {
         </section>
 
         {/* WELCOME TO RK COACHING ALTERNATING SHOWCASE */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 border-t border-slate-900 space-y-10 sm:space-y-14 lg:space-y-16 relative overflow-hidden">
+        <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 sm:py-16 lg:py-20 border-t border-border-color space-y-10 sm:space-y-14 lg:space-y-16 relative overflow-hidden">
           <div className="absolute top-1/3 left-10 w-96 h-96 bg-purple-600/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="text-center space-y-3 max-w-xl mx-auto">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/25">Welcome</span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white uppercase mt-3">Welcome to RK Coaching Classes</h2>
-            <p className="text-slate-400 text-xs sm:text-sm text-center">We provide an academic environment focused on consistent child growth, discipline, and conceptual excellence.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm text-center">We provide an academic environment focused on consistent child growth, discipline, and conceptual excellence.</p>
           </div>
 
           {/* Overlapping Memory Polaroid Cards (Reference 3rd Image) */}
@@ -1328,7 +1328,7 @@ export default function Home() {
         </section>
 
         {/* TRUST & REVIEWS SECTION */}
-        <section id="reviews" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 border-t border-slate-900 space-y-16 lg:space-y-24 relative overflow-hidden">
+        <section id="reviews" className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 lg:py-16 border-t border-border-color space-y-16 lg:space-y-24 relative overflow-hidden">
 
           <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[350px] h-[350px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -1337,7 +1337,7 @@ export default function Home() {
           <div className="text-center space-y-3 max-w-2xl mx-auto relative z-10">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/25">Reviews</span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white uppercase mt-3">Trusted by Hundreds of Parents & Students</h2>
-            <p className="text-slate-400 text-xs sm:text-sm text-center">Our core focus is child growth. Hear firsthand testimonials from families who experienced conceptual teaching and score improvements.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm text-center">Our core focus is child growth. Hear firsthand testimonials from families who experienced conceptual teaching and score improvements.</p>
           </div>
 
           {/* Testimonial Cards Grid */}
@@ -1367,7 +1367,7 @@ export default function Home() {
               <motion.div
                 key={idx}
                 whileHover={{ y: -6 }}
-                className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 p-6 rounded-3xl flex flex-col justify-between gap-5 text-left shadow-lg hover:border-indigo-500/20 transition-colors duration-300"
+                className="bg-slate-900/40 backdrop-blur-md border border-border-color p-6 rounded-3xl flex flex-col justify-between gap-5 text-left shadow-lg hover:border-indigo-500/20 transition-colors duration-300"
               >
                 <div className="space-y-3">
                   {/* Star Rating Icons */}
@@ -1376,11 +1376,11 @@ export default function Home() {
                       <Star key={sidx} className="w-4 h-4 fill-amber-400 shrink-0" />
                     ))}
                   </div>
-                  <p className="text-slate-300 text-xs leading-relaxed font-medium">
+                  <p className="text-foreground text-xs leading-relaxed font-medium">
                     "{rev.text}"
                   </p>
                 </div>
-                <div className="border-t border-slate-800 pt-3 mt-1">
+                <div className="border-t border-border-color pt-3 mt-1">
                   <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{rev.role}</span>
                 </div>
               </motion.div>
@@ -1393,9 +1393,9 @@ export default function Home() {
               href="https://share.google/5jqTmP4v5U1thBhQT"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-200 rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-lg hover:shadow-indigo-500/5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-card hover:bg-card border border-border-color hover:border-slate-700 text-foreground rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-lg hover:shadow-indigo-500/5 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
-              View Google Reviews <ArrowRight className="w-4 h-4 text-slate-400" />
+              View Google Reviews <ArrowRight className="w-4 h-4 text-muted-foreground" />
             </a>
           </div>
 
@@ -1406,12 +1406,12 @@ export default function Home() {
       </main>
 
       {/* Footer / Contact */}
-      <footer id="contact" className="border-t border-slate-900 bg-slate-950/40 relative z-10 pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-12 gap-10 border-b border-slate-900/60 pb-12">
+      <footer id="contact" className="border-t border-border-color bg-slate-950/40 relative z-10 pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 grid grid-cols-1 md:grid-cols-12 gap-10 border-b border-slate-900/60 pb-12">
 
           <div className="md:col-span-5 space-y-4">
             <div className="flex items-center gap-3 justify-center md:justify-start">
-              <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-900">
+              <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-border-color">
                 <Image
                   src="/images/logo.png"
                   alt="R.K Coaching Classes Logo"
@@ -1427,7 +1427,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs text-slate-400">
+          <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs text-muted-foreground">
             {/* Contact details */}
             <div className="space-y-4 text-center sm:text-left">
               <h4 className="font-extrabold text-white uppercase tracking-wider text-[10px]">Get in Touch</h4>
@@ -1455,7 +1455,7 @@ export default function Home() {
                   href="https://www.instagram.com/rk.coachings20?igsh=ajl5am10cTlyaGw5"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white rounded-xl flex items-center justify-center transition-all"
+                  className="w-9 h-9 bg-card hover:bg-card border border-border-color text-muted-foreground hover:text-white rounded-xl flex items-center justify-center transition-all"
                 >
                   <Instagram className="w-4.5 h-4.5" />
                 </a>
@@ -1463,13 +1463,13 @@ export default function Home() {
                   href="https://youtube.com/@rkcoachingclasses?si=KfYdwL2LGWjAbTTm"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white rounded-xl flex items-center justify-center transition-all"
+                  className="w-9 h-9 bg-card hover:bg-card border border-border-color text-muted-foreground hover:text-white rounded-xl flex items-center justify-center transition-all"
                 >
                   <Youtube className="w-4.5 h-4.5" />
                 </a>
                 <a
                   href="#"
-                  className="w-9 h-9 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-500 hover:text-slate-400 rounded-xl flex items-center justify-center transition-all cursor-not-allowed"
+                  className="w-9 h-9 bg-card hover:bg-card border border-border-color text-muted-foreground hover:text-muted-foreground rounded-xl flex items-center justify-center transition-all cursor-not-allowed"
                 >
                   <Facebook className="w-4.5 h-4.5" />
                 </a>
@@ -1480,11 +1480,11 @@ export default function Home() {
 
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-650 font-bold uppercase tracking-wider text-center">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-slate-650 font-bold uppercase tracking-wider text-center">
           <p>© 2026 R.K Coaching Classes. All rights reserved.</p>
           <div className="flex items-center justify-center gap-1">
             <span>Powered by</span>
-            <span className="text-slate-500 font-black">LearnStudio 2.0</span>
+            <span className="text-muted-foreground font-black">LearnStudio 2.0</span>
           </div>
         </div>
       </footer>
