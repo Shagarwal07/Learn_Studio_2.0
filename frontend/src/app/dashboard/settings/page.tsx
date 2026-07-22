@@ -205,19 +205,16 @@ export default function SettingsPage() {
                     Global Appearance Theme
                   </h3>
                   <p className="text-xs text-slate-400 max-w-md leading-normal">
-                    Locked to default system preference. Your dashboard theme dynamically synchronizes with your operating system settings.
+                    Your dashboard theme is permanently locked to Dark Mode for optimal contrast and readability.
                   </p>
-                </div>
-                <div className="shrink-0">
-                  <ThemeToggle />
                 </div>
               </div>
               
               <div className="border-t border-slate-800 my-4" />
               
               <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                Active configuration: <span className="font-semibold text-teal-400 capitalize">System Default (Locked)</span>. All layouts are automatically aligned with your OS preference.
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></span>
+                Active configuration: <span className="font-semibold text-violet-400 capitalize">Dark Theme (Locked)</span>. All layouts are automatically aligned with this preference.
               </div>
             </div>
           )}
