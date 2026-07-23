@@ -33,10 +33,10 @@ export default function AiSettingsPage() {
       const token = localStorage.getItem("token");
       
       const [planRes, keysRes] = await Promise.all([
-        fetch("http://localhost:8080/api/settings/ai/plan", {
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api'}/settings/ai/plan`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch("http://localhost:8080/api/settings/ai/keys", {
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api'}/settings/ai/keys`, {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -69,7 +69,7 @@ export default function AiSettingsPage() {
     setAdding(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/api/settings/ai/keys", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api'}/settings/ai/keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,7 +97,7 @@ export default function AiSettingsPage() {
     setSuccessMsg("");
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/api/settings/ai/keys/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api'}/settings/ai/keys/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });

@@ -1,5 +1,7 @@
 package com.learnhub.config;
 
+import com.learnhub.security.CustomAccessDeniedHandler;
+import com.learnhub.security.CustomAuthenticationEntryPoint;
 import com.learnhub.security.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.*;
@@ -30,6 +32,8 @@ import org.springframework.security.config.Customizer;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -37,6 +41,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
                         .cors(Customizer.withDefaults())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             .authorizeHttpRequests(auth -> auth
                 // Allow ALL preflight OPTIONS requests
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -66,7 +74,10 @@ public class SecurityConfig {
             @Value("${spring.profiles.active:dev}") String activeProfile) {
         CorsConfiguration config = new CorsConfiguration();
         if (!allowedOrigins.isBlank()) {
-            List<String> origins = Arrays.stream(allowedOrigins.split(",")).map(String::trim).collect(Collectors.toList());
+            List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .map(s -> s.endsWith("/") ? s.substring(0, s.length() - 1) : s)
+                    .collect(Collectors.toList());
             config.setAllowedOrigins(origins);
         } else {
             // No explicit origins provided
