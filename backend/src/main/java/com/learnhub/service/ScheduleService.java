@@ -9,7 +9,9 @@ import com.learnhub.repository.EnrollmentRepository;
 import com.learnhub.repository.ScheduleEventRepository;
 import com.learnhub.repository.UserRepository;
 import com.learnhub.repository.BatchRepository;
+import com.learnhub.repository.TestRepository;
 import com.learnhub.entity.Batch;
+import com.learnhub.entity.Test;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ public class ScheduleService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final BatchRepository batchRepository;
+    private final TestRepository testRepository;
 
     public List<ScheduleEventDTO> getWeeklySchedule(String email) {
         User user = userRepository.findByEmail(email)
@@ -154,6 +157,21 @@ public class ScheduleService {
                 .build();
 
         ScheduleEvent saved = scheduleEventRepository.save(event);
+
+        // Auto-create Test if event is TEST
+        if (saved.getEventType() == ScheduleEvent.EventType.TEST) {
+            Test newTest = Test.builder()
+                    .title(saved.getTitle())
+                    .description(saved.getDescription())
+                    .batch(batch) // Assuming batch is mandatory for tests, or handle null appropriately
+                    .subjectName(saved.getSubjectName() != null ? saved.getSubjectName() : (course != null ? course.getTitle() : "Unknown Subject"))
+                    .testDate(saved.getEventDate())
+                    .maxMarks(100) // Default max marks
+                    .createdBy(creator)
+                    .build();
+            testRepository.save(newTest);
+        }
+
         return convertToDTO(saved);
     }
 
