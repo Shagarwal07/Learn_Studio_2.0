@@ -31,6 +31,7 @@ public class ScheduleService {
     private final EnrollmentRepository enrollmentRepository;
     private final BatchRepository batchRepository;
     private final TestRepository testRepository;
+    private final EmailService emailService;
 
     public List<ScheduleEventDTO> getWeeklySchedule(String email) {
         User user = userRepository.findByEmail(email)
@@ -134,6 +135,11 @@ public class ScheduleService {
                     .orElseThrow(() -> new RuntimeException("Batch not found"));
         }
 
+        String recurrenceDay = dto.getRecurrenceDay();
+        if (dto.isRecurring() && (recurrenceDay == null || recurrenceDay.isBlank()) && dto.getEventDate() != null) {
+            recurrenceDay = dto.getEventDate().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
+        }
+
         ScheduleEvent event = ScheduleEvent.builder()
                 .title(dto.getTitle())
                 .description(dto.getDescription())
@@ -149,7 +155,7 @@ public class ScheduleService {
                 .location(dto.getLocation())
                 .meetingLink(dto.getMeetingLink())
                 .isRecurring(dto.isRecurring())
-                .recurrenceDay(dto.getRecurrenceDay())
+                .recurrenceDay(recurrenceDay)
                 .isCancelled(false)
                 .createdBy(creator)
                 .notifyStudents(dto.isNotifyStudents())
@@ -158,21 +164,59 @@ public class ScheduleService {
 
         ScheduleEvent saved = scheduleEventRepository.save(event);
 
-        // Auto-create Test if event is TEST
-        if (saved.getEventType() == ScheduleEvent.EventType.TEST) {
+        // Auto-create Test if event is TEST and batch is present
+        if (saved.getEventType() == ScheduleEvent.EventType.TEST && batch != null) {
             Test newTest = Test.builder()
                     .title(saved.getTitle())
                     .description(saved.getDescription())
-                    .batch(batch) // Assuming batch is mandatory for tests, or handle null appropriately
-                    .subjectName(saved.getSubjectName() != null ? saved.getSubjectName() : (course != null ? course.getTitle() : "Unknown Subject"))
+                    .batch(batch)
+                    .subjectName(saved.getSubjectName() != null ? saved.getSubjectName() : (course != null ? course.getTitle() : "General"))
                     .testDate(saved.getEventDate())
-                    .maxMarks(100) // Default max marks
+                    .maxMarks(100)
                     .createdBy(creator)
                     .build();
             testRepository.save(newTest);
         }
 
+        // Email Notification Dispatch
+        if (saved.isNotifyStudents()) {
+            dispatchScheduleEmails(saved);
+        }
+
         return convertToDTO(saved);
+    }
+
+    private void dispatchScheduleEmails(ScheduleEvent event) {
+        String batchOrCourseName = event.getBatch() != null ? event.getBatch().getName() :
+                                   event.getCourse() != null ? event.getCourse().getTitle() : "All Students";
+        String timeStr = event.getStartTime() + " - " + event.getEndTime();
+        String locationOrLink = event.getMeetingLink() != null && !event.getMeetingLink().isBlank() ? event.getMeetingLink() : event.getLocation();
+
+        List<User> targets;
+        if (event.getBatch() != null) {
+            targets = userRepository.findByBatchId(event.getBatch().getId());
+        } else if (event.getCourse() != null) {
+            targets = enrollmentRepository.findByCourseId(event.getCourse().getId()).stream()
+                    .map(com.learnhub.entity.Enrollment::getUser)
+                    .toList();
+        } else {
+            targets = userRepository.findByRole(User.Role.STUDENT);
+        }
+
+        for (User user : targets) {
+            if (user.getRole() == User.Role.STUDENT && user.getEmail() != null) {
+                emailService.sendScheduleNotification(
+                        user.getEmail(),
+                        user.getName(),
+                        event.getTitle(),
+                        event.getEventType().name(),
+                        event.getEventDate().toString(),
+                        timeStr,
+                        locationOrLink,
+                        batchOrCourseName
+                );
+            }
+        }
     }
 
     public ScheduleEventDTO updateSchedule(String email, Long id, ScheduleEventDTO dto) {

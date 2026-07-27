@@ -39,6 +39,7 @@ public class UserController {
     }
 
     @GetMapping("/me")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<UserDTO>> getMe(Principal principal) {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -67,6 +68,8 @@ public class UserController {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .batchId(user.getBatch() != null ? user.getBatch().getId() : null)
+                .batchName(user.getBatch() != null ? user.getBatch().getName() : null)
                 .primaryGoogleEmail(primaryGoogleEmail)
                 .secondaryGoogleEmail(secondaryGoogleEmail)
                 .avatarUrl(user.getAvatarUrl())

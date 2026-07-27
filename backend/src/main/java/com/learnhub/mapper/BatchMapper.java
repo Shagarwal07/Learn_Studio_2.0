@@ -31,6 +31,8 @@ public interface BatchMapper {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .batchId(user.getBatch() != null ? user.getBatch().getId() : null)
+                .batchName(user.getBatch() != null ? user.getBatch().getName() : null)
                 .build();
     }
 }

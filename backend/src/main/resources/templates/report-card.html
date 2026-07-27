@@ -3,256 +3,426 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RK Coaching Classes - Official Report Card</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,600&display=swap"
+        rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', Arial, sans-serif;
-            background-color: #f0f2f5;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f1f5f9;
             margin: 0;
-            padding: 40px 20px;
-            color: #333;
+            padding: 40px 16px;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
-            max-width: 650px;
+            max-width: 660px;
             background: #ffffff;
             margin: auto;
-            border-radius: 12px;
+            border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-            border-top: 6px solid #1a365d;
+            box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.08);
+            border: 1px solid #e2e8f0;
         }
 
+        /* Top Banner Gradient */
+        .top-accent {
+            height: 6px;
+            background: linear-gradient(90deg, #4f46e5 0%, #06b6d4 50%, #10b981 100%);
+        }
+
+        /* Header Section */
         .header {
-            background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
-            color: white;
-            padding: 30px;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            padding: 36px 36px 24px 36px;
             text-align: center;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        .header h1 {
+        .logo-img {
+            max-height: 70px;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
+        }
+
+        .brand-name {
             margin: 0;
+            font-family: 'Cinzel Decorative', 'Playfair Display', Georgia, serif;
             font-size: 28px;
             font-weight: 700;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: #1e1b4b;
             letter-spacing: 1px;
+            text-shadow: 0 2px 10px rgba(67, 56, 202, 0.08);
+        }
+
+        .brand-subtitle {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        /* Main Content */
+        .content {
+            padding: 36px;
+        }
+
+        /* Test Title Header Pill */
+        .test-badge-wrapper {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .test-badge {
+            display: inline-block;
+            background: rgba(79, 70, 229, 0.08);
+            border: 1px solid rgba(79, 70, 229, 0.2);
+            color: #4338ca;
+            padding: 8px 18px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
-        .header p {
-            margin: 10px 0 0;
-            font-size: 14px;
-            opacity: 0.9;
-            font-weight: 400;
+        .test-title-text {
+            text-align: center;
+            color: #0f172a;
+            margin-top: 10px;
+            margin-bottom: 28px;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
         }
 
-        .content {
-            padding: 35px;
-        }
-
+        /* Student Info Card */
         .student-card {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 32px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
-        .student-info div {
-            margin-bottom: 8px;
-        }
-
-        .student-info strong {
-            color: #4a5568;
-            font-size: 13px;
+        .student-info-group label {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             display: block;
             margin-bottom: 4px;
         }
 
-        .student-info span {
+        .student-info-group span {
             font-size: 16px;
-            color: #1a202c;
-            font-weight: 600;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        /* Section Heading */
+        .section-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 14px;
+        }
+
+        /* Marks Table */
+        .table-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 32px;
         }
 
         .marks-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .marks-table th,
-        .marks-table td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #edf2f7;
+            background: #ffffff;
         }
 
         .marks-table th {
-            background-color: #f1f5f9;
-            color: #4a5568;
-            font-weight: 600;
-            font-size: 14px;
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 12px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .marks-table td {
-            font-size: 15px;
-            color: #2d3748;
+            padding: 16px 18px;
+            font-size: 14.5px;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        .marks-table tr:last-child td {
+        .marks-table tbody tr:last-child td {
             border-bottom: none;
         }
 
-        .marks-table tbody tr:hover {
-            background-color: #f8fafc;
+        .marks-table tbody tr:nth-child(even) {
+            background-color: #fafafa;
         }
 
         .score-highlight {
-            font-weight: 700;
-            color: #2b6cb0;
+            font-weight: 800;
+            color: #2563eb;
+            font-size: 16px;
         }
 
-        .summary-box {
-            background-color: #ebf4ff;
-            border-left: 4px solid #3182ce;
-            padding: 20px;
-            border-radius: 0 8px 8px 0;
-            margin-bottom: 30px;
+        /* Summary Dashboard Box */
+        .summary-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
         }
 
         .summary-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
         }
 
-        .summary-item strong {
+        .summary-item label {
             display: block;
-            font-size: 12px;
-            color: #4a5568;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-
-        .summary-item span {
-            font-size: 20px;
+            font-size: 11.5px;
             font-weight: 700;
-            color: #2b6cb0;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
         }
 
-        .feedback {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #bee3f8;
+        .summary-item .score-val {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0f172a;
         }
 
-        .feedback p {
-            margin: 0;
-            font-size: 15px;
-            color: #2c5282;
-            line-height: 1.5;
+        .grade-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .grade-aplus {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+
+        .grade-a {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .grade-b {
+            background: #e0e7ff;
+            color: #3730a3;
+            border: 1px solid #a5b4fc;
+        }
+
+        .grade-c {
+            background: #fef9c3;
+            color: #854d0e;
+            border: 1px solid #fde047;
+        }
+
+        .grade-d {
+            background: #ffedd5;
+            color: #9a3412;
+            border: 1px solid #fdba74;
+        }
+
+        .grade-f {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        /* Feedback Section */
+        .feedback-box {
+            margin-top: 20px;
+        }
+
+        .feedback-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .feedback-content {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 20px;
+            color: #334155;
+            font-size: 14.5px;
+            line-height: 1.6;
             font-style: italic;
         }
 
+        /* Footer */
         .footer {
             text-align: center;
-            padding: 20px;
+            padding: 24px 36px;
             background-color: #f8fafc;
             border-top: 1px solid #e2e8f0;
-            color: #a0aec0;
-            font-size: 13px;
+            color: #94a3b8;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+
+        .footer strong {
+            color: #64748b;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
+        <div class="top-accent"></div>
+
+        <!-- Header -->
         <div class="header">
-            <img src="cid:logoImage" alt="RK Coaching Classes Logo" style="max-height: 80px; margin-bottom: 15px;">
-            <h1>RK Coaching Classes</h1>
-            <p>Excellence in Education &bull; Official Student Report Card</p>
+            <img src="cid:logoImage" alt="RK Coaching Classes Logo" class="logo-img">
+            <h1 class="brand-name">RK Coaching Classes</h1>
+            <p class="brand-subtitle">Excellence in Education &bull; Official Student Report Card</p>
         </div>
 
+        <!-- Content -->
         <div class="content">
+            <div class="test-badge-wrapper">
+                <span class="test-badge">📊 Assessment Results</span>
+                <h2 class="test-title-text" th:text="${testTitle}">Test Title</h2>
+            </div>
+
+            <!-- Student Profile Summary -->
             <div class="student-card">
-                <div class="student-info">
-                    <div>
-                        <strong>Student Name</strong>
-                        <span th:text="${studentName}">Student Name</span>
-                    </div>
+                <div class="student-info-group">
+                    <label>Student Name</label>
+                    <span th:text="${studentName}">Student Name</span>
                 </div>
-                <div class="student-info" style="text-align: right;">
-                    <div>
-                        <strong>Batch Name</strong>
-                        <span th:text="${courseName}">Batch Name</span>
-                    </div>
+                <div class="student-info-group" style="text-align: right;">
+                    <label>Batch Name</label>
+                    <span th:text="${courseName}">Batch Name</span>
                 </div>
             </div>
 
-            <table class="marks-table">
-                <thead>
-                    <tr>
-                        <th>Subject Name</th>
-                        <th>Topic</th>
-                        <th>Marks Obtained</th>
-                        <th>Maximum Marks</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Iterate over a list of mark objects instead of a map -->
-                    <tr th:each="mark : ${marks}">
-                        <td style="font-weight: 600;" th:text="${mark.subject}">Subject Name</td>
-                        <td th:text="${mark.topic}">Topic</td>
-                        <td class="score-highlight" th:text="${mark.score}">0</td>
-                        <td style="color: #718096;" th:text="${mark.maxMarks}">100</td>
-                    </tr>
-                </tbody>
-            </table>
+            <!-- Marks Breakdown Table -->
+            <div class="section-label">Detailed Performance Breakdown</div>
+            <div class="table-container">
+                <table class="marks-table">
+                    <thead>
+                        <tr>
+                            <th>Subject Name</th>
+                            <th>Topic / Details</th>
+                            <th>Marks Obtained</th>
+                            <th>Max Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="mark : ${marks}">
+                            <td style="font-weight: 700; color: #1e293b;" th:text="${mark.subject}">Subject Name</td>
+                            <td th:text="${mark.topic}">Topic</td>
+                            <td class="score-highlight" th:text="${mark.score}">0</td>
+                            <td style="color: #64748b; font-weight: 600;" th:text="${mark.maxMarks}">100</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-            <div class="summary-box">
+            <!-- Performance & Feedback Summary -->
+            <div class="section-label">Overall Assessment</div>
+            <div class="summary-card">
                 <div class="summary-grid">
                     <div class="summary-item">
-                        <strong>Total Score</strong>
-                        <span th:text="${totalScore}">0</span>
+                        <label>Total Score</label>
+                        <div class="score-val" th:text="${totalScore}">0</div>
                     </div>
                     <div class="summary-item" th:switch="${grade}">
-                        <strong>Overall Grade</strong>
-                        <span th:case="'A+'" th:text="${grade}" style="color: #38a169;">A+</span>
-                        <span th:case="'A'" th:text="${grade}" style="color: #38a169;">A</span>
-                        <span th:case="'B'" th:text="${grade}" style="color: #3182ce;">B</span>
-                        <span th:case="'C'" th:text="${grade}" style="color: #d69e2e;">C</span>
-                        <span th:case="'D'" th:text="${grade}" style="color: #dd6b20;">D</span>
-                        <span th:case="*" th:text="${grade}" style="color: #e53e3e;">F</span>
+                        <label>Overall Grade</label>
+                        <span th:case="'A+'" class="grade-badge grade-aplus" th:text="${grade}">A+</span>
+                        <span th:case="'A'" class="grade-badge grade-a" th:text="${grade}">A</span>
+                        <span th:case="'B'" class="grade-badge grade-b" th:text="${grade}">B</span>
+                        <span th:case="'C'" class="grade-badge grade-c" th:text="${grade}">C</span>
+                        <span th:case="'D'" class="grade-badge grade-d" th:text="${grade}">D</span>
+                        <span th:case="*" class="grade-badge grade-f" th:text="${grade}">F</span>
                     </div>
                 </div>
-                <div class="feedback">
-                    <strong>Instructor Feedback:</strong>
-                    <div th:if="${feedback != null and !feedback.isEmpty()}">
-                        <p th:text="${feedback}">"Keep up the good work and focus on weak areas."</p>
+
+                <!-- Instructor Feedback -->
+                <div class="feedback-box">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+                        <img src="cid:charlieImage" alt="Instructor Charlie"
+                            style="width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #6366f1; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);">
+                        <div>
+                            <div style="font-size: 15px; font-weight: 800; color: #0f172a;">DR. Charlie</div>
+                            <div
+                                style="font-size: 11.5px; font-weight: 700; color: #4338ca; text-transform: uppercase; letter-spacing: 0.5px;">
+                                Lead Instructor & Mentor</div>
+                        </div>
                     </div>
-                    <div th:unless="${feedback != null and !feedback.isEmpty()}" th:switch="${grade}">
-                        <p th:case="'A+'">"Outstanding performance! Keep up the excellent work."</p>
-                        <p th:case="'A'">"Excellent work! You have a great grasp of the concepts."</p>
-                        <p th:case="'B'">"Good job! With a little more effort, you can reach the top."</p>
-                        <p th:case="'C'">"Fair performance. Try to focus more on your weak areas."</p>
-                        <p th:case="'D'">"Needs improvement. Please review the topics carefully."</p>
-                        <p th:case="*">"Poor performance. It is highly recommended to seek extra help and review the syllabus."</p>
+                    <div class="feedback-content">
+                        <div th:if="${feedback != null and !feedback.isEmpty()}">
+                            <p style="margin: 0;" th:text="${feedback}">"Keep up the good work and focus on weak areas."
+                            </p>
+                        </div>
+                        <div th:unless="${feedback != null and !feedback.isEmpty()}" th:switch="${grade}">
+                            <p style="margin: 0;" th:case="'A+'">"Outstanding performance! Keep up the excellent work."
+                            </p>
+                            <p style="margin: 0;" th:case="'A'">"Excellent work! You have a great grasp of the
+                                concepts."</p>
+                            <p style="margin: 0;" th:case="'B'">"Good job! With a little more effort you can reach the
+                                top."</p>
+                            <p style="margin: 0;" th:case="'C'">"Fair performance. Try to focus more on your weak
+                                areas."</p>
+                            <p style="margin: 0;" th:case="'D'">"Needs improvement. Please review the topics carefully."
+                            </p>
+                            <p style="margin: 0;" th:case="*">"Poor performance. It is highly recommended to seek extra
+                                help and review the syllabus."</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Footer -->
         <div class="footer">
-            <p>This is an automatically generated report card. Please do not reply to this email.</p>
-            <p>&copy; 2026 RK Coaching Classes. Powered by LearnStudio.</p>
+            <p>This is an official, computer-generated report card.</p>
+            <p>&copy; 2026 <strong>RK Coaching Classes</strong> &bull; Powered by <strong>LearnStudio</strong></p>
         </div>
     </div>
 </body>

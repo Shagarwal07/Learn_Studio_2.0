@@ -1,10 +1,12 @@
 package com.learnhub.service;
 
 import com.learnhub.dto.MarkDetail;
+import com.learnhub.dto.StudentTestResultDTO;
 import com.learnhub.dto.TestResultUploadDTO;
 import com.learnhub.entity.Test;
 import com.learnhub.entity.TestResult;
 import com.learnhub.entity.User;
+import com.learnhub.entity.UserIdentityProfile;
 import com.learnhub.repository.TestRepository;
 import com.learnhub.repository.TestResultRepository;
 import com.learnhub.repository.UserRepository;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,19 +42,33 @@ public class TestService {
             User student = userRepository.findById(dto.getStudentId())
                     .orElseThrow(() -> new RuntimeException("Student not found with ID: " + dto.getStudentId()));
 
-            // 1. Save TestResult to Database
-            TestResult testResult = TestResult.builder()
-                    .test(test)
-                    .student(student)
-                    .score(dto.getScore())
-                    .feedback(dto.getFeedback() != null && !dto.getFeedback().isBlank() 
+            // 1. Save or Update TestResult in Database
+            TestResult testResult = testResultRepository.findByTestIdAndStudentId(testId, student.getId())
+                    .orElseGet(() -> TestResult.builder()
+                            .test(test)
+                            .student(student)
+                            .build());
+
+            testResult.setScore(dto.getScore());
+            testResult.setFeedback(dto.getFeedback() != null && !dto.getFeedback().isBlank() 
                                 ? dto.getFeedback() 
-                                : generateDefaultFeedback(dto.getScore(), test.getMaxMarks()))
-                    .build();
-            
+                                : generateDefaultFeedback(dto.getScore(), test.getMaxMarks()));
             testResultRepository.save(testResult);
             log.info("Saved result for student {}", student.getEmail());
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<TestResultUploadDTO> getTestMarks(Long testId) {
+        return testResultRepository.findByTestId(testId).stream()
+                .map(result -> {
+                    TestResultUploadDTO dto = new TestResultUploadDTO();
+                    dto.setStudentId(result.getStudent().getId());
+                    dto.setScore(result.getScore());
+                    dto.setFeedback(result.getFeedback());
+                    return dto;
+                })
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional
@@ -69,23 +86,65 @@ public class TestService {
         String batchName = test.getBatch() != null ? test.getBatch().getName() : "General Batch";
 
         for (TestResult result : results) {
+            if (result.getScore() == null || result.getScore() < 1) {
+                log.info("Skipping report card for student {} due to invalid/zero marks", result.getStudent().getEmail());
+                continue;
+            }
             User student = result.getStudent();
 
             List<MarkDetail> marksList = List.of(
-                    new MarkDetail(test.getSubjectName(), test.getTitle(), result.getScore(), test.getMaxMarks())
+                    new MarkDetail(test.getSubjectName(), test.getDescription(), result.getScore(), test.getMaxMarks())
             );
 
             String grade = calculateGrade(result.getScore(), test.getMaxMarks());
 
             Map<String, Object> templateModel = new HashMap<>();
+            templateModel.put("testTitle", test.getTitle());
             templateModel.put("marks", marksList);
             templateModel.put("totalScore", result.getScore());
             templateModel.put("grade", grade);
             templateModel.put("feedback", result.getFeedback());
 
-            emailService.sendReportCard(student.getEmail(), student.getName(), batchName, templateModel);
-            log.info("Triggered report card email for student {}", student.getEmail());
+            List<String> emailsToSend = new ArrayList<>();
+            if (student.getIdentityProfiles() != null && !student.getIdentityProfiles().isEmpty()) {
+                for (UserIdentityProfile profile : student.getIdentityProfiles()) {
+                    if (profile.getGoogleEmail() != null && !profile.getGoogleEmail().isBlank()) {
+                        emailsToSend.add(profile.getGoogleEmail());
+                    }
+                }
+            }
+            
+            // Fallback: If no google profile found, but they have a valid email that is not an internal dummy email
+            if (emailsToSend.isEmpty() && student.getEmail() != null && !student.getEmail().endsWith("@learnstudio.com")) {
+                emailsToSend.add(student.getEmail());
+            }
+
+            for (String targetEmail : emailsToSend) {
+                emailService.sendReportCard(targetEmail, student.getName(), batchName, templateModel);
+                log.info("Triggered report card email for student {} at {}", student.getEmail(), targetEmail);
+            }
         }
+    }
+    @Transactional(readOnly = true)
+    public List<StudentTestResultDTO> getMyTestResults(String email) {
+        User student = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        List<TestResult> results = testResultRepository.findByStudentId(student.getId());
+
+        return results.stream().map(result -> {
+            Test test = result.getTest();
+            return StudentTestResultDTO.builder()
+                    .testId(test.getId())
+                    .testTitle(test.getTitle())
+                    .subjectName(test.getSubjectName())
+                    .score(result.getScore())
+                    .maxMarks(test.getMaxMarks())
+                    .grade(calculateGrade(result.getScore(), test.getMaxMarks()))
+                    .feedback(result.getFeedback())
+                    .testDate(test.getTestDate())
+                    .build();
+        }).collect(java.util.stream.Collectors.toList());
     }
 
     private String generateDefaultFeedback(int score, int maxMarks) {

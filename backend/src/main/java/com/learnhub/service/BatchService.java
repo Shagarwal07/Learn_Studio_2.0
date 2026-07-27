@@ -24,6 +24,7 @@ public class BatchService {
     private final BatchRepository batchRepository;
     private final UserRepository userRepository;
     private final TestRepository testRepository;
+    private final TestResultRepository testResultRepository;
     private final AttendanceRepository attendanceRepository;
     private final BatchMapper batchMapper;
     private final NoteRepository noteRepository;
@@ -246,6 +247,7 @@ public class BatchService {
     public void deleteTest(Long testId) {
         Test test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found"));
+        testResultRepository.deleteByTestId(testId);
         testRepository.delete(test);
     }
 

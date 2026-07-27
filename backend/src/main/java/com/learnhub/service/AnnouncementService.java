@@ -27,6 +27,7 @@ public class AnnouncementService {
     private final BatchRepository batchRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AnnouncementMapper announcementMapper;
+    private final EmailService emailService;
 
     @Transactional
     public AnnouncementDTO createAnnouncement(String email, AnnouncementDTO dto) {
@@ -54,7 +55,35 @@ public class AnnouncementService {
                 .createdBy(creator)
                 .build();
 
-        return announcementMapper.toDTO(announcementRepository.save(announcement));
+        Announcement saved = announcementRepository.save(announcement);
+
+        // Dispatch emails asynchronously
+        dispatchAnnouncementEmails(saved);
+
+        return announcementMapper.toDTO(saved);
+    }
+
+    private void dispatchAnnouncementEmails(Announcement announcement) {
+        String batchName = announcement.getBatch() != null ? announcement.getBatch().getName() : 
+                           announcement.getCourse() != null ? announcement.getCourse().getTitle() : "All Students";
+        String instructorName = announcement.getCreatedBy().getName();
+
+        List<User> targets;
+        if (announcement.getBatch() != null) {
+            targets = userRepository.findByBatchId(announcement.getBatch().getId());
+        } else if (announcement.getCourse() != null) {
+            targets = enrollmentRepository.findByCourseId(announcement.getCourse().getId()).stream()
+                    .map(com.learnhub.entity.Enrollment::getUser)
+                    .toList();
+        } else {
+            targets = userRepository.findByRole(User.Role.STUDENT);
+        }
+
+        for (User user : targets) {
+            if (user.getRole() == User.Role.STUDENT && user.getEmail() != null) {
+                emailService.sendHtmlAnnouncement(user.getEmail(), user.getName(), instructorName, batchName, announcement);
+            }
+        }
     }
 
     public List<AnnouncementDTO> getAnnouncements(String email, Long courseId) {

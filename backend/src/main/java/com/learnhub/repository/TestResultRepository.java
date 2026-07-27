@@ -10,4 +10,6 @@ import java.util.List;
 public interface TestResultRepository extends JpaRepository<TestResult, Long> {
     List<TestResult> findByTestId(Long testId);
     List<TestResult> findByStudentId(Long studentId);
+    java.util.Optional<TestResult> findByTestIdAndStudentId(Long testId, Long studentId);
+    void deleteByTestId(Long testId);
 }

@@ -18,6 +18,7 @@ import {
   Loader2,
   Calendar,
   Users,
+  User,
   PlusCircle,
   FileText,
   ClipboardList,
@@ -177,6 +178,26 @@ export default function StudentDashboardPage() {
     }
   });
 
+  // 7. Fetch test results
+  const { data: testResults = [] } = useQuery<any[]>({
+    queryKey: ['my-test-results'],
+    enabled: user?.role === 'STUDENT',
+    queryFn: async () => {
+      const response = await api.get('/tests/my-results');
+      return response.data;
+    }
+  });
+
+  // 8. Fetch student assigned batch
+  const { data: myBatch } = useQuery<any>({
+    queryKey: ['my-assigned-batch'],
+    enabled: user?.role === 'STUDENT',
+    queryFn: async () => {
+      const response = await api.get('/student/batch/my');
+      return response.data.success ? response.data.data : null;
+    }
+  });
+
   // Redirect if logged-in user is an Instructor or Admin
   if (user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN') {
     return <InstructorDashboardView />;
@@ -191,13 +212,26 @@ export default function StudentDashboardPage() {
   }
 
   // Calculate metrics based on APIs
-  const totalQuizzes = quizAttempts.length;
-  const avgScore = totalQuizzes 
-    ? Math.round(quizAttempts.reduce((sum, a) => sum + ((a.score / a.totalQuestions) * 100), 0) / totalQuizzes) 
+  const hasOfflineTests = Array.isArray(testResults) && testResults.length > 0;
+  const offlineAvgPct = hasOfflineTests
+    ? Math.round(testResults.reduce((sum, t) => sum + ((t.score / (t.maxMarks || 100)) * 100), 0) / testResults.length)
     : 0;
 
-  // Grade derived from quiz avg for now
-  const grade = avgScore >= 90 ? 'A+' : avgScore >= 80 ? 'A' : avgScore >= 70 ? 'B' : avgScore >= 60 ? 'C' : avgScore > 0 ? 'D' : 'N/A';
+  const totalQuizzes = quizAttempts.length;
+  const onlineAvgPct = totalQuizzes 
+    ? Math.round(quizAttempts.reduce((sum, a) => sum + ((a.score / (a.totalQuestions || 1)) * 100), 0) / totalQuizzes) 
+    : 0;
+
+  const avgScore = hasOfflineTests ? offlineAvgPct : onlineAvgPct;
+
+  // Grade derived from official test results first, then online quiz score
+  let grade = 'N/A';
+  if (hasOfflineTests && testResults[0]?.grade) {
+    grade = testResults[0].grade;
+  } else {
+    const effectivePct = avgScore;
+    grade = effectivePct >= 90 ? 'A+' : effectivePct >= 80 ? 'A' : effectivePct >= 70 ? 'B' : effectivePct >= 60 ? 'C' : effectivePct > 0 ? 'D' : 'N/A';
+  }
 
   const currentStreak = streakData 
     ? Math.max(streakData.currentOfflineStreak || 0, streakData.currentOnlineStreak || 0) 
@@ -211,149 +245,237 @@ export default function StudentDashboardPage() {
   
   const fallbackResume = courses.length > 0 ? courses[0] : null;
 
+  const studentBatchName = 
+    myBatch?.name || 
+    (user as any)?.batchName || 
+    (user as any)?.batch?.name || 
+    'Unassigned';
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className="space-y-8 text-foreground pb-20"
     >
-      {/* Top Section: Welcome & Orb */}
-      <div className="hero-header-card flex-col md:flex-row justify-between gap-6">
-        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-64 h-64 md:w-96 md:h-96 bg-accent-grape/15 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 space-y-3 max-w-xl text-center md:text-left">
-          <span className="inline-flex items-center justify-center md:justify-start gap-1.5 text-[10px] font-bold text-success bg-success/10 px-3 py-1 rounded-full border border-success/20 uppercase tracking-wider mx-auto md:mx-0">
-            <span className="w-1.5 h-1.5 bg-success rounded-full animate-pulse" /> Learning Portal Active
-          </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-            Welcome back,<br className="hidden md:block" /> {user?.name || 'Student'} 👋
-          </h2>
-          <p className="text-indigo-100 text-xs sm:text-sm leading-relaxed mt-2">
-            Continue your learning journey, track your progress and unlock certificates.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 sm:gap-4 pt-4">
-            <Link href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} className="w-full sm:w-auto justify-center px-6 py-3 bg-gradient-to-r from-accent-blue to-accent-grape text-white text-xs font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
-              <Play className="w-4 h-4" /> Continue Learning
-            </Link>
-            <Link href="/dashboard/ai" className="w-full sm:w-auto justify-center px-6 py-3 bg-black/5 dark:bg-card border border-border-color text-foreground text-xs font-bold rounded-full hover:bg-black/10 dark:hover:bg-card transition-colors flex items-center gap-2">
-              <Zap className="w-4 h-4" /> Ask AI Tutor
-            </Link>
-          </div>
-        </div>
+      {/* Top Section: Upgraded Command Center Welcome Hero Card */}
+      <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-slate-900/90 via-indigo-950/40 to-slate-900 p-5 sm:p-8 md:p-10 shadow-2xl backdrop-blur-xl">
+        {/* Glow Orbs */}
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-60 h-60 md:w-96 md:h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 translate-y-12 w-48 h-48 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Profile Avatar Widget */}
-        <div className="relative z-10 w-24 h-24 md:w-48 md:h-48 shrink-0 mx-auto md:mx-0 flex items-center justify-center mt-6 md:mt-0">
-          <input type="file" id="avatarUpload" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-          <div className="absolute inset-0 bg-gradient-to-br from-accent-grape to-primary-blue rounded-full blur-xl opacity-20 mix-blend-screen" />
-          <label htmlFor="avatarUpload" className="relative w-full h-full rounded-full border-[6px] border-[#121623] shadow-2xl overflow-hidden bg-[#1E2335] cursor-pointer group block">
-            {isUploadingAvatar && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#121623]/80 backdrop-blur-sm">
-                <Loader2 className="w-8 h-8 text-accent-grape animate-spin mb-2" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-widest">Uploading...</span>
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 lg:gap-8">
+          {/* Left Column: Student Profile Header, Greeting, Status Pills, Actions */}
+          <div className="space-y-4 max-w-xl w-full text-left">
+            
+            {/* Student Profile & Greeting Row (Always Inline) */}
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              {/* Student Avatar */}
+              <div className="relative w-14 h-14 sm:w-18 sm:h-18 shrink-0 group">
+                <input type="file" id="avatarUpload" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                <label htmlFor="avatarUpload" className="relative w-full h-full rounded-2xl border-2 border-indigo-500/40 shadow-xl overflow-hidden bg-slate-900 cursor-pointer block">
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/80">
+                      <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                    <span className="text-[9px] font-bold text-white bg-indigo-600 px-2 py-0.5 rounded-full">Change</span>
+                  </div>
+                  {(user as any)?.avatarUrl ? (
+                    <img src={(user as any).avatarUrl} alt={user?.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-indigo-950/50 text-indigo-300">
+                      <User className="w-7 h-7 opacity-80" />
+                    </div>
+                  )}
+                </label>
+                <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 w-3.5 h-3.5 rounded-full border-2 border-slate-900 shadow-md" title="Online" />
               </div>
-            )}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-              <span className="text-xs font-bold text-white bg-black/50 px-3 py-1 rounded-full">Change Picture</span>
+
+              {/* Main Greeting & Name */}
+              <div className="space-y-0.5">
+                <p className="text-[11px] sm:text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                  {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'} ⚡
+                </p>
+                <h2 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
+                  <span className="bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">
+                    {user?.name || 'Student'}
+                  </span> 👋
+                </h2>
+              </div>
             </div>
-            {(user as any)?.avatarUrl ? (
-              <img src={(user as any).avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
-                <Users className="w-12 h-12 mb-2 opacity-50 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">No Avatar</span>
+
+            {/* Status Pills Bar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                Active Student
+              </span>
+
+              {currentStreak > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 uppercase tracking-wider">
+                  🔥 {currentStreak}-Day Streak
+                </span>
+              )}
+
+              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-indigo-300 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20 uppercase tracking-wider">
+                🎓 {studentBatchName}
+              </span>
+            </div>
+
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-lg hidden sm:block">
+              Track your classes, review test performance, and learn interactively with Charlie AI.
+            </p>
+
+            {/* Next Up Live Alert Pill if schedules exist */}
+            {schedules && schedules.length > 0 && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 border border-slate-700/60 rounded-xl text-xs text-slate-200 w-full sm:w-auto">
+                <span className="text-indigo-400 font-bold shrink-0">📌 Next:</span>
+                <span className="font-semibold text-white truncate">{schedules[0].title}</span>
+                <span className="text-slate-400 text-[11px] shrink-0">({schedules[0].eventDate || 'Today'})</span>
               </div>
             )}
-          </label>
-          {/* Floating badge */}
-          <div className="absolute bottom-2 -left-2 bg-[#1E2335] border border-border-color rounded-full p-2.5 shadow-xl z-20">
-            <CheckCircle2 className="w-5 h-5 text-success" />
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+              <Link 
+                href={fallbackResume ? `/dashboard/course/${fallbackResume.courseId}/learn` : '/courses'} 
+                className="w-full sm:w-auto px-5 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-xs font-bold rounded-2xl shadow-xl shadow-indigo-500/25 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+              >
+                <Play className="w-4 h-4 fill-white" /> Continue Learning
+              </Link>
+              <Link 
+                href="/dashboard/ai" 
+                className="w-full sm:w-auto px-5 py-2.5 sm:py-3 bg-slate-800/90 border border-indigo-500/30 text-indigo-300 hover:text-white hover:bg-indigo-600/20 text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4 text-purple-400" /> Ask Charlie AI
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Column: Charlie Mascot & Speech Bubble Quote (Mobile-optimized Layout) */}
+          <div className="relative flex flex-row md:flex-col items-center justify-center gap-3 shrink-0 pt-2 md:pt-0 w-full md:w-auto border-t md:border-t-0 border-slate-800/60">
+            {/* Speech Bubble Quote */}
+            <div className="relative px-3.5 py-2 bg-gradient-to-r from-indigo-900/90 to-purple-900/90 border border-indigo-500/30 rounded-2xl shadow-xl text-left md:text-center max-w-[200px] sm:max-w-[220px]">
+              <p className="text-[10.5px] sm:text-[11.5px] font-bold text-indigo-200 leading-snug">
+                "{
+                  [
+                    "Small daily progress leads to huge results! 🚀",
+                    "Consistency is the key to mastering any subject! 💡",
+                    "Don't just study hard, study smart with clear goals! 🧠",
+                    "Every practice question brings you closer to an A+! 🎯",
+                    "Stuck on a concept? Ask me anytime in AI Tutor! 🤖",
+                    "Great achievements take time and daily dedication! ✨",
+                    "Believe in yourself! You're making progress every day! 🔥"
+                  ][new Date().getDate() % 7]
+                }"
+              </p>
+            </div>
+
+            {/* Charlie Mascot Image */}
+            <div className="relative w-28 h-28 sm:w-44 sm:h-48 md:w-48 md:h-52 shrink-0 flex items-center justify-center">
+              <img 
+                src="/images/charlie-ai.png" 
+                alt="Charlie" 
+                className="w-full h-full object-contain filter drop-shadow-[0_10px_20px_rgba(99,102,241,0.25)] hover:scale-105 transition-transform duration-300"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {/* Grade */}
-        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
-          <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
-            <BookOpen className="w-5 h-5 text-accent-grape" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* Batch Name */}
+        <div className="relative overflow-hidden bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 space-y-3 hover:border-indigo-500/30 transition-all shadow-lg backdrop-blur-md group">
+          <div className="flex justify-between items-center">
+            <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20 text-indigo-400 group-hover:scale-105 transition-transform">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-extrabold text-indigo-300 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
+              BATCH
+            </span>
           </div>
           <div>
-            {grade !== 'N/A' ? (
-              <h3 className="text-3xl lg:text-4xl font-black text-foreground">{grade}</h3>
-            ) : (
-              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
-            )}
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">GRADE</p>
+            <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight truncate" title={studentBatchName}>
+              {studentBatchName}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Batch Name</p>
           </div>
         </div>
 
-        {/* Attendance */}
-        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
-          <div className="flex justify-between items-start">
-            <div className="w-10 h-10 bg-secondary-blue/20 rounded-xl flex items-center justify-center border border-secondary-blue/30">
-              <CheckCircle2 className="w-5 h-5 text-secondary-blue" />
+        {/* Attendance Rate */}
+        <div className="relative overflow-hidden bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 space-y-3 hover:border-emerald-500/30 transition-all shadow-lg backdrop-blur-md group">
+          <div className="flex justify-between items-center">
+            <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
-            {attendanceRate > 0 && <span className="bg-success/20 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/30">+8%</span>}
+            {attendanceRate > 0 && (
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                +8%
+              </span>
+            )}
           </div>
           <div>
-            {attendanceData ? (
-              <h3 className="text-3xl lg:text-4xl font-black text-foreground"><AnimatedCounter value={attendanceRate} />%</h3>
-            ) : (
-              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
-            )}
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">Attendance</p>
+            <h3 className="text-3xl font-extrabold text-white tracking-tight">
+              {attendanceData ? <AnimatedCounter value={attendanceRate} /> : 'N/A'}%
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Attendance Rate</p>
             {attendanceData && (
-              <div className="w-full bg-bg-secondary-dark h-1.5 rounded-full overflow-hidden mt-3">
-                <div className="bg-secondary-blue h-full rounded-full" style={{ width: `${attendanceRate}%` }} />
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-3">
+                <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${attendanceRate}%` }} />
               </div>
             )}
           </div>
         </div>
 
-        {/* Average Quiz Score */}
-        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
-          <div className="flex justify-between items-start">
-            <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
-              <Award className="w-5 h-5 text-accent-grape" />
+        {/* Overall Test Grade */}
+        <div className="relative overflow-hidden bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 space-y-3 hover:border-purple-500/30 transition-all shadow-lg backdrop-blur-md group">
+          <div className="flex justify-between items-center">
+            <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20 text-purple-400 group-hover:scale-105 transition-transform">
+              <Award className="w-5 h-5" />
             </div>
-            {avgScore > 0 && <span className="bg-success/20 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/30">top 6%</span>}
+            {grade !== 'N/A' && (
+              <span className="text-[10px] font-bold text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                Official
+              </span>
+            )}
           </div>
           <div>
-            {totalQuizzes > 0 ? (
-              <h3 className="text-3xl lg:text-4xl font-black text-foreground"><AnimatedCounter value={avgScore} /></h3>
-            ) : (
-              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
-            )}
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">Average Quiz Score</p>
-            {totalQuizzes > 0 && (
-              <div className="w-full bg-bg-secondary-dark h-1.5 rounded-full overflow-hidden mt-3">
-                <div className="bg-gradient-to-r from-accent-grape to-accent-blue h-full rounded-full" style={{ width: `${avgScore}%` }} />
+            <h3 className="text-3xl font-extrabold text-white tracking-tight">
+              {grade}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Overall Grade</p>
+            {avgScore > 0 && (
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-3">
+                <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${avgScore}%` }} />
               </div>
             )}
           </div>
         </div>
 
         {/* Study Streak */}
-        <div className="panel-sidebar p-4 sm:p-6 space-y-3 sm:space-y-4 relative overflow-hidden">
-          <div className="flex justify-between items-start">
-            <div className="w-10 h-10 bg-warning/20 rounded-xl flex items-center justify-center border border-warning/30">
-              <Zap className="w-5 h-5 text-warning" />
+        <div className="relative overflow-hidden bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 space-y-3 hover:border-amber-500/30 transition-all shadow-lg backdrop-blur-md group">
+          <div className="flex justify-between items-center">
+            <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform">
+              <Zap className="w-5 h-5" />
             </div>
-            {currentStreak > 0 && <span className="bg-warning/20 text-warning text-[10px] font-bold px-2 py-0.5 rounded-full border border-warning/30">record</span>}
+            {currentStreak > 0 && (
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                Record
+              </span>
+            )}
           </div>
           <div>
-            {currentStreak > 0 ? (
-              <h3 className="text-3xl lg:text-4xl font-black text-foreground"><AnimatedCounter value={currentStreak} />d</h3>
-            ) : (
-              <h3 className="text-lg font-bold text-text-muted">N/A</h3>
-            )}
-            <p className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider mt-2">Study Streak</p>
+            <h3 className="text-3xl font-extrabold text-white tracking-tight">
+              {currentStreak > 0 ? <AnimatedCounter value={currentStreak} /> : 'N/A'}{currentStreak > 0 ? 'd' : ''}
+            </h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Study Streak</p>
             {currentStreak > 0 && (
               <div className="flex gap-1.5 mt-3">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className={`w-3 h-3 rounded-full ${i < Math.min(currentStreak, 4) ? 'bg-warning shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 'bg-card'}`} />
+                  <div key={i} className={`w-3 h-3 rounded-full ${i < Math.min(currentStreak, 4) ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]' : 'bg-slate-800'}`} />
                 ))}
               </div>
             )}
@@ -361,176 +483,156 @@ export default function StudentDashboardPage() {
         </div>
       </div>
 
-      <div className="flex justify-center pt-2 pb-4">
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)} 
-          className="flex items-center gap-2 px-6 py-2.5 bg-card hover:bg-card border border-border-color rounded-full text-xs font-bold text-text-secondary hover:text-white transition-all shadow-sm"
-        >
-          {isExpanded ? 'Hide Full Analytics' : 'View Full Analytics'}
-          <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
-            className="overflow-hidden space-y-8"
-          >
-            {/* D3 Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1 h-64">
-          <CourseCompletionDonut />
-        </div>
-        <div className="lg:col-span-2 h-64">
-          <WeeklyActivityChart quizAttempts={quizAttempts} />
-        </div>
-        <div className="lg:col-span-1 h-64">
-          <AttendanceGrid attendanceData={attendanceData} />
-        </div>
-      </div>
 
-      {/* Bottom Section: Resume Learning & Upcoming & AI */}
+      {/* Bottom Section: Test Results & Upcoming Agenda */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Resume Learning + AI Assistant */}
+        {/* Left Column: Resume Learning & Test Results */}
         <div className="space-y-6">
-          {/* Locked Course / Resume Learning */}
-          {fallbackResume ? (
-            <div className="panel-sidebar flex flex-col sm:flex-row gap-6 items-center">
-              <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-[#2E1A47] to-[#121623] flex flex-col items-center justify-center border border-accent-grape/20 shrink-0 relative overflow-hidden">
-                <div className="absolute top-4 left-4 w-12 h-12 bg-card rounded-full blur-xl" />
-                <Compass className="w-10 h-10 text-white mb-2" />
-                <span className="text-xs font-bold text-white text-center px-2 line-clamp-2">{fallbackResume.courseTitle}</span>
+          
+          {/* Resume Learning Card */}
+          {fallbackResume && (
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                  ⚡ Continue Course
+                </span>
+                <span className="text-xs font-bold text-indigo-300">
+                  {fallbackResume.progress}% Completed
+                </span>
               </div>
-              <div className="flex-1 space-y-3 w-full">
-                <div className="flex justify-between items-start">
-                  <span className="text-[9px] font-extrabold text-accent-grape uppercase tracking-wider">Resume Learning</span>
-                  <span className="bg-success/10 text-success text-[10px] font-bold px-2 py-0.5 rounded-full border border-success/20">Active</span>
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold text-foreground leading-tight line-clamp-2">{fallbackResume.courseTitle}</h3>
-                <p className="text-[11px] text-text-secondary">Enrolled: {new Date(fallbackResume.enrolledAt).toLocaleDateString()}</p>
-                
-                <div className="pt-2">
-                  <div className="flex justify-between text-[10px] font-bold text-foreground mb-1.5">
-                    <span>Progress</span>
-                    <span>{fallbackResume.progress}%</span>
+              
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex items-center gap-3.5 w-full sm:w-auto">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-950/80 border border-indigo-500/30 flex items-center justify-center shrink-0 text-indigo-400">
+                    <Compass className="w-6 h-6" />
                   </div>
-                  <div className="w-full bg-bg-secondary-dark h-2 rounded-full overflow-hidden">
-                    <div className="bg-secondary-blue h-full rounded-full" style={{ width: `${fallbackResume.progress}%` }} />
+                  <div>
+                    <h4 className="text-sm sm:text-base font-bold text-white line-clamp-1">{fallbackResume.courseTitle}</h4>
+                    <p className="text-[11px] text-slate-400">Enrolled: {new Date(fallbackResume.enrolledAt).toLocaleDateString()}</p>
                   </div>
                 </div>
 
-                <div className="pt-2">
-                  <Link href={`/dashboard/course/${fallbackResume.courseId}/learn`} className="inline-block px-4 py-2 bg-black/5 dark:bg-card border border-border-color text-foreground text-xs font-bold rounded-xl hover:bg-black/10 dark:hover:bg-card transition-colors">
-                    Continue lesson
-                  </Link>
-                </div>
+                <Link 
+                  href={`/dashboard/course/${fallbackResume.courseId}/learn`}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" /> Continue Lesson
+                </Link>
               </div>
-            </div>
-          ) : (
-            <div className="interactive-card flex flex-col items-center justify-center text-center gap-4 h-48">
-              <div className="w-12 h-12 bg-card rounded-full flex items-center justify-center">
-                <Compass className="w-6 h-6 text-text-muted" />
+
+              {/* Progress bar */}
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-500" style={{ width: `${fallbackResume.progress}%` }} />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">No Active Courses</h3>
-                <p className="text-[10px] text-text-secondary mt-1">Enroll in a course to track your online learning progress here.</p>
-              </div>
-              <Link href="/courses" className="px-4 py-2 bg-accent-grape/20 text-accent-grape border border-accent-grape/30 text-xs font-bold rounded-xl hover:bg-accent-grape/30 transition-colors">
-                Explore Courses
-              </Link>
             </div>
           )}
 
-          {/* AI Study Assistant */}
-          <div className="panel-sidebar relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-accent-blue/5 rounded-full blur-3xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row gap-8 relative z-10">
-              <div className="space-y-4 flex-1">
-                <div className="w-10 h-10 bg-accent-grape/20 rounded-xl flex items-center justify-center border border-accent-grape/30">
-                  <Zap className="w-5 h-5 text-accent-grape" />
-                </div>
-                <h3 className="text-2xl font-black text-foreground">AI Study Assistant</h3>
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  Turn any lesson into notes, quizzes, explanations, summaries, and voice-guided tutoring in seconds.
-                </p>
-                <Link href="/dashboard/ai" className="inline-flex px-5 py-2.5 bg-accent-grape text-white text-xs font-bold rounded-xl shadow-lg shadow-accent-grape/20 hover:scale-[1.02] transition-transform">
-                  <Zap className="w-3.5 h-3.5 mr-1.5" /> Open AI Assistant
-                </Link>
+          {/* My Test Results */}
+          <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-5">
+            <div className="flex justify-between items-center border-b border-slate-800/60 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-indigo-400" /> My Test Results
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Official scores and instructor feedback</p>
               </div>
-              
-              <div className="grid grid-cols-2 gap-3 shrink-0">
-                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-accent-grape/50 transition-colors flex items-center gap-2">
-                  <FileText className="w-3.5 h-3.5 text-accent-grape" /> Generate Notes
-                </button>
-                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-secondary-blue/50 transition-colors flex items-center gap-2">
-                  <Compass className="w-3.5 h-3.5 text-secondary-blue" /> Explain Topic
-                </button>
-                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-success/50 transition-colors flex items-center gap-2">
-                  <ClipboardList className="w-3.5 h-3.5 text-success" /> Create Quiz
-                </button>
-                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-warning/50 transition-colors flex items-center gap-2">
-                  <Award className="w-3.5 h-3.5 text-warning" /> Ask Doubt
-                </button>
-                <button className="px-4 py-3 bg-bg-secondary border border-border-color text-foreground text-[10px] font-bold rounded-xl hover:border-accent-blue/50 transition-colors flex items-center gap-2 col-span-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-accent-blue" /> Summarize Lesson
-                </button>
-              </div>
+              <Link href="/dashboard/tests" className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+                View All <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
+            
+            {testResults.length > 0 ? (
+              <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
+                {testResults.map((res: any) => (
+                  <div key={res.testId} className="bg-slate-950/60 border border-slate-800/60 hover:border-indigo-500/30 p-4 rounded-2xl transition-all space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider">{res.subjectName}</span>
+                        <h4 className="text-sm font-bold text-white">{res.testTitle}</h4>
+                      </div>
+                      <div className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-center">
+                        <span className="text-base font-extrabold text-indigo-300">{res.grade}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs border-t border-slate-800/40 pt-2.5 text-slate-300">
+                      <span>Score: <strong className="text-white">{res.score} / {res.maxMarks}</strong></span>
+                      <span className="text-slate-400 text-[11px]">{new Date(res.testDate).toLocaleDateString()}</span>
+                    </div>
+
+                    {res.feedback && (
+                      <p className="text-xs text-slate-400 italic bg-slate-900/40 p-2.5 rounded-xl border border-slate-800/40">
+                        💬 "{res.feedback}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center py-10 border border-dashed border-slate-800 rounded-2xl">
+                <Award className="w-10 h-10 text-slate-600 mb-2" />
+                <p className="text-xs font-bold text-white">No Test Results Yet</p>
+                <p className="text-[11px] text-slate-500 mt-1 max-w-xs">Your offline assessment results will appear here once uploaded by your instructor.</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right Column: Upcoming Classes */}
-        <div className="panel-sidebar flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-sm font-extrabold text-foreground">Upcoming Classes</h3>
+        {/* Right Column: Upcoming Schedule Agenda */}
+        <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-5">
+          <div className="flex justify-between items-center border-b border-slate-800/60 pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-indigo-400" /> Upcoming Schedules
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Classes, tests, and events for this week</p>
+            </div>
             {schedules.length > 0 && (
-              <span className="text-[10px] bg-black/5 dark:bg-card px-2 py-0.5 rounded-full text-foreground font-bold">{schedules.length} Event{schedules.length !== 1 ? 's' : ''}</span>
+              <span className="text-[11px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-bold">
+                {schedules.length} Event{schedules.length !== 1 ? 's' : ''}
+              </span>
             )}
           </div>
           
           {schedules.length > 0 ? (
-            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[5px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-accent-grape before:via-border-color before:to-transparent flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[500px]">
-              {schedules.map((event: any, idx: number) => {
-                const colors = ['bg-accent-grape', 'bg-secondary-blue', 'bg-success', 'bg-warning'];
-                const colorClass = colors[idx % colors.length];
-                const textColors = ['text-accent-grape', 'text-secondary-blue', 'text-success', 'text-warning'];
-                const textColorClass = textColors[idx % textColors.length];
-
-                return (
-                  <div key={event.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group hover:bg-card p-3 -mx-3 rounded-xl transition-colors">
-                    <div className={`flex items-center justify-center w-3 h-3 rounded-full border-2 border-background ${colorClass} shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 relative z-10`} />
-                    <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] pl-4 md:p-0 md:group-even:text-right">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${textColorClass}`}>
-                        {new Date(event.eventDate).toLocaleDateString()} • {event.startTime.substring(0, 5)} - {event.endTime.substring(0, 5)}
-                      </span>
-                      <h4 className="text-sm font-bold text-white mt-1 group-hover:text-accent-blue transition-colors">{event.title}</h4>
-                      <p className="text-[10px] text-text-muted mt-1 truncate">
-                        {event.batchName ? `Batch: ${event.batchName}` : 'General Session'} 
-                        {event.subjectName ? ` • ${event.subjectName}` : ''}
-                      </p>
-                    </div>
+            <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[460px] pr-1 custom-scrollbar">
+              {schedules.map((event: any) => (
+                <div key={event.id} className="bg-slate-950/60 border border-slate-800/60 hover:border-indigo-500/30 p-4 rounded-2xl transition-all space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      {event.eventType || 'CLASS'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-400">
+                      🗓 {new Date(event.eventDate).toLocaleDateString()}
+                    </span>
                   </div>
-                );
-              })}
+
+                  <h4 className="text-sm font-bold text-white">{event.title}</h4>
+
+                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/40">
+                    <span className="flex items-center gap-1 text-slate-300">
+                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                      {event.startTime?.substring(0, 5)} - {event.endTime?.substring(0, 5)}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {event.batchName ? `Batch: ${event.batchName}` : 'General'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-12 border border-dashed border-border-color rounded-2xl">
-              <Calendar className="w-8 h-8 text-text-muted" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-16 border border-dashed border-slate-800 rounded-2xl">
+              <Calendar className="w-10 h-10 text-slate-600" />
               <div>
-                <p className="text-xs font-bold text-white">No Upcoming Classes</p>
-                <p className="text-[10px] text-text-muted mt-1 max-w-[200px] mx-auto">You have no offline lectures scheduled for this week.</p>
+                <p className="text-xs font-bold text-white">No Upcoming Schedules</p>
+                <p className="text-[11px] text-slate-500 mt-1 max-w-[220px]">You have no lectures or tests scheduled for this week.</p>
               </div>
             </div>
           )}
         </div>
       </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }

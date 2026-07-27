@@ -19,6 +19,12 @@ public class TestController {
 
     private final TestService testService;
 
+    @GetMapping("/{testId}/results")
+    @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
+    public ResponseEntity<List<TestResultUploadDTO>> getTestMarks(@PathVariable Long testId) {
+        return ResponseEntity.ok(testService.getTestMarks(testId));
+    }
+
     @PostMapping("/{testId}/results")
     @PreAuthorize("hasAnyRole('INSTRUCTOR', 'ADMIN')")
     public ResponseEntity<?> uploadTestMarks(
@@ -38,5 +44,11 @@ public class TestController {
         
         testService.sendReportCardsForTest(testId, principal.getName());
         return ResponseEntity.ok(Map.of("message", "Report cards are being sent asynchronously to all students."));
+    }
+
+    @GetMapping("/my-results")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<?> getMyTestResults(Principal principal) {
+        return ResponseEntity.ok(testService.getMyTestResults(principal.getName()));
     }
 }

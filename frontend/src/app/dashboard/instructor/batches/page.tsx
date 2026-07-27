@@ -135,6 +135,8 @@ interface ScheduleEvent {
   recurrenceDay: string | null;
 }
 
+import UploadMarksModal from './UploadMarksModal';
+
 const BATCH_LEVELS = ['Class VIII', 'Class IX', 'Class X', 'Class XI', 'Class XII', 'Undergraduate', 'Postgraduate'];
 const ACADEMIC_SUBJECTS = ['English', 'Mathematics', 'Science', 'Social Science', 'Physics', 'Chemistry', 'Biology', 'Computer Science'];
 
@@ -253,6 +255,7 @@ export default function InstructorBatchesPage() {
   const [testSubject, setTestSubject] = useState('');
   const [testDate, setTestDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [testMaxMarks, setTestMaxMarks] = useState(25);
+  const [selectedTestForMarks, setSelectedTestForMarks] = useState<TestDTO | null>(null);
 
   // Announcement states
   const [annTitle, setAnnTitle] = useState('');
@@ -511,6 +514,20 @@ export default function InstructorBatchesPage() {
     onSuccess: () => {
       refetchSchedules();
       alert('Class timing deleted.');
+    }
+  });
+
+  // Send Report Cards Mutation
+  const sendReportCardsMutation = useMutation({
+    mutationFn: async (testId: number) => {
+      const response = await api.post(`/tests/${testId}/send-emails`);
+      return response.data;
+    },
+    onSuccess: () => {
+      alert('Report cards are being sent asynchronously to all students.');
+    },
+    onError: (error: any) => {
+      alert(error.response?.data?.message || 'Failed to send report cards.');
     }
   });
 
@@ -2201,9 +2218,11 @@ isPres
 
                     {/* Tests List */}
                     <div className="space-y-3">
-                      <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
-                        Scheduled Tests List ({batchTests.length})
-                      </h5>
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">
+                          Scheduled Tests List ({batchTests.length})
+                        </h5>
+                      </div>
 
                       {batchTests.length === 0 ? (
                         <div className="py-10 text-center border border-dashed border-border-color rounded-xl text-xs text-muted-foreground bg-card">
@@ -2231,6 +2250,23 @@ isPres
                                     <Calendar className="w-3.5 h-3.5 text-indigo-400" />
                                     Date: {new Date(test.testDate).toLocaleDateString()}
                                   </span>
+                                </div>
+                                <div className="flex items-center gap-2 pt-2 mt-1">
+                                  <button
+                                    onClick={() => setSelectedTestForMarks(test)}
+                                    className="px-2 py-1 text-[9px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 rounded-md transition-colors flex items-center gap-1"
+                                  >
+                                    <UploadCloud className="w-3 h-3" />
+                                    Manage Marks
+                                  </button>
+                                  <button
+                                    onClick={() => sendReportCardsMutation.mutate(test.id)}
+                                    disabled={sendReportCardsMutation.isPending}
+                                    className="px-2 py-1 text-[9px] font-bold bg-teal-500/10 text-teal-400 border border-teal-500/20 hover:bg-teal-500/20 rounded-md transition-colors flex items-center gap-1"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Send Report Cards
+                                  </button>
                                 </div>
                               </div>
 
@@ -2446,6 +2482,15 @@ isPres
             </form>
           </div>
         </div>
+      )}
+
+      {selectedTestForMarks && (
+        <UploadMarksModal 
+          test={selectedTestForMarks}
+          students={batchDetails?.students || []}
+          onClose={() => setSelectedTestForMarks(null)}
+          onSuccess={() => {}}
+        />
       )}
 
     </div>

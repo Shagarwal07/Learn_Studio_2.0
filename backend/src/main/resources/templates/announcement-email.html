@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcement | LearnStudio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #030712;
+            margin: 0;
+            padding: 40px 16px;
+            color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrapper {
+            max-width: 620px;
+            margin: 0 auto;
+        }
+
+        /* Outer Glow Border Box */
+        .outer-card {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #3b82f6 100%);
+            border-radius: 28px;
+            padding: 2px;
+            box-shadow: 0 20px 60px -15px rgba(139, 92, 246, 0.4);
+        }
+
+        .inner-card {
+            background-color: #0b0f19;
+            border-radius: 26px;
+            overflow: hidden;
+        }
+
+        /* Header Section */
+        .header {
+            padding: 44px 36px 28px 36px;
+            background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.25) 0%, rgba(11, 15, 25, 0) 75%);
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(236, 72, 153, 0.12);
+            border: 1px solid rgba(236, 72, 153, 0.35);
+            color: #f472b6;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .main-title {
+            margin: 0;
+            font-size: 30px;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.25;
+            letter-spacing: -0.8px;
+        }
+
+        /* Meta Card Bar */
+        .meta-bar {
+            margin-top: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 14px 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            font-size: 13px;
+            color: #9ca3af;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-item strong {
+            color: #e5e7eb;
+            font-weight: 600;
+        }
+
+        .meta-divider {
+            color: #4b5563;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 36px;
+        }
+
+        .greeting {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+
+        /* Highlight Message Box */
+        .message-box {
+            background: linear-gradient(180deg, rgba(139, 92, 246, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-left: 4px solid #a855f7;
+            border-radius: 0 16px 16px 0;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+
+        .message-text {
+            font-size: 16px;
+            line-height: 1.7;
+            color: #d1d5db;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        /* Image Attachment Container */
+        .image-card {
+            margin: 32px 0;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Action Button */
+        .cta-container {
+            text-align: center;
+            margin: 36px 0 12px 0;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 16px 36px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 0.2px;
+            box-shadow: 0 10px 30px -5px rgba(236, 72, 153, 0.5);
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #060913;
+            padding: 32px 36px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .footer-logo {
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .footer p {
+            margin: 4px 0;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .social-pill {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 100px;
+            color: #c084fc !important;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="outer-card">
+            <div class="inner-card">
+                <!-- Header -->
+                <div class="header">
+                    <div class="badge">
+                        <span>⚡</span> NEW ANNOUNCEMENT
+                    </div>
+                    <h1 class="main-title" th:text="${announcementTitle}">Important Update</h1>
+
+                    <!-- Metadata Info Bar -->
+                    <div class="meta-bar">
+                        <div class="meta-item">
+                            <span>👤</span> Instructor: <strong th:text="${instructorName}">Alex Mercer</strong>
+                        </div>
+                        <span class="meta-divider" th:if="${batchName != null}">•</span>
+                        <div class="meta-item" th:if="${batchName != null}">
+                            <span>🎓</span> Batch: <strong th:text="${batchName}">Batch A</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="content">
+                    <h2 class="greeting">Hey <span th:text="${studentName}" style="color: #a855f7;">Student</span> 👋
+                    </h2>
+
+                    <div class="message-box">
+                        <p class="message-text" th:text="${message}">Your instructor has shared an important update.
+                            Please read through carefully to stay on top of your schedule!</p>
+                    </div>
+
+                    <!-- Optional Image Attachment -->
+                    <div class="image-card" th:if="${imageUrl != null and !imageUrl.isEmpty()}">
+                        <img th:src="${imageUrl}" alt="Announcement Graphic">
+                    </div>
+
+                    <!-- Optional CTA Button -->
+                    <div class="cta-container" th:if="${externalLink != null and !externalLink.isEmpty()}">
+                        <a th:href="${externalLink}" class="cta-btn" target="_blank">View Details & Take Action 🚀</a>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer">
+                    <div class="footer-logo">LEARNSTUDIO</div>
+                    <p>Empowering Next-Gen Learners</p>
+                    <p style="font-size: 11px; color: #4b5563; margin-top: 12px;">You received this email because you
+                        are registered as an active student in this batch.</p>
+
+                    <div>
+                        <a th:href="${instagramUrl != null and !instagramUrl.isEmpty() ? instagramUrl : 'https://instagram.com/rk.coachings'}" class="social-pill" target="_blank">📸 Follow @rk.coachings on Instagram</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

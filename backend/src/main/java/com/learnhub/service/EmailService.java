@@ -28,8 +28,10 @@ public class EmailService {
 
     /**
      * Sends a simple text announcement to a student asynchronously.
+     * @deprecated Use sendHtmlAnnouncement instead.
      */
     @Async
+    @Deprecated
     public void sendAnnouncement(String toEmail, String subject, String message) {
         try {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
@@ -42,6 +44,72 @@ public class EmailService {
             log.info("Announcement email successfully sent to {}", toEmail);
         } catch (Exception e) {
             log.error("Failed to send announcement to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    /**
+     * Sends a beautifully styled Gen Z HTML announcement email.
+     */
+    @Async
+    public void sendHtmlAnnouncement(String toEmail, String studentName, String instructorName, String batchName, com.learnhub.entity.Announcement ann) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            Context thymeleafContext = new Context();
+            thymeleafContext.setVariable("studentName", studentName);
+            thymeleafContext.setVariable("instructorName", instructorName);
+            thymeleafContext.setVariable("batchName", batchName);
+            thymeleafContext.setVariable("announcementTitle", ann.getTitle());
+            thymeleafContext.setVariable("message", ann.getMessage());
+            thymeleafContext.setVariable("imageUrl", ann.getImageUrl());
+            thymeleafContext.setVariable("externalLink", ann.getExternalLink());
+            thymeleafContext.setVariable("instagramUrl", ann.getInstagramUrl());
+
+            String htmlBody = templateEngine.process("announcement-email", thymeleafContext);
+
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("🚨 " + ann.getTitle());
+            helper.setText(htmlBody, true);
+
+            mailSender.send(mimeMessage);
+            log.info("Gen Z HTML Announcement successfully sent to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send HTML Announcement to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    /**
+     * Sends a schedule event notification email to a student.
+     */
+    @Async
+    public void sendScheduleNotification(String toEmail, String studentName, String title, String eventType, String dateStr, String timeStr, String locationOrLink, String batchOrCourseName) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            Context thymeleafContext = new Context();
+            thymeleafContext.setVariable("studentName", studentName);
+            thymeleafContext.setVariable("eventTitle", title);
+            thymeleafContext.setVariable("eventType", eventType);
+            thymeleafContext.setVariable("eventDate", dateStr);
+            thymeleafContext.setVariable("eventTime", timeStr);
+            thymeleafContext.setVariable("locationOrLink", locationOrLink);
+            thymeleafContext.setVariable("meetingLink", locationOrLink != null && locationOrLink.startsWith("http") ? locationOrLink : null);
+            thymeleafContext.setVariable("batchName", batchOrCourseName != null ? batchOrCourseName : "All Students");
+
+            String htmlBody = templateEngine.process("schedule-email", thymeleafContext);
+
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("🗓️ New Schedule Alert: " + title);
+            helper.setText(htmlBody, true);
+
+            mailSender.send(mimeMessage);
+            log.info("Schedule notification email successfully sent to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send schedule notification to {}: {}", toEmail, e.getMessage());
         }
     }
 
@@ -69,7 +137,7 @@ public class EmailService {
             helper.setSubject("Your Report Card for " + batchName);
             helper.setText(htmlBody, true); // true indicates this is an HTML email
 
-            // 4. Attach the logo inline
+            // 4. Attach the logo & charlie inline
             try {
                 // Tries to load logo.png from src/main/resources/static/images/
                 org.springframework.core.io.ClassPathResource imgFile = new org.springframework.core.io.ClassPathResource("static/images/logo.png");
@@ -82,8 +150,19 @@ public class EmailService {
                         helper.addInline("logoImage", rootImgFile);
                     }
                 }
+
+                // Attach Charlie Instructor Image inline
+                org.springframework.core.io.ClassPathResource charlieImgFile = new org.springframework.core.io.ClassPathResource("static/images/charlie-ai.png");
+                if (charlieImgFile.exists()) {
+                    helper.addInline("charlieImage", charlieImgFile);
+                } else {
+                    org.springframework.core.io.FileSystemResource charlieFs = new org.springframework.core.io.FileSystemResource(new java.io.File("frontend/public/images/charlie-ai.png"));
+                    if (charlieFs.exists()) {
+                        helper.addInline("charlieImage", charlieFs);
+                    }
+                }
             } catch (Exception e) {
-                log.warn("Could not attach logo to email: {}", e.getMessage());
+                log.warn("Could not attach inline images to email: {}", e.getMessage());
             }
 
             mailSender.send(mimeMessage);
