@@ -138,7 +138,7 @@ interface ScheduleEvent {
 import UploadMarksModal from './UploadMarksModal';
 
 const BATCH_LEVELS = ['Class VIII', 'Class IX', 'Class X', 'Class XI', 'Class XII', 'Undergraduate', 'Postgraduate'];
-const ACADEMIC_SUBJECTS = ['English', 'Mathematics', 'Science', 'Social Science', 'Physics', 'Chemistry', 'Biology', 'Computer Science'];
+const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Mathematics', 'Science', 'Social Science', 'Physics', 'Chemistry', 'Biology', 'Computer Science'];
 
 export default function InstructorBatchesPage() {
   const { user } = useAuth();
@@ -1256,7 +1256,7 @@ isActive
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      {ACADEMIC_SUBJECTS.map((subject) => {
+                      {Array.from(new Set([...ACADEMIC_SUBJECTS, ...(batchDetails?.subjects || [])])).map((subject) => {
                         const isAssigned = batchDetails.subjects.includes(subject);
                         return (
                           <button
