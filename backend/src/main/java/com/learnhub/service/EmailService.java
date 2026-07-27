@@ -26,6 +26,12 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${resend.api-key:}")
+    private String resendApiKey;
+
+    @Value("${resend.from-email:RK COACHING CLASSES <onboarding@resend.dev>}")
+    private String resendFromEmail;
+
     private static final int MAX_EMAILS_PER_24_HOURS = 6;
     private static final long TIME_WINDOW_MS = 24 * 60 * 60 * 1000L; // 24 hours in milliseconds
     private final java.util.concurrent.ConcurrentHashMap<String, java.util.List<Long>> emailRateTracker = new java.util.concurrent.ConcurrentHashMap<>();
@@ -47,6 +53,52 @@ public class EmailService {
         return true;
     }
 
+    private void sendEmailInternal(String toEmail, String subject, String htmlContent) {
+        if (resendApiKey != null && !resendApiKey.isBlank() && resendApiKey.trim().startsWith("re_")) {
+            try {
+                java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+
+                String jsonPayload = String.format(
+                    "{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":%s,\"html\":%s}",
+                    resendFromEmail,
+                    toEmail,
+                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(subject),
+                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(htmlContent)
+                );
+
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("https://api.resend.com/emails"))
+                    .header("Authorization", "Bearer " + resendApiKey.trim())
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
+
+                java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    log.info("Resend email dispatched successfully to {}. Subject: {}", toEmail, subject);
+                } else {
+                    log.error("Resend API error for {}. Status Code: {}, Body: {}", toEmail, response.statusCode(), response.body());
+                }
+            } catch (Exception e) {
+                log.error("Failed to send email via Resend to {}: {}", toEmail, e.getMessage());
+            }
+        } else {
+            try {
+                MimeMessage mimeMessage = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                helper.setFrom(fromEmail);
+                helper.setTo(toEmail);
+                helper.setSubject(subject);
+                helper.setText(htmlContent, true);
+                mailSender.send(mimeMessage);
+                log.info("Email sent via SMTP fallback to {}", toEmail);
+            } catch (Exception e) {
+                log.error("Failed to send email via SMTP fallback to {}: {}", toEmail, e.getMessage());
+            }
+        }
+    }
+
     /**
      * Sends a simple text announcement to a student asynchronously.
      * @deprecated Use sendHtmlAnnouncement instead.
@@ -57,18 +109,7 @@ public class EmailService {
         if (!checkAndRegisterEmailLimit(toEmail)) {
             return;
         }
-        try {
-            SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(fromEmail);
-            mailMessage.setTo(toEmail);
-            mailMessage.setSubject(subject);
-            mailMessage.setText(message);
-
-            mailSender.send(mailMessage);
-            log.info("Announcement email successfully sent to {}", toEmail);
-        } catch (Exception e) {
-            log.error("Failed to send announcement to {}: {}", toEmail, e.getMessage());
-        }
+        sendEmailInternal(toEmail, subject, "<p>" + message + "</p>");
     }
 
     /**
@@ -80,9 +121,6 @@ public class EmailService {
             return;
         }
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
             Context thymeleafContext = new Context();
             thymeleafContext.setVariable("studentName", studentName);
             thymeleafContext.setVariable("instructorName", instructorName);
@@ -94,14 +132,7 @@ public class EmailService {
             thymeleafContext.setVariable("instagramUrl", ann.getInstagramUrl());
 
             String htmlBody = templateEngine.process("announcement-email", thymeleafContext);
-
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("🚨 " + ann.getTitle());
-            helper.setText(htmlBody, true);
-
-            mailSender.send(mimeMessage);
-            log.info("Gen Z HTML Announcement successfully sent to {}", toEmail);
+            sendEmailInternal(toEmail, "🚨 " + ann.getTitle(), htmlBody);
         } catch (Exception e) {
             log.error("Failed to send HTML Announcement to {}: {}", toEmail, e.getMessage());
         }
@@ -116,9 +147,6 @@ public class EmailService {
             return;
         }
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
             Context thymeleafContext = new Context();
             thymeleafContext.setVariable("studentName", studentName);
             thymeleafContext.setVariable("eventTitle", title);
@@ -130,14 +158,7 @@ public class EmailService {
             thymeleafContext.setVariable("batchName", batchOrCourseName != null ? batchOrCourseName : "All Students");
 
             String htmlBody = templateEngine.process("schedule-email", thymeleafContext);
-
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("🗓️ New Schedule Alert: " + title);
-            helper.setText(htmlBody, true);
-
-            mailSender.send(mimeMessage);
-            log.info("Schedule notification email successfully sent to {}", toEmail);
+            sendEmailInternal(toEmail, "🗓️ New Schedule Alert: " + title, htmlBody);
         } catch (Exception e) {
             log.error("Failed to send schedule notification to {}: {}", toEmail, e.getMessage());
         }
@@ -152,57 +173,13 @@ public class EmailService {
             return;
         }
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            // 1. Prepare Thymeleaf Context with student data
             Context thymeleafContext = new Context();
             thymeleafContext.setVariables(templateModel);
             thymeleafContext.setVariable("studentName", studentName);
-            thymeleafContext.setVariable("courseName", batchName); // keeping template variable as courseName for HTML mapping, but it contains batchName
+            thymeleafContext.setVariable("courseName", batchName);
 
-            // 2. Process the HTML template
             String htmlBody = templateEngine.process("report-card", thymeleafContext);
-
-            // 3. Configure and send the email
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("Your Report Card for " + batchName);
-            helper.setText(htmlBody, true); // true indicates this is an HTML email
-
-            // 4. Attach the logo & charlie inline
-            try {
-                // Tries to load logo.png from src/main/resources/static/images/
-                org.springframework.core.io.ClassPathResource imgFile = new org.springframework.core.io.ClassPathResource("static/images/logo.png");
-                if (imgFile.exists()) {
-                    helper.addInline("logoImage", imgFile);
-                } else {
-                    // Fallback to the root LOGO.png if the static one isn't found
-                    org.springframework.core.io.FileSystemResource rootImgFile = new org.springframework.core.io.FileSystemResource(new java.io.File("LOGO.png"));
-                    if (rootImgFile.exists()) {
-                        helper.addInline("logoImage", rootImgFile);
-                    }
-                }
-
-                // Attach Charlie Instructor Image inline
-                org.springframework.core.io.ClassPathResource charlieImgFile = new org.springframework.core.io.ClassPathResource("static/images/charlie-ai.png");
-                if (charlieImgFile.exists()) {
-                    helper.addInline("charlieImage", charlieImgFile);
-                } else {
-                    org.springframework.core.io.FileSystemResource charlieFs = new org.springframework.core.io.FileSystemResource(new java.io.File("frontend/public/images/charlie-ai.png"));
-                    if (charlieFs.exists()) {
-                        helper.addInline("charlieImage", charlieFs);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Could not attach inline images to email: {}", e.getMessage());
-            }
-
-            mailSender.send(mimeMessage);
-            log.info("HTML Report Card successfully sent to {}", toEmail);
-
-        } catch (MessagingException e) {
-            log.error("Failed to construct HTML email for {}: {}", toEmail, e.getMessage());
+            sendEmailInternal(toEmail, "Your Report Card for " + batchName, htmlBody);
         } catch (Exception e) {
             log.error("Failed to send Report Card to {}: {}", toEmail, e.getMessage());
         }
@@ -218,9 +195,6 @@ public class EmailService {
             return;
         }
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
             String websiteUrl = "https://learn-studio-2-0.vercel.app/";
 
             String htmlContent = """
@@ -340,13 +314,7 @@ public class EmailService {
                 </html>
             """.formatted(studentName, batchName != null ? batchName : "Class Batch", batchName != null ? batchName : "आपकी क्लास", websiteUrl, websiteUrl, userEmail, plainPassword, websiteUrl);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("🎉 Welcome to RK COACHING CLASSES Digital Portal - Your Login Credentials");
-            helper.setText(htmlContent, true);
-
-            mailSender.send(mimeMessage);
-            log.info("Successfully sent welcome credentials email to student {}", toEmail);
+            sendEmailInternal(toEmail, "🎉 Welcome to RK COACHING CLASSES Digital Portal - Your Login Credentials", htmlContent);
         } catch (Exception e) {
             log.error("Failed to send welcome credentials email to {}: {}", toEmail, e.getMessage());
         }

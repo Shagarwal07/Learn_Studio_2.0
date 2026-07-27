@@ -1164,8 +1164,8 @@ export default function InstructorBatchesPage() {
                       key={tab.id}
                       onClick={() => handleTabSelect(tab.id)}
                       className={`px-3.5 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${isActive
-                          ? 'border-indigo-500 text-indigo-400 font-extrabold'
-                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                        ? 'border-indigo-500 text-indigo-400 font-extrabold'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
                         }`}
                     >
                       {tab.label}
@@ -1302,8 +1302,8 @@ export default function InstructorBatchesPage() {
                             onClick={() => handleToggleSubject(subject)}
                             disabled={assignSubjectsMutation.isPending}
                             className={`p-4 rounded-xl border text-left flex items-center justify-between gap-3 cursor-pointer transition-all ${isAssigned
-                                ? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
-                                : 'bg-background hover:bg-muted border-border-color hover:border-border-color hover:bg-card'
+                              ? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
+                              : 'bg-background hover:bg-muted border-border-color hover:border-border-color hover:bg-card'
                               }`}
                           >
                             <div className="space-y-0.5">
@@ -1317,8 +1317,8 @@ export default function InstructorBatchesPage() {
                             </div>
 
                             <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isAssigned
-                                ? 'bg-indigo-600 border-indigo-600 text-white'
-                                : 'border-border-color bg-card'
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'border-border-color bg-card'
                               }`}>
                               {isAssigned && <CheckCircle2 className="w-3.5 h-3.5 fill-white text-indigo-600" />}
                             </div>
@@ -1625,8 +1625,8 @@ export default function InstructorBatchesPage() {
                                   <div
                                     key={st.id}
                                     className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-card ${isPresent
-                                        ? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
-                                        : 'border-rose-955/40 border-l-4 border-l-rose-500/80'
+                                      ? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
+                                      : 'border-rose-955/40 border-l-4 border-l-rose-500/80'
                                       }`}
                                   >
                                     <div className="min-w-0 space-y-0.5">
@@ -1647,8 +1647,8 @@ export default function InstructorBatchesPage() {
                                         }));
                                       }}
                                       className={`px-3 py-1.5 text-[9px] font-extrabold rounded-lg border uppercase tracking-wider cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${isPresent
-                                          ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
-                                          : 'bg-rose-500/10 border-rose-500/10 text-rose-400'
+                                        ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
+                                        : 'bg-rose-500/10 border-rose-500/10 text-rose-400'
                                         }`}
                                     >
                                       {isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
@@ -1738,8 +1738,8 @@ export default function InstructorBatchesPage() {
                                           <td className="px-4 py-2">{log.studentName}</td>
                                           <td className="px-4 py-2 text-right">
                                             <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${isPres
-                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
-                                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
+                                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
+                                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
                                               }`}>
                                               {log.status}
                                             </span>
