@@ -5,24 +5,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  Folder, 
-  Search, 
-  Loader2, 
-  BookOpen, 
-  Plus, 
-  FileText, 
-  ArrowRight, 
-  Users, 
-  Calendar, 
-  ClipboardCheck, 
-  Megaphone, 
-  Settings, 
-  Trash2, 
-  CheckCircle2, 
-  XCircle, 
-  PlusCircle, 
-  Clock, 
+import {
+  Folder,
+  Search,
+  Loader2,
+  BookOpen,
+  Plus,
+  FileText,
+  ArrowRight,
+  Users,
+  Calendar,
+  ClipboardCheck,
+  Megaphone,
+  Settings,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  PlusCircle,
+  Clock,
   AlertTriangle,
   Award,
   BookMarked,
@@ -30,7 +30,8 @@ import {
   MapPin,
   UploadCloud,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Mail
 } from 'lucide-react';
 
 interface BatchDTO {
@@ -137,7 +138,7 @@ interface ScheduleEvent {
 
 import UploadMarksModal from './UploadMarksModal';
 
-const BATCH_LEVELS = ['Class VIII', 'Class IX', 'Class X', 'Class XI', 'Class XII', 'Undergraduate', 'Postgraduate'];
+const BATCH_LEVELS = ['Class VIII', 'Class IX', 'Class X'];
 const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Mathematics', 'Science', 'Social Science', 'Physics', 'Chemistry', 'Biology', 'Computer Science'];
 
 export default function InstructorBatchesPage() {
@@ -449,7 +450,7 @@ export default function InstructorBatchesPage() {
     mutationFn: async (payload: { batchId: number; instructorId: number | null }) => {
       const currentBatch = batches.find(b => b.id === payload.batchId);
       if (!currentBatch) throw new Error('Batch not found');
-      
+
       const updatePayload = {
         name: currentBatch.name,
         level: currentBatch.level,
@@ -457,7 +458,7 @@ export default function InstructorBatchesPage() {
         subjects: currentBatch.subjects,
         studentCount: currentBatch.studentCount
       };
-      
+
       const response = await api.put(`/instructor/batches/${payload.batchId}`, updatePayload);
       return response.data;
     },
@@ -693,7 +694,7 @@ export default function InstructorBatchesPage() {
     const currentStudentIds = batchDetails.students.map(s => s.id);
     const newStudentId = parseInt(selectedStudentToAdd);
     if (currentStudentIds.includes(newStudentId)) return;
-    
+
     assignStudentsMutation.mutate({
       batchId: batchDetails.id,
       studentIds: [...currentStudentIds, newStudentId]
@@ -707,6 +708,31 @@ export default function InstructorBatchesPage() {
       batchId: batchDetails.id,
       studentIds: updatedIds
     });
+  };
+
+  const [sendingEmailStudentId, setSendingEmailStudentId] = useState<number | null>(null);
+
+  const handleSendWelcomeEmail = async (student: { id: number; name: string; email: string }) => {
+    const pwd = prompt(`Enter portal login password for student "${student.name}" (${student.email}):`);
+    if (!pwd || !pwd.trim()) return;
+
+    try {
+      setSendingEmailStudentId(student.id);
+      const params = new URLSearchParams();
+      params.append('email', student.email);
+      params.append('studentName', student.name);
+      params.append('password', pwd.trim());
+      if (batchDetails) {
+        params.append('batchName', batchDetails.name);
+      }
+
+      await api.post(`/admin/send-welcome-credentials?${params.toString()}`);
+      alert(`Welcome credentials email successfully sent to ${student.email}!`);
+    } catch (err: any) {
+      alert(`Failed to send welcome email: ${err?.response?.data?.message || err.message || 'Error occurred'}`);
+    } finally {
+      setSendingEmailStudentId(null);
+    }
   };
 
   const handleToggleSubject = (subject: string) => {
@@ -927,7 +953,7 @@ export default function InstructorBatchesPage() {
   // ────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 text-xs sm:text-sm animate-in fade-in duration-300 text-foreground">
-      
+
       {/* Header Hero Card */}
       <div className="hero-header-card">
         {/* Decorative elements */}
@@ -945,24 +971,25 @@ export default function InstructorBatchesPage() {
             Configure offline batches, assign academic curriculum subjects, schedule timings, upload secure notes, assign homework, and mark attendance.
           </p>
         </div>
-        
+
         <div className="relative z-10 flex flex-col sm:items-end gap-3 w-full sm:w-auto">
           {user?.role === 'ADMIN' && (
             <button
               onClick={handleSyncGoogleDrive}
               disabled={syncingDrive}
               type="button"
+              title="Backup newly uploaded Notes to Google Drive (Scheduled automatically at 11:00 PM)"
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 bg-white hover:bg-indigo-50 disabled:opacity-80 text-indigo-600 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
             >
               {syncingDrive ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Syncing Drive...
+                  Backing up Notes...
                 </>
               ) : (
                 <>
                   <Folder className="w-4 h-4" />
-                  Sync Google Drive
+                  Backup Notes to Drive
                 </>
               )}
             </button>
@@ -982,7 +1009,7 @@ export default function InstructorBatchesPage() {
 
       {/* Main Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
+
         {/* LEFT COLUMN: Batches List Sidebar (4/12 cols) */}
         <div className="lg:col-span-4 panel-sidebar">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -1008,9 +1035,8 @@ export default function InstructorBatchesPage() {
                 return (
                   <div
                     key={b.id}
-                    className={`group interactive-card flex items-center justify-between gap-3 cursor-pointer select-none ${
-isSelected ? 'interactive-card-active' : ''
-}`}
+                    className={`group interactive-card flex items-center justify-between gap-3 cursor-pointer select-none ${isSelected ? 'interactive-card-active' : ''
+                      }`}
                     onClick={() => handleBatchSelect(b.id)}
                   >
                     <div className="min-w-0 space-y-1">
@@ -1018,9 +1044,8 @@ isSelected ? 'interactive-card-active' : ''
                         <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-indigo-500/10 text-indigo-450 uppercase border border-indigo-500/20">
                           {b.level}
                         </span>
-                        <h4 className={`text-xs font-black truncate transition-colors ${
-isSelected ? 'text-indigo-500 dark:text-indigo-400' : 'text-foreground'
-}`}>
+                        <h4 className={`text-xs font-black truncate transition-colors ${isSelected ? 'text-indigo-500 dark:text-indigo-400' : 'text-foreground'
+                          }`}>
                           {b.name}
                         </h4>
                       </div>
@@ -1053,7 +1078,7 @@ isSelected ? 'text-indigo-500 dark:text-indigo-400' : 'text-foreground'
 
         {/* RIGHT COLUMN: Tabbed Detail workspace (8/12 cols) */}
         <div className="lg:col-span-8">
-          
+
           {!selectedBatchId ? (
             <div className="glass-card border border-border-color rounded-3xl p-8 text-center shadow-sm space-y-4 py-24 bg-card dark:bg-card">
               <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl flex items-center justify-center mx-auto shadow-inner">
@@ -1073,7 +1098,7 @@ isSelected ? 'text-indigo-500 dark:text-indigo-400' : 'text-foreground'
             </div>
           ) : (
             <div className="glass-card backdrop-blur-md border border-border-color rounded-2xl shadow-xl overflow-hidden flex flex-col animate-in fade-in duration-300">
-              
+
               {/* Batch Banner Header */}
               <div className="p-4 sm:p-5 bg-card border-b border-border-color flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1.5">
@@ -1138,11 +1163,10 @@ isSelected ? 'text-indigo-500 dark:text-indigo-400' : 'text-foreground'
                     <button
                       key={tab.id}
                       onClick={() => handleTabSelect(tab.id)}
-                      className={`px-3.5 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-isActive
-? 'border-indigo-500 text-indigo-400 font-extrabold'
-: 'border-transparent text-muted-foreground hover:text-foreground'
-}`}
+                      className={`px-3.5 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${isActive
+                          ? 'border-indigo-500 text-indigo-400 font-extrabold'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                        }`}
                     >
                       {tab.label}
                     </button>
@@ -1152,7 +1176,7 @@ isActive
 
               {/* Tab Content Panels */}
               <div className="p-5">
-                
+
                 {/* 1. STUDENTS TAB */}
                 {activeTab === 'students' && (
                   <div className="space-y-5 animate-in fade-in duration-200">
@@ -1228,14 +1252,28 @@ isActive
                               </div>
 
                               {user?.role === 'ADMIN' && (
-                                <button
-                                  onClick={() => handleRemoveStudent(st.id)}
-                                  disabled={assignStudentsMutation.isPending}
-                                  className="p-1.5 text-muted-foreground hover:text-rose-455 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
-                                  title="Remove student from batch"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleSendWelcomeEmail(st)}
+                                    disabled={sendingEmailStudentId === st.id}
+                                    className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg cursor-pointer transition-colors"
+                                    title="Send Portal Login Credentials Email to student"
+                                  >
+                                    {sendingEmailStudentId === st.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Mail className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveStudent(st.id)}
+                                    disabled={assignStudentsMutation.isPending}
+                                    className="p-1.5 text-muted-foreground hover:text-rose-455 hover:bg-rose-955/20 rounded-lg cursor-pointer transition-colors"
+                                    title="Remove student from batch"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           ))}
@@ -1263,16 +1301,14 @@ isActive
                             key={subject}
                             onClick={() => handleToggleSubject(subject)}
                             disabled={assignSubjectsMutation.isPending}
-                            className={`p-4 rounded-xl border text-left flex items-center justify-between gap-3 cursor-pointer transition-all ${
-isAssigned
-? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
-: 'bg-background hover:bg-muted border-border-color hover:border-border-color hover:bg-card'
-}`}
+                            className={`p-4 rounded-xl border text-left flex items-center justify-between gap-3 cursor-pointer transition-all ${isAssigned
+                                ? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
+                                : 'bg-background hover:bg-muted border-border-color hover:border-border-color hover:bg-card'
+                              }`}
                           >
                             <div className="space-y-0.5">
-                              <span className={`text-xs font-black block ${
-isAssigned ? 'text-indigo-400' : 'text-foreground'
-}`}>
+                              <span className={`text-xs font-black block ${isAssigned ? 'text-indigo-400' : 'text-foreground'
+                                }`}>
                                 {subject}
                               </span>
                               <span className="text-[9px] text-muted-foreground block font-bold uppercase tracking-wider">
@@ -1280,11 +1316,10 @@ isAssigned ? 'text-indigo-400' : 'text-foreground'
                               </span>
                             </div>
 
-                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-isAssigned
-? 'bg-indigo-600 border-indigo-600 text-white'
-: 'border-border-color bg-card'
-}`}>
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isAssigned
+                                ? 'bg-indigo-600 border-indigo-600 text-white'
+                                : 'border-border-color bg-card'
+                              }`}>
                               {isAssigned && <CheckCircle2 className="w-3.5 h-3.5 fill-white text-indigo-600" />}
                             </div>
                           </button>
@@ -1527,7 +1562,7 @@ isAssigned
                               <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                 Student Marking Roster ({filteredStudentsForAttendance.length} of {batchDetails.students.length})
                               </h5>
-                              
+
                               {/* Search Bar */}
                               <div className="relative flex-1 min-w-[200px] max-w-xs">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -1589,11 +1624,10 @@ isAssigned
                                 return (
                                   <div
                                     key={st.id}
-                                    className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-card ${
-isPresent
-? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
-: 'border-rose-955/40 border-l-4 border-l-rose-500/80'
-}`}
+                                    className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all duration-200 bg-card ${isPresent
+                                        ? 'border-emerald-950/40 border-l-4 border-l-emerald-500/80'
+                                        : 'border-rose-955/40 border-l-4 border-l-rose-500/80'
+                                      }`}
                                   >
                                     <div className="min-w-0 space-y-0.5">
                                       <h4 className="text-xs font-bold text-slate-205 truncate">
@@ -1612,11 +1646,10 @@ isPresent
                                           [st.id]: isPresent ? 'ABSENT' : 'PRESENT'
                                         }));
                                       }}
-                                      className={`px-3 py-1.5 text-[9px] font-extrabold rounded-lg border uppercase tracking-wider cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${
-isPresent
-? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
-: 'bg-rose-500/10 border-rose-500/10 text-rose-400'
-}`}
+                                      className={`px-3 py-1.5 text-[9px] font-extrabold rounded-lg border uppercase tracking-wider cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ${isPresent
+                                          ? 'bg-emerald-500/10 border-emerald-500/10 text-emerald-400'
+                                          : 'bg-rose-500/10 border-rose-500/10 text-rose-400'
+                                        }`}
                                     >
                                       {isPresent ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                                       {status}
@@ -1663,7 +1696,7 @@ isPresent
                           {attendanceSearchQuery ? (
                             <div className="p-3 bg-indigo-950/15 border-l-4 border-indigo-500 rounded-r-xl text-[11px] text-foreground flex items-center justify-between">
                               <span>Showing previous logs matching student: <strong className="text-indigo-400">"{attendanceSearchQuery}"</strong></span>
-                              <button 
+                              <button
                                 onClick={() => setAttendanceSearchQuery('')}
                                 className="text-[10px] font-bold text-indigo-450 hover:underline cursor-pointer"
                               >
@@ -1678,7 +1711,7 @@ isPresent
 
                           {filteredAttendanceLogs.length === 0 ? (
                             <div className="py-8 text-center border border-dashed border-border-color rounded-xl text-muted-foreground text-xs bg-card">
-                              {attendanceSearchQuery 
+                              {attendanceSearchQuery
                                 ? `No attendance records found matching student "${attendanceSearchQuery}".`
                                 : "No attendance records logged yet for this batch."
                               }
@@ -1704,11 +1737,10 @@ isPresent
                                           <td className="px-4 py-2">{log.subjectName}</td>
                                           <td className="px-4 py-2">{log.studentName}</td>
                                           <td className="px-4 py-2 text-right">
-                                            <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
-isPres
-? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
-: 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
-}`}>
+                                            <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${isPres
+                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
+                                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
+                                              }`}>
                                               {log.status}
                                             </span>
                                           </td>
@@ -1763,7 +1795,7 @@ isPres
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                        
+
                         {/* Notes Form (5/12 cols) */}
                         <form onSubmit={handleNoteSubmit} className="md:col-span-5 bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
                           <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -1944,7 +1976,7 @@ isPres
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                        
+
                         {/* Homework Form (5/12 cols) */}
                         <form onSubmit={handleHomeworkSubmit} className="md:col-span-5 bg-card p-4 rounded-xl border border-border-color space-y-4 text-xs">
                           <h5 className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -2402,7 +2434,7 @@ isPres
             className="fixed inset-0"
             onClick={() => setShowCreateModal(false)}
           />
-          
+
           <div className="relative bg-card border border-border-color rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 space-y-5">
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Create Offline Academic Batch</h3>
@@ -2485,11 +2517,11 @@ isPres
       )}
 
       {selectedTestForMarks && (
-        <UploadMarksModal 
+        <UploadMarksModal
           test={selectedTestForMarks}
           students={batchDetails?.students || []}
           onClose={() => setSelectedTestForMarks(null)}
-          onSuccess={() => {}}
+          onSuccess={() => { }}
         />
       )}
 

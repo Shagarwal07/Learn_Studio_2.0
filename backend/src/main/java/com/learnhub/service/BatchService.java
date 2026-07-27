@@ -282,45 +282,15 @@ public class BatchService {
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        System.out.println("Starting Google Drive / Cloudinary upload for batch note: " + title);
+        System.out.println("Uploading batch note directly to Google Cloud Storage: " + title);
         try {
-            String secureUrl = null;
-            String publicId = null;
-            String resourceType = "pdf";
-
-            // Try uploading to Google Drive first
-            if (googleDriveSyncService != null && file.getOriginalFilename() != null) {
-                try {
-                    byte[] fileBytes = file.getBytes();
-                    String driveFileId = googleDriveSyncService.uploadFileToDrive(
-                            batch.getName(),
-                            "Notes",
-                            subjectName,
-                            file.getOriginalFilename(),
-                            fileBytes,
-                            file.getContentType() != null ? file.getContentType() : "application/pdf"
-                    );
-                    if (driveFileId != null) {
-                        publicId = driveFileId;
-                        secureUrl = String.format("https://drive.google.com/file/d/%s/view?usp=drivesdk", driveFileId);
-                        resourceType = "pdf";
-                        System.out.println("Google Drive upload success for batch note: " + title + ", fileId: " + driveFileId);
-                    }
-                } catch (Exception ex) {
-                    System.err.println("Google Drive upload failed for batch note: " + ex.getMessage() + ". Falling back to Cloudinary...");
-                }
-            }
-
-            // Fallback to Cloudinary if not uploaded to Google Drive
-            if (secureUrl == null) {
-                System.out.println("Uploading note to Google Cloud Storage fallback...");
-                @SuppressWarnings("rawtypes")
-                Map uploadResult = gcsService.uploadFileRaw(file, "notes");
-                secureUrl = uploadResult.get("secure_url").toString();
-                publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
-                resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "auto";
-                System.out.println("Google Cloud Storage upload success for batch note: " + title + ", publicId: " + publicId);
-            }
+            String folderPath = "learnstudio_content/Notes/" + batch.getName() + "/" + subjectName;
+            @SuppressWarnings("rawtypes")
+            Map uploadResult = gcsService.uploadFileRaw(file, folderPath);
+            String secureUrl = uploadResult.get("secure_url").toString();
+            String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
+            String resourceType = uploadResult.containsKey("resource_type") ? uploadResult.get("resource_type").toString() : "pdf";
+            System.out.println("Google Cloud Storage upload success for batch note: " + title + ", url: " + secureUrl);
 
             // 2. Extract Text from PDF using PDFBox
             String extractedText = "";
@@ -385,14 +355,12 @@ public class BatchService {
     }
 
     public List<NoteDTO> getBatchNotes(Long batchId) {
-        triggerBackgroundSync();
         return noteRepository.findByBatchId(batchId).stream()
                 .map(this::convertNoteToDTO)
                 .toList();
     }
 
     public List<NoteDTO> getStudentBatchNotes(String email) {
-        triggerBackgroundSync();
         User student = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         if (student.getBatch() == null) {
@@ -409,42 +377,14 @@ public class BatchService {
         User creator = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Instructor not found"));
 
-        System.out.println("Starting Google Drive / Cloudinary upload for batch homework: " + title);
+        System.out.println("Uploading batch homework directly to Google Cloud Storage (Zero Drive Sync): " + title);
         try {
-            String secureUrl = null;
-            String publicId = null;
-
-            // Try uploading to Google Drive first
-            if (googleDriveSyncService != null && file.getOriginalFilename() != null) {
-                try {
-                    byte[] fileBytes = file.getBytes();
-                    String driveFileId = googleDriveSyncService.uploadFileToDrive(
-                            batch.getName(),
-                            "Homework",
-                            subjectName,
-                            file.getOriginalFilename(),
-                            fileBytes,
-                            file.getContentType() != null ? file.getContentType() : "application/pdf"
-                    );
-                    if (driveFileId != null) {
-                        publicId = driveFileId;
-                        secureUrl = String.format("https://drive.google.com/file/d/%s/view?usp=drivesdk", driveFileId);
-                        System.out.println("Google Drive upload success for batch homework: " + title + ", fileId: " + driveFileId);
-                    }
-                } catch (Exception ex) {
-                    System.err.println("Google Drive upload failed for batch homework: " + ex.getMessage() + ". Falling back to Cloudinary...");
-                }
-            }
-
-            // Fallback to Cloudinary if not uploaded to Google Drive
-            if (secureUrl == null) {
-                System.out.println("Uploading homework to Google Cloud Storage fallback...");
-                @SuppressWarnings("rawtypes")
-                Map uploadResult = gcsService.uploadFileRaw(file, "homework");
-                secureUrl = uploadResult.get("secure_url").toString();
-                publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
-                System.out.println("Google Cloud Storage upload success for batch homework: " + title + ", publicId: " + publicId);
-            }
+            String folderPath = "learnstudio_content/Homework/" + batch.getName() + "/" + subjectName;
+            @SuppressWarnings("rawtypes")
+            Map uploadResult = gcsService.uploadFileRaw(file, folderPath);
+            String secureUrl = uploadResult.get("secure_url").toString();
+            String publicId = uploadResult.containsKey("public_id") ? uploadResult.get("public_id").toString() : null;
+            System.out.println("Google Cloud Storage upload success for batch homework: " + title + ", url: " + secureUrl);
 
             LocalDateTime dueDate = null;
             if (dueDateStr != null && !dueDateStr.isEmpty()) {

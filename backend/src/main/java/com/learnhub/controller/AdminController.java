@@ -20,6 +20,17 @@ public class AdminController {
     private final DataSource dataSource;
     private final AdminService adminService;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+    private final com.learnhub.service.EmailService emailService;
+
+    @PostMapping("/send-welcome-credentials")
+    public ResponseEntity<ApiResponse<String>> sendWelcomeCredentials(
+            @RequestParam("email") String email,
+            @RequestParam("studentName") String studentName,
+            @RequestParam("password") String password,
+            @RequestParam(value = "batchName", required = false) String batchName) {
+        emailService.sendStudentWelcomeCredentials(email, studentName, email, password, batchName);
+        return ResponseEntity.ok(ApiResponse.success("Welcome credentials email dispatched successfully to " + email, "Email Sent"));
+    }
 
     @jakarta.annotation.PostConstruct
     public void init() {

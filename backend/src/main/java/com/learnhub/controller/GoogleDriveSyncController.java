@@ -19,15 +19,15 @@ public class GoogleDriveSyncController {
     public ResponseEntity<ApiResponse<String>> triggerSync(
             @RequestParam(required = false) String folderId) {
         try {
-            driveSyncService.syncAll(folderId);
+            driveSyncService.backupPendingNotesToDrive();
             return ResponseEntity.ok(ApiResponse.success(
-                    "Google Drive notes and homework synchronization triggered successfully.",
-                    "Sync Completed"
+                    "Google Drive Notes backup completed successfully.",
+                    "Notes Backup Completed"
             ));
         } catch (Exception e) {
-            System.err.println("Google Drive sync request failed: " + e.getMessage());
+            System.err.println("Google Drive notes backup request failed: " + e.getMessage());
             return ResponseEntity.status(500).body(ApiResponse.error(
-                    "Sync failed: " + e.getMessage()
+                    "Notes backup failed: " + e.getMessage()
             ));
         }
     }

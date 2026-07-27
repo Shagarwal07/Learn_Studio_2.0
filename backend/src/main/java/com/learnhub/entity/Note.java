@@ -71,4 +71,11 @@ public class Note extends BaseEntity {
 
     @Column(name = "secure_url", length = 1024)
     private String secureUrl;
+
+    @Builder.Default
+    @Column(name = "drive_backed_up")
+    private Boolean driveBackedUp = false;
+
+    @Column(name = "drive_file_id")
+    private String driveFileId;
 }

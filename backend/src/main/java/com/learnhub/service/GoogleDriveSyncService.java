@@ -75,16 +75,16 @@ public class GoogleDriveSyncService {
     private String rootFolderId;
 
     /**
-     * Scheduled task to run Google Drive synchronization automatically every 30 minutes.
+     * Scheduled task to run Google Drive backup for Notes daily at 11:00 PM.
      */
-    @Scheduled(cron = "0 */30 * * * *")
+    @Scheduled(cron = "0 0 23 * * *")
     public void scheduledSync() {
-        System.out.println("Executing automated Google Drive sync task...");
+        System.out.println("Executing scheduled 11:00 PM Google Drive backup for Notes...");
         try {
-            syncAll(null);
-            System.out.println("Automated Google Drive sync completed successfully.");
+            backupPendingNotesToDrive();
+            System.out.println("Scheduled 11:00 PM Google Drive backup completed successfully.");
         } catch (Exception e) {
-            System.err.println("Automated Google Drive sync failed: " + e.getMessage());
+            System.err.println("Scheduled Google Drive backup failed: " + e.getMessage());
         }
     }
 
@@ -426,6 +426,51 @@ public class GoogleDriveSyncService {
         } catch (Exception e) {
             System.err.println("Error uploading file to Google Drive: " + e.getMessage());
             return null;
+        }
+    }
+
+    @Transactional
+    public void backupPendingNotesToDrive() throws Exception {
+        if (googleDrive == null) {
+            System.err.println("Google Drive is disabled, skipping nightly notes backup.");
+            return;
+        }
+
+        List<Note> pendingNotes = noteRepository.findPendingDriveBackupNotes();
+        if (pendingNotes == null || pendingNotes.isEmpty()) {
+            System.out.println("No pending Notes to backup to Google Drive.");
+            return;
+        }
+
+        System.out.println("Found " + pendingNotes.size() + " pending Notes to backup to Google Drive.");
+
+        for (Note note : pendingNotes) {
+            try {
+                String batchName = note.getBatch() != null ? note.getBatch().getName() : "General Notes";
+                String subjectName = note.getSubjectName() != null ? note.getSubjectName() : "General";
+                String fileName = note.getOriginalFilename() != null ? note.getOriginalFilename() : (note.getTitle() + ".pdf");
+
+                byte[] fileBytes = null;
+                if (note.getFileUrl() != null && !note.getFileUrl().isEmpty()) {
+                    try (java.io.InputStream in = new java.net.URL(note.getFileUrl()).openStream()) {
+                        fileBytes = in.readAllBytes();
+                    } catch (Exception ex) {
+                        System.err.println("Failed to read note file stream for: " + note.getTitle() + ": " + ex.getMessage());
+                    }
+                }
+
+                if (fileBytes != null && fileBytes.length > 0) {
+                    String driveFileId = uploadFileToDrive(batchName, "Notes", subjectName, fileName, fileBytes, "application/pdf");
+                    if (driveFileId != null) {
+                        note.setDriveBackedUp(true);
+                        note.setDriveFileId(driveFileId);
+                        noteRepository.save(note);
+                        System.out.println("Successfully backed up Note '" + note.getTitle() + "' to Google Drive with ID: " + driveFileId);
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to backup note to Drive: " + note.getTitle() + " - " + e.getMessage());
+            }
         }
     }
 

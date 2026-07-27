@@ -24,4 +24,7 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     @Query("SELECT n FROM Note n WHERE n.course.id = :courseId AND n.isVisible = true AND n.batch IS NULL")
     List<Note> findByCourseIdAndBatchIsNull(@Param("courseId") Long courseId);
+
+    @Query("SELECT n FROM Note n WHERE n.driveBackedUp = false OR n.driveBackedUp IS NULL")
+    List<Note> findPendingDriveBackupNotes();
 }
