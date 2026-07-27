@@ -11,8 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.PostConstruct;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
@@ -22,6 +25,9 @@ public class GoogleCloudStorageService {
     @Value("${google.drive.credentials.path:../resources/google-credentials.json}")
     private String credentialsPath;
 
+    @Value("${GOOGLE_DRIVE_CREDENTIALS_JSON:}")
+    private String rawCredentialsJson;
+
     @Value("${gcp.storage.bucket.name:learnstudio_bucket}")
     private String bucketName;
 
@@ -30,21 +36,44 @@ public class GoogleCloudStorageService {
     @PostConstruct
     public void init() {
         try {
-            java.io.File file = new java.io.File(credentialsPath);
-            if (!file.exists()) {
-                // Fallback for when running from the backend/ directory
-                file = new java.io.File("../" + credentialsPath);
+            GoogleCredentials credentials = null;
+            if (rawCredentialsJson != null && !rawCredentialsJson.trim().isEmpty()) {
+                credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(rawCredentialsJson.getBytes(StandardCharsets.UTF_8)));
+                log.info("Initialized Google Cloud Storage using GOOGLE_DRIVE_CREDENTIALS_JSON environment variable.");
+            } else {
+                InputStream classPathStream = getClass().getClassLoader().getResourceAsStream("google-credentials.json");
+                if (classPathStream != null) {
+                    credentials = GoogleCredentials.fromStream(classPathStream);
+                    log.info("Initialized Google Cloud Storage using classpath (google-credentials.json).");
+                } else {
+                    java.io.File file = new java.io.File(credentialsPath);
+                    if (!file.exists()) {
+                        file = new java.io.File("../" + credentialsPath);
+                    }
+                    if (!file.exists()) {
+                        file = new java.io.File(credentialsPath.replace("../", ""));
+                    }
+                    if (file.exists()) {
+                        credentials = GoogleCredentials.fromStream(new FileInputStream(file));
+                        log.info("Initialized Google Cloud Storage using credentials file at {}", file.getAbsolutePath());
+                    }
+                }
             }
-            if (!file.exists()) {
-                // Fallback for when path starts with ../ but we are in root
-                file = new java.io.File(credentialsPath.replace("../", ""));
+
+            if (credentials == null) {
+                try {
+                    credentials = GoogleCredentials.getApplicationDefault();
+                    log.info("Initialized Google Cloud Storage using Application Default Credentials.");
+                } catch (Exception ex) {
+                    log.warn("Application Default Credentials not found for GCP Storage: {}", ex.getMessage());
+                }
             }
-            
-            GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(file));
-            storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
-            log.info("Initialized Google Cloud Storage using credentials from {}", file.getAbsolutePath());
+
+            if (credentials != null) {
+                storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+            }
         } catch (Exception e) {
-            log.error("Failed to initialize Google Cloud Storage. Avatar uploads will fail until configured.", e);
+            log.error("Failed to initialize Google Cloud Storage. Avatar uploads will fallback to local storage until configured.", e);
         }
     }
 
