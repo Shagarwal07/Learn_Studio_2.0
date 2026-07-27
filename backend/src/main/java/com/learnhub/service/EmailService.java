@@ -232,11 +232,11 @@ public class EmailService {
                         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 40px 15px; }
                         .outer-bg { max-width: 640px; margin: 0 auto; background: #e2e8f0; padding: 25px; border-radius: 36px; position: relative; }
                         .card-wrapper { background: #ffffff; border-radius: 28px; padding: 40px 32px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08); position: relative; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.05); }
-                        /* Memphis Organic Shapes */
-                        .blob-yellow { position: absolute; top: -60px; right: -50px; width: 140px; height: 140px; background: #facc15; border-radius: 50%%; opacity: 0.85; }
-                        .blob-red { position: absolute; top: -60px; left: -50px; width: 120px; height: 120px; background: #ff4d4d; border-radius: 40%% 60%% 70%% 30%% / 40%% 50%% 60%% 50%%; opacity: 0.85; }
-                        .blob-blue { position: absolute; bottom: -50px; right: -20px; width: 160px; height: 160px; background: #2563eb; border-radius: 60%% 40%% 30%% 70%% / 60%% 30%% 70%% 40%%; opacity: 0.9; }
-                        .blob-green { position: absolute; bottom: -40px; left: -30px; width: 130px; height: 130px; background: #10b981; border-radius: 50%% 50%% 20%% 80%% / 25%% 80%% 20%% 75%%; opacity: 0.85; }
+                        /* Memphis Corner Blobs */
+                        .blob-yellow { position: absolute; top: -35px; right: -35px; width: 100px; height: 100px; background: #facc15; border-radius: 50%%; z-index: 1; display: block; }
+                        .blob-red    { position: absolute; top: -35px; left: -35px; width: 100px; height: 100px; background: #ff4d4d; border-radius: 50%%; z-index: 1; display: block; }
+                        .blob-blue   { position: absolute; bottom: -40px; right: -40px; width: 110px; height: 110px; background: #2563eb; border-radius: 50%%; z-index: 1; display: block; }
+                        .blob-green  { position: absolute; bottom: -40px; left: -40px; width: 100px; height: 100px; background: #10b981; border-radius: 50%%; z-index: 1; display: block; }
                         .header-title { text-align: center; margin-bottom: 22px; padding-top: 20px; position: relative; z-index: 2; }
                         .welcome-text { font-size: 24px; font-weight: 900; letter-spacing: 8px; color: #0f172a; text-transform: uppercase; margin: 0; font-family: Georgia, 'Times New Roman', serif; }
                         .sub-text { font-size: 15px; font-weight: 800; color: #334155; margin-top: 6px; }

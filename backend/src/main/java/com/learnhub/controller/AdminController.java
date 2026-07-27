@@ -21,6 +21,8 @@ public class AdminController {
     private final AdminService adminService;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final com.learnhub.service.EmailService emailService;
+    private final com.learnhub.repository.UserRepository userRepository;
+    private final com.learnhub.repository.UserIdentityProfileRepository userIdentityProfileRepository;
 
     @PostMapping("/send-welcome-credentials")
     public ResponseEntity<ApiResponse<String>> sendWelcomeCredentials(
@@ -28,8 +30,32 @@ public class AdminController {
             @RequestParam("studentName") String studentName,
             @RequestParam("password") String password,
             @RequestParam(value = "batchName", required = false) String batchName) {
-        emailService.sendStudentWelcomeCredentials(email, studentName, email, password, batchName);
-        return ResponseEntity.ok(ApiResponse.success("Welcome credentials email dispatched successfully to " + email, "Email Sent"));
+        
+        String targetRecipientEmail = null;
+
+        // Strictly fetch real Google email from user_identity_profile table in DB
+        Optional<com.learnhub.entity.User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            List<com.learnhub.entity.UserIdentityProfile> profiles = userIdentityProfileRepository.findByUserId(userOpt.get().getId());
+            for (com.learnhub.entity.UserIdentityProfile p : profiles) {
+                if (p.getGoogleEmail() != null && !p.getGoogleEmail().isBlank() && p.getGoogleEmail().contains("@") && !p.getGoogleEmail().toLowerCase().endsWith("@example.com")) {
+                    targetRecipientEmail = p.getGoogleEmail();
+                    break;
+                }
+            }
+        }
+
+        // Check if the login email itself is a real deliverable email (not dummy @example.com)
+        if (targetRecipientEmail == null && email != null && email.contains("@") && !email.toLowerCase().endsWith("@example.com")) {
+            targetRecipientEmail = email;
+        }
+
+        if (targetRecipientEmail == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Cannot send email: Student (" + studentName + ") does not have a real Google Email linked in the database. Please add a valid Google Email profile for this student."));
+        }
+
+        emailService.sendStudentWelcomeCredentials(targetRecipientEmail, studentName, email, password, batchName);
+        return ResponseEntity.ok(ApiResponse.success("Welcome credentials email dispatched successfully to real Google Email (" + targetRecipientEmail + ")", "Email Sent"));
     }
 
     @jakarta.annotation.PostConstruct
