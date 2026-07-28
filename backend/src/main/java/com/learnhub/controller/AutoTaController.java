@@ -496,6 +496,7 @@ public class AutoTaController {
                         optionsStr = optsNode.asText();
                     }
 
+                    String diff = node.path("difficulty").asText("MEDIUM");
                     GeneratedQuestionDTO qDto = GeneratedQuestionDTO.builder()
                             .questionText(qText)
                             .questionType(qType)
@@ -503,6 +504,9 @@ public class AutoTaController {
                             .correctAnswer(correct)
                             .solutionSteps(explanation)
                             .marks(qMarks)
+                            .difficulty(diff)
+                            .agentType("VERTEX_AI")
+                            .subject(subject != null && !subject.trim().isEmpty() ? subject : "General")
                             .section(qType.equalsIgnoreCase("MCQ") ? "SECTION_A" : "SECTION_B")
                             .build();
                     questionDTOList.add(qDto);
