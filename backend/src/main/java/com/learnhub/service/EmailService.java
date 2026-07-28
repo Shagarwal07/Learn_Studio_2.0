@@ -41,25 +41,8 @@ public class EmailService {
     @Value("${resend.from-email:RK COACHING CLASSES <support@rkcoachingclassesbalotra.work.gd>}")
     private String resendFromEmail;
 
-    private static final int MAX_EMAILS_PER_24_HOURS = 6;
-    private static final long TIME_WINDOW_MS = 24 * 60 * 60 * 1000L; // 24 hours in milliseconds
-    private final java.util.concurrent.ConcurrentHashMap<String, java.util.List<Long>> emailRateTracker = new java.util.concurrent.ConcurrentHashMap<>();
-
-    private synchronized boolean checkAndRegisterEmailLimit(String toEmail) {
-        if (toEmail == null || toEmail.isBlank()) return false;
-        String key = toEmail.trim().toLowerCase();
-        long now = System.currentTimeMillis();
-
-        java.util.List<Long> timestamps = emailRateTracker.computeIfAbsent(key, k -> new java.util.ArrayList<>());
-        timestamps.removeIf(t -> (now - t) > TIME_WINDOW_MS);
-
-        if (timestamps.size() >= MAX_EMAILS_PER_24_HOURS) {
-            log.warn("Rate limit reached for {}: Already sent {} emails in the last 24h. Skipping email.", key, MAX_EMAILS_PER_24_HOURS);
-            return false;
-        }
-
-        timestamps.add(now);
-        return true;
+    private boolean checkAndRegisterEmailLimit(String toEmail) {
+        return toEmail != null && !toEmail.isBlank();
     }
 
     private void sendEmailInternal(String toEmail, String subject, String htmlContent) {
