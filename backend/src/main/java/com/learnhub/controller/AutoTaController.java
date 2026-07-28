@@ -475,8 +475,9 @@ public class AutoTaController {
 
             ExamRequest savedRequest = examRequestRepository.save(request);
 
+            String cleanedJson = com.learnhub.util.AiJsonParser.extractJson(paperJson);
             com.fasterxml.jackson.databind.ObjectMapper mapper = com.learnhub.util.AiJsonParser.getMapper();
-            com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(paperJson);
+            com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(cleanedJson);
 
             List<GeneratedQuestionDTO> questionDTOList = new ArrayList<>();
             if (rootNode.isArray()) {
