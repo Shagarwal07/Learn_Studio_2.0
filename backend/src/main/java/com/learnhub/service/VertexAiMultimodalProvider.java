@@ -1,0 +1,137 @@
+package com.learnhub.service;
+
+import com.google.auth.oauth2.GoogleCredentials;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.FileInputStream;
+import java.util.*;
+
+@Component
+@Slf4j
+public class VertexAiMultimodalProvider {
+
+    @Value("${google.cloud.project:}")
+    private String projectId;
+
+    @Value("${google.cloud.location:us-central1}")
+    private String location;
+
+    @Value("${google.application.credentials:}")
+    private String credentialsPath;
+
+    @Value("${vertex.model:gemini-2.5-flash}")
+    private String model;
+
+    private final WebClient webClient = WebClient.builder().build();
+
+    public String generatePaperJson(String systemPrompt, List<MultipartFile> images, List<String> pdfTexts) {
+        long start = System.currentTimeMillis();
+        log.info("Executing Vertex AI Multimodal Request using model {}", model);
+
+        try {
+            GoogleCredentials credentials;
+            if (credentialsPath != null && !credentialsPath.isEmpty()) {
+                credentials = GoogleCredentials.fromStream(new FileInputStream(credentialsPath))
+                        .createScoped("https://www.googleapis.com/auth/cloud-platform");
+            } else {
+                credentials = GoogleCredentials.getApplicationDefault()
+                        .createScoped("https://www.googleapis.com/auth/cloud-platform");
+            }
+            credentials.refreshIfExpired();
+            String token = credentials.getAccessToken().getTokenValue();
+
+            String apiUrl = String.format("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent",
+                    location, projectId, location, model);
+
+            List<Map<String, Object>> partsList = new ArrayList<>();
+
+            // 1. Add Text System Instructions & PDF RAG Text
+            StringBuilder combinedText = new StringBuilder();
+            combinedText.append(systemPrompt).append("\n\n");
+            
+            if (pdfTexts != null && !pdfTexts.isEmpty()) {
+                combinedText.append("=== REFERENCE BATCH STUDY MATERIALS / PDF TEXT ===\n");
+                for (int i = 0; i < pdfTexts.size(); i++) {
+                    combinedText.append(String.format("--- Document %d ---\n%s\n\n", i + 1, pdfTexts.get(i)));
+                }
+            }
+
+            combinedText.append("\nStrict Output Requirement: Respond ONLY with a valid JSON array of Question objects. Format:\n");
+            combinedText.append("[{\"questionText\":\"...\",\"questionType\":\"MCQ\",\"options\":[\"Option A\",\"Option B\",\"Option C\",\"Option D\"],\"correctOption\":\"A\",\"solutionExplanation\":\"...\",\"marks\":1}]\n");
+
+            partsList.add(Map.of("text", combinedText.toString()));
+
+            // 2. Add Inline Multimodal Images (Vision OCR)
+            if (images != null) {
+                for (MultipartFile img : images) {
+                    if (img != null && !img.isEmpty()) {
+                        byte[] bytes = img.getBytes();
+                        String base64Data = Base64.getEncoder().encodeToString(bytes);
+                        String mimeType = img.getContentType() != null ? img.getContentType() : "image/jpeg";
+
+                        Map<String, Object> inlineData = Map.of(
+                                "mimeType", mimeType,
+                                "data", base64Data
+                        );
+                        partsList.add(Map.of("inlineData", inlineData));
+                    }
+                }
+            }
+
+            Map<String, Object> requestBody = Map.of(
+                    "contents", List.of(Map.of("parts", partsList))
+            );
+
+            Map response = webClient.post()
+                    .uri(apiUrl)
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + token)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .onStatus(s -> s.is4xxClientError() || s.is5xxServerError(),
+                            r -> r.bodyToMono(String.class).map(b -> new RuntimeException("VERTEX_AI_ERROR: " + b)))
+                    .bodyToMono(Map.class)
+                    .timeout(java.time.Duration.ofSeconds(90))
+                    .block();
+
+            if (response == null) {
+                throw new RuntimeException("Empty response from Vertex AI");
+            }
+
+            var candidates = (List<?>) response.get("candidates");
+            if (candidates == null || candidates.isEmpty()) {
+                throw new RuntimeException("Vertex AI returned no candidates");
+            }
+            var content = (Map<?, ?>) ((Map<?, ?>) candidates.get(0)).get("content");
+            var parts = (List<?>) content.get("parts");
+            Object textObj = ((Map<?, ?>) parts.get(0)).get("text");
+
+            String rawText = textObj != null ? textObj.toString() : "";
+            log.info("Vertex AI generation completed in {}ms, response length: {}", System.currentTimeMillis() - start, rawText.length());
+
+            return cleanJsonText(rawText);
+
+        } catch (Exception e) {
+            log.error("Vertex AI Multimodal API error: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to generate exam paper via Vertex AI: " + e.getMessage(), e);
+        }
+    }
+
+    private String cleanJsonText(String text) {
+        String cleaned = text.trim();
+        if (cleaned.startsWith("```json")) {
+            cleaned = cleaned.substring(7);
+        }
+        if (cleaned.startsWith("```")) {
+            cleaned = cleaned.substring(3);
+        }
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 3);
+        }
+        return cleaned.trim();
+    }
+}

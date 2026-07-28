@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,10 @@ public class AutoTaController {
     private final GeneratedPaperRepository paperRepository;
     private final AgentExecutionLogRepository executionLogRepository;
     private final com.learnhub.repository.UserRepository userRepository;
+    private final com.learnhub.repository.BatchRepository batchRepository;
+    private final com.learnhub.repository.NoteRepository noteRepository;
+    private final com.learnhub.service.PromptSanitizerService promptSanitizerService;
+    private final com.learnhub.service.VertexAiMultimodalProvider vertexAiMultimodalProvider;
 
     @org.springframework.beans.factory.annotation.Autowired
     private com.learnhub.service.VertexAiProvider vertexAiProvider;
@@ -397,6 +402,106 @@ public class AutoTaController {
             response.put("success", false);
             response.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error("Vertex AI test failed: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/bucket-materials")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getBucketMaterials(
+            @RequestParam(required = false) Long batchId,
+            @RequestParam(required = false) String subject) {
+
+        if (batchId == null || subject == null || subject.isBlank()) {
+            return ResponseEntity.ok(ApiResponse.success(List.of(), "No batch or subject specified"));
+        }
+
+        List<com.learnhub.entity.Note> notes = noteRepository.findByBatchIdAndSubjectName(batchId, subject.trim());
+        List<Map<String, Object>> result = notes.stream().map(n -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", n.getId());
+            map.put("title", n.getTitle());
+            map.put("originalFilename", n.getOriginalFilename() != null ? n.getOriginalFilename() : n.getTitle() + ".pdf");
+            map.put("fileUrl", n.getFileUrl());
+            map.put("publicId", n.getPublicId());
+            map.put("fileSize", n.getFileSize() != null ? n.getFileSize() : 0L);
+            map.put("hasExtractedText", n.getExtractedText() != null && !n.getExtractedText().isBlank());
+            return map;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success(result, "Fetched batch PDF notes successfully"));
+    }
+
+    @PostMapping(value = "/requests/multimodal", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, Object>>> createMultimodalExamRequest(
+            @RequestParam("batchId") Long batchId,
+            @RequestParam("subject") String subject,
+            @RequestParam(value = "customPrompt", required = false) String customPrompt,
+            @RequestParam(value = "selectedNoteIds", required = false) List<Long> selectedNoteIds,
+            @RequestPart(value = "images", required = false) List<org.springframework.web.multipart.MultipartFile> images,
+            Principal principal) {
+
+        try {
+            com.learnhub.entity.Batch batch = batchRepository.findById(batchId)
+                    .orElseThrow(() -> new RuntimeException("Batch not found"));
+
+            // 1. Sanitize Prompt & Extract Intent
+            var promptResult = promptSanitizerService.sanitizePrompt(customPrompt, subject, batch.getName());
+
+            // 2. Fetch PDF Texts
+            List<String> pdfTexts = new ArrayList<>();
+            if (selectedNoteIds != null && !selectedNoteIds.isEmpty()) {
+                List<com.learnhub.entity.Note> notes = noteRepository.findAllById(selectedNoteIds);
+                for (com.learnhub.entity.Note n : notes) {
+                    if (n.getExtractedText() != null && !n.getExtractedText().isBlank()) {
+                        pdfTexts.add(n.getExtractedText());
+                    }
+                }
+            }
+
+            // 3. Generate Paper JSON via Vertex AI Multimodal
+            String paperJson = vertexAiMultimodalProvider.generatePaperJson(promptResult.getSanitizedPrompt(), images, pdfTexts);
+
+            // 4. Save Request & Paper Entities
+            ExamRequest request = ExamRequest.builder()
+                    .subject(subject)
+                    .course(batch.getName())
+                    .syllabus(promptResult.getSanitizedPrompt())
+                    .marks(promptResult.getTotalMarks())
+                    .difficulty("MEDIUM")
+                    .questionPattern(promptResult.isMcqOnly() ? "MCQ_ONLY" : "MIXED")
+                    .totalQuestions(promptResult.getTotalQuestions())
+                    .duration(60)
+                    .status(ExamRequest.Status.COMPLETED)
+                    .build();
+
+            ExamRequest savedRequest = examRequestRepository.save(request);
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = com.learnhub.util.AiJsonParser.getMapper();
+            List<GeneratedQuestionDTO> questions = mapper.readValue(paperJson,
+                    mapper.getTypeFactory().constructCollectionType(List.class, GeneratedQuestionDTO.class));
+
+            GeneratedPaper paper = GeneratedPaper.builder()
+                    .examRequest(savedRequest)
+                    .title(subject + " Exam Paper - " + batch.getName())
+                    .totalMarks(promptResult.getTotalMarks())
+                    .duration(60)
+                    .testType("R. K. COACHING CLASSES")
+                    .status(GeneratedPaper.Status.APPROVED)
+                    .version(1)
+                    .build();
+
+            GeneratedPaper savedPaper = paperRepository.save(paper);
+
+            Map<String, Object> res = new HashMap<>();
+            res.put("requestId", savedRequest.getId());
+            res.put("paperId", savedPaper.getId());
+            res.put("status", "COMPLETED");
+            res.put("totalQuestions", questions.size());
+            res.put("totalMarks", promptResult.getTotalMarks());
+
+            return ResponseEntity.ok(ApiResponse.success(res, "Exam paper generated successfully"));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to generate paper: " + e.getMessage()));
         }
     }
 }
