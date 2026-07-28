@@ -240,7 +240,8 @@ export default function StudentSchedulePage() {
       return;
     }
 
-    const selectedDateObj = new Date(createDate);
+    const dateParts = createDate.split('-');
+    const selectedDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
     const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const recurrenceDayName = weekdays[selectedDateObj.getDay()];
 

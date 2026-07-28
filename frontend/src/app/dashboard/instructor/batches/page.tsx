@@ -758,8 +758,9 @@ export default function InstructorBatchesPage() {
     e.preventDefault();
     if (!batchDetails || !scheduleSubject) return;
 
-    // Derived day of week from the selected date if recurring
-    const selectedDateObj = new Date(scheduleDate);
+    // Derived day of week from the selected date if recurring (using local date parsing)
+    const dateParts = scheduleDate.split('-');
+    const selectedDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
     const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const autoDay = weekdays[selectedDateObj.getDay()];
 

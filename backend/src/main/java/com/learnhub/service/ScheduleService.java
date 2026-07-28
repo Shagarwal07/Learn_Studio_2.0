@@ -51,9 +51,17 @@ public class ScheduleService {
 
             for (ScheduleEvent e : allEvents) {
                 if (e.isRecurring()) {
+                    String eventRecDay = e.getRecurrenceDay();
+                    if (eventRecDay == null || eventRecDay.isBlank()) {
+                        eventRecDay = e.getEventDate().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
+                    }
+
+                    boolean isSameDayOfWeek = e.getEventDate().getDayOfWeek().equals(d.getDayOfWeek())
+                            || eventRecDay.equalsIgnoreCase(dayName)
+                            || eventRecDay.substring(0, Math.min(3, eventRecDay.length())).equalsIgnoreCase(dayName.substring(0, 3));
+
                     // Check if recurring event start date is on or before d, matches the day, and is not cancelled
-                    if (!e.getEventDate().isAfter(d) && e.getRecurrenceDay() != null 
-                            && e.getRecurrenceDay().equalsIgnoreCase(dayName) && !e.isCancelled()) {
+                    if (!e.getEventDate().isAfter(d) && isSameDayOfWeek && !e.isCancelled()) {
                         ScheduleEventDTO dto = convertToDTO(e);
                         dto.setEventDate(d);
                         weeklyEvents.add(dto);
@@ -136,7 +144,7 @@ public class ScheduleService {
         }
 
         String recurrenceDay = dto.getRecurrenceDay();
-        if (dto.isRecurring() && (recurrenceDay == null || recurrenceDay.isBlank()) && dto.getEventDate() != null) {
+        if (dto.isRecurring() && dto.getEventDate() != null) {
             recurrenceDay = dto.getEventDate().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
         }
 
