@@ -476,26 +476,47 @@ public class AutoTaController {
             ExamRequest savedRequest = examRequestRepository.save(request);
 
             com.fasterxml.jackson.databind.ObjectMapper mapper = com.learnhub.util.AiJsonParser.getMapper();
-            List<GeneratedQuestionDTO> questions = mapper.readValue(paperJson,
-                    mapper.getTypeFactory().constructCollectionType(List.class, GeneratedQuestionDTO.class));
+            com.fasterxml.jackson.databind.JsonNode rootNode = mapper.readTree(paperJson);
 
-            GeneratedPaper paper = GeneratedPaper.builder()
-                    .examRequest(savedRequest)
-                    .title(subject + " Exam Paper - " + batch.getName())
-                    .totalMarks(promptResult.getTotalMarks())
-                    .duration(60)
-                    .testType("R. K. COACHING CLASSES")
-                    .status(GeneratedPaper.Status.APPROVED)
-                    .version(1)
-                    .build();
+            List<GeneratedQuestionDTO> questionDTOList = new ArrayList<>();
+            if (rootNode.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode node : rootNode) {
+                    String qText = node.path("questionText").asText("");
+                    String qType = node.path("questionType").asText("MCQ");
+                    String correct = node.path("correctOption").hasNonNull("value") ? node.path("correctOption").asText() : node.path("correctOption").asText(node.path("correctAnswer").asText("A"));
+                    String explanation = node.path("solutionExplanation").asText(node.path("solutionSteps").asText(""));
+                    int qMarks = node.path("marks").asInt(1);
 
-            GeneratedPaper savedPaper = paperRepository.save(paper);
+                    String optionsStr = null;
+                    com.fasterxml.jackson.databind.JsonNode optsNode = node.path("options");
+                    if (optsNode.isArray()) {
+                        optionsStr = mapper.writeValueAsString(optsNode);
+                    } else if (!optsNode.isMissingNode()) {
+                        optionsStr = optsNode.asText();
+                    }
+
+                    GeneratedQuestionDTO qDto = GeneratedQuestionDTO.builder()
+                            .questionText(qText)
+                            .questionType(qType)
+                            .options(optionsStr)
+                            .correctAnswer(correct)
+                            .solutionSteps(explanation)
+                            .marks(qMarks)
+                            .section(qType.equalsIgnoreCase("MCQ") ? "SECTION_A" : "SECTION_B")
+                            .build();
+                    questionDTOList.add(qDto);
+                }
+            }
+
+            GeneratedPaper savedPaper = editorService.compileExamPaper(savedRequest, questionDTOList);
+            savedPaper.setStatus(GeneratedPaper.Status.APPROVED);
+            savedPaper = paperRepository.save(savedPaper);
 
             Map<String, Object> res = new HashMap<>();
             res.put("requestId", savedRequest.getId());
             res.put("paperId", savedPaper.getId());
             res.put("status", "COMPLETED");
-            res.put("totalQuestions", questions.size());
+            res.put("totalQuestions", questionDTOList.size());
             res.put("totalMarks", promptResult.getTotalMarks());
 
             return ResponseEntity.ok(ApiResponse.success(res, "Exam paper generated successfully"));
