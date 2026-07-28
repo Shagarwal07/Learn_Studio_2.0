@@ -26,10 +26,19 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${brevo.api-key:}")
+    private String brevoApiKey;
+
+    @Value("${brevo.from-email:rk.coachings20@gmail.com}")
+    private String brevoFromEmail;
+
+    @Value("${brevo.from-name:RK COACHING CLASSES}")
+    private String brevoFromName;
+
     @Value("${resend.api-key:}")
     private String resendApiKey;
 
-    @Value("${resend.from-email:RK COACHING CLASSES <onboarding@resend.dev>}")
+    @Value("${resend.from-email:RK COACHING CLASSES <support@rkcoachingclassesbalotra.work.gd>}")
     private String resendFromEmail;
 
     private static final int MAX_EMAILS_PER_24_HOURS = 6;
@@ -54,6 +63,43 @@ public class EmailService {
     }
 
     private void sendEmailInternal(String toEmail, String subject, String htmlContent) {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        // 1. Try Brevo HTTP API (Sendinblue)
+        if (brevoApiKey != null && !brevoApiKey.isBlank() && brevoApiKey.trim().startsWith("xkeysib-")) {
+            try {
+                java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+
+                String jsonPayload = String.format(
+                    "{\"sender\":{\"name\":%s,\"email\":%s},\"to\":[{\"email\":%s}],\"subject\":%s,\"htmlContent\":%s}",
+                    mapper.writeValueAsString(brevoFromName),
+                    mapper.writeValueAsString(brevoFromEmail),
+                    mapper.writeValueAsString(toEmail),
+                    mapper.writeValueAsString(subject),
+                    mapper.writeValueAsString(htmlContent)
+                );
+
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .header("api-key", brevoApiKey.trim())
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
+
+                java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    log.info("Brevo email dispatched successfully to {}. Subject: {}", toEmail, subject);
+                    return;
+                } else {
+                    log.error("Brevo API error for {}. Status Code: {}, Body: {}", toEmail, response.statusCode(), response.body());
+                }
+            } catch (Exception e) {
+                log.error("Failed to send email via Brevo to {}: {}", toEmail, e.getMessage());
+            }
+        }
+
+        // 2. Try Resend HTTP API
         if (resendApiKey != null && !resendApiKey.isBlank() && resendApiKey.trim().startsWith("re_")) {
             try {
                 java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
@@ -62,8 +108,8 @@ public class EmailService {
                     "{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":%s,\"html\":%s}",
                     resendFromEmail,
                     toEmail,
-                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(subject),
-                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(htmlContent)
+                    mapper.writeValueAsString(subject),
+                    mapper.writeValueAsString(htmlContent)
                 );
 
                 java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
@@ -77,25 +123,27 @@ public class EmailService {
 
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
                     log.info("Resend email dispatched successfully to {}. Subject: {}", toEmail, subject);
+                    return;
                 } else {
                     log.error("Resend API error for {}. Status Code: {}, Body: {}", toEmail, response.statusCode(), response.body());
                 }
             } catch (Exception e) {
                 log.error("Failed to send email via Resend to {}: {}", toEmail, e.getMessage());
             }
-        } else {
-            try {
-                MimeMessage mimeMessage = mailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-                helper.setFrom(fromEmail);
-                helper.setTo(toEmail);
-                helper.setSubject(subject);
-                helper.setText(htmlContent, true);
-                mailSender.send(mimeMessage);
-                log.info("Email sent via SMTP fallback to {}", toEmail);
-            } catch (Exception e) {
-                log.error("Failed to send email via SMTP fallback to {}: {}", toEmail, e.getMessage());
-            }
+        }
+
+        // 3. Fallback to Spring Mail SMTP
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+            mailSender.send(mimeMessage);
+            log.info("Email sent via SMTP fallback to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send email via SMTP fallback to {}: {}", toEmail, e.getMessage());
         }
     }
 
