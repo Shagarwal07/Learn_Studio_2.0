@@ -14,6 +14,9 @@ import java.util.*;
 @Slf4j
 public class VertexAiMultimodalProvider {
 
+    @Value("${GOOGLE_DRIVE_CREDENTIALS_JSON:}")
+    private String rawCredentialsJson;
+
     @Value("${google.cloud.project:learnstudio-503107}")
     private String projectId;
 
@@ -28,19 +31,55 @@ public class VertexAiMultimodalProvider {
 
     private final WebClient webClient = WebClient.builder().build();
 
+    private GoogleCredentials getGoogleCredentials() {
+        try {
+            if (rawCredentialsJson != null && !rawCredentialsJson.trim().isEmpty()) {
+                log.info("Loading GoogleCredentials from raw JSON environment variable.");
+                return GoogleCredentials.fromStream(new java.io.ByteArrayInputStream(rawCredentialsJson.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                        .createScoped("https://www.googleapis.com/auth/cloud-platform");
+            }
+
+            java.io.InputStream classPathStream = getClass().getClassLoader().getResourceAsStream("google-credentials.json");
+            if (classPathStream != null) {
+                log.info("Loading GoogleCredentials from classpath.");
+                return GoogleCredentials.fromStream(classPathStream)
+                        .createScoped("https://www.googleapis.com/auth/cloud-platform");
+            }
+
+            String[] candidatePaths = {
+                credentialsPath,
+                "../resources/google-credentials.json",
+                "resources/google-credentials.json",
+                "../google-credentials.json",
+                "google-credentials.json"
+            };
+
+            for (String p : candidatePaths) {
+                if (p != null && !p.isBlank()) {
+                    java.io.File file = new java.io.File(p);
+                    if (file.exists()) {
+                        log.info("Loading GoogleCredentials from file path: {}", file.getAbsolutePath());
+                        return GoogleCredentials.fromStream(new java.io.FileInputStream(file))
+                                .createScoped("https://www.googleapis.com/auth/cloud-platform");
+                    }
+                }
+            }
+
+            log.info("Falling back to Google Application Default Credentials.");
+            return GoogleCredentials.getApplicationDefault()
+                    .createScoped("https://www.googleapis.com/auth/cloud-platform");
+        } catch (Exception e) {
+            log.error("Failed to load GoogleCredentials: {}", e.getMessage());
+            throw new RuntimeException("Could not load Google Credentials: " + e.getMessage(), e);
+        }
+    }
+
     public String generatePaperJson(String systemPrompt, List<MultipartFile> images, List<String> pdfTexts) {
         long start = System.currentTimeMillis();
         log.info("Executing Vertex AI Multimodal Request using model {}", model);
 
         try {
-            GoogleCredentials credentials;
-            if (credentialsPath != null && !credentialsPath.isEmpty()) {
-                credentials = GoogleCredentials.fromStream(new FileInputStream(credentialsPath))
-                        .createScoped("https://www.googleapis.com/auth/cloud-platform");
-            } else {
-                credentials = GoogleCredentials.getApplicationDefault()
-                        .createScoped("https://www.googleapis.com/auth/cloud-platform");
-            }
+            GoogleCredentials credentials = getGoogleCredentials();
             credentials.refreshIfExpired();
             String token = credentials.getAccessToken().getTokenValue();
 
