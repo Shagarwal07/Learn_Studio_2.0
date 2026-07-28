@@ -497,6 +497,8 @@ public class AutoTaController {
                     }
 
                     String diff = node.path("difficulty").asText("MEDIUM");
+                    String bloom = node.path("bloomLevel").asText("Understanding");
+                    String chapter = node.path("chapter").asText(batch.getName());
                     GeneratedQuestionDTO qDto = GeneratedQuestionDTO.builder()
                             .questionText(qText)
                             .questionType(qType)
@@ -505,6 +507,8 @@ public class AutoTaController {
                             .solutionSteps(explanation)
                             .marks(qMarks)
                             .difficulty(diff)
+                            .bloomLevel(bloom)
+                            .chapter(chapter)
                             .agentType("VERTEX_AI")
                             .subject(subject != null && !subject.trim().isEmpty() ? subject : "General")
                             .section(qType.equalsIgnoreCase("MCQ") ? "SECTION_A" : "SECTION_B")
