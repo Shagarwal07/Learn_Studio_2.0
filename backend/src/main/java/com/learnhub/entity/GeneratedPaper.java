@@ -59,6 +59,16 @@ public class GeneratedPaper extends BaseEntity {
     @Column(name = "topics", columnDefinition = "TEXT")
     private String topics;
 
+    @OneToMany(mappedBy = "generatedPaper", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<ReviewHistory> reviewHistories;
+
+    @OneToMany(mappedBy = "generatedPaper", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<PaperVersion> paperVersions;
+
     public enum Status {
         DRAFT, UNDER_REVIEW, REVISION_NEEDED, REVIEWED, APPROVED, EXPORTED, PUBLISHED
     }

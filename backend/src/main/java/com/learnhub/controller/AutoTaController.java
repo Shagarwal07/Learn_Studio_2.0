@@ -38,6 +38,8 @@ public class AutoTaController {
     private final com.learnhub.repository.UserRepository userRepository;
     private final com.learnhub.repository.BatchRepository batchRepository;
     private final com.learnhub.repository.NoteRepository noteRepository;
+    private final com.learnhub.repository.ReviewHistoryRepository reviewHistoryRepository;
+    private final com.learnhub.repository.PaperVersionRepository paperVersionRepository;
     private final com.learnhub.service.PromptSanitizerService promptSanitizerService;
     private final com.learnhub.service.VertexAiMultimodalProvider vertexAiMultimodalProvider;
 
@@ -535,17 +537,23 @@ public class AutoTaController {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @DeleteMapping("/papers/{paperId}")
     public ResponseEntity<ApiResponse<Void>> deletePaper(@PathVariable Long paperId) {
         if (!paperRepository.existsById(paperId)) {
             return ResponseEntity.status(404).body(ApiResponse.error("Exam paper not found"));
         }
+        reviewHistoryRepository.deleteByGeneratedPaperId(paperId);
+        paperVersionRepository.deleteByGeneratedPaperId(paperId);
         paperRepository.deleteById(paperId);
         return ResponseEntity.ok(ApiResponse.success(null, "Paper removed successfully"));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @DeleteMapping("/papers")
     public ResponseEntity<ApiResponse<Void>> deleteAllPapers() {
+        reviewHistoryRepository.deleteAll();
+        paperVersionRepository.deleteAll();
         paperRepository.deleteAll();
         return ResponseEntity.ok(ApiResponse.success(null, "All exam papers removed successfully"));
     }

@@ -9,4 +9,5 @@ import java.util.List;
 public interface PaperVersionRepository extends JpaRepository<PaperVersion, Long> {
     List<PaperVersion> findByGeneratedPaperIdOrderByVersionDesc(Long paperId);
     List<PaperVersion> findByChangedById(Long changedById);
+    void deleteByGeneratedPaperId(Long paperId);
 }
