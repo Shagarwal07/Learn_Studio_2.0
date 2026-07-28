@@ -534,4 +534,19 @@ public class AutoTaController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to generate paper: " + e.getMessage()));
         }
     }
+
+    @DeleteMapping("/papers/{paperId}")
+    public ResponseEntity<ApiResponse<Void>> deletePaper(@PathVariable Long paperId) {
+        if (!paperRepository.existsById(paperId)) {
+            return ResponseEntity.status(404).body(ApiResponse.error("Exam paper not found"));
+        }
+        paperRepository.deleteById(paperId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Paper removed successfully"));
+    }
+
+    @DeleteMapping("/papers")
+    public ResponseEntity<ApiResponse<Void>> deleteAllPapers() {
+        paperRepository.deleteAll();
+        return ResponseEntity.ok(ApiResponse.success(null, "All exam papers removed successfully"));
+    }
 }

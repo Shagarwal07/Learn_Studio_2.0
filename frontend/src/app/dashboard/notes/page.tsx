@@ -161,17 +161,17 @@ export default function NotesCoursesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">Study Notes Vault</h2>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Study Notes Vault</h2>
           <p className="text-xs sm:text-sm text-text-secondary mt-1 leading-relaxed">
             Access chapter-level lecture notes, syllabus guides, and secure watermarked PDF resources.
           </p>
         </div>
         {isInstructorOrAdmin && (
           <Link 
-            href="/dashboard/instructor/batches"
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-accent-grape to-primary-blue text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-accent-grape/10 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0"
+            href="/dashboard/instructor/batches?tab=notes"
+            className="btn-premium flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-all shadow-md cursor-pointer shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 stroke-[3]" />
             Manage Batches & Notes
           </Link>
         )}
@@ -188,7 +188,7 @@ export default function NotesCoursesPage() {
             className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
               activeTab === 'BATCH'
                 ? 'border-accent-grape text-accent-grape'
-                : 'border-transparent text-text-secondary hover:text-white'
+                : 'border-transparent text-text-secondary hover:text-foreground'
             }`}
           >
             Offline Batch Subjects
@@ -201,7 +201,7 @@ export default function NotesCoursesPage() {
             className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
               activeTab === 'COURSES'
                 ? 'border-accent-grape text-accent-grape'
-                : 'border-transparent text-text-secondary hover:text-white'
+                : 'border-transparent text-text-secondary hover:text-foreground'
             }`}
           >
             Explore Courses
@@ -224,10 +224,10 @@ export default function NotesCoursesPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-text-muted" />
             <input
               type="text"
-              placeholder={activeTab === 'BATCH' && !isInstructorOrAdmin ? "Search batch notes." : "Search course folders."}
+              placeholder={activeTab === 'BATCH' && !isInstructorOrAdmin ? "Search batch notes..." : "Search course folders..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-white/5 border border-border-color rounded-2xl text-sm text-white placeholder-text-muted focus:outline-none focus:border-accent-grape focus:ring-1 focus:ring-accent-grape transition-all"
+              className="input-premium w-full pl-11 pr-4 py-2.5 rounded-2xl text-sm text-foreground placeholder-text-muted focus:outline-none transition-all"
             />
           </div>
         )}
@@ -247,7 +247,7 @@ export default function NotesCoursesPage() {
           </h3>
 
           {filteredBatchNotes.length === 0 ? (
-            <div className="py-16 text-center glass-card rounded-3xl text-xs text-text-secondary border border-border-color">
+            <div className="py-16 text-center glass-card rounded-3xl text-xs text-text-secondary border border-border-color bg-card">
               No notes uploaded yet under this subject.
             </div>
           ) : (
@@ -255,14 +255,14 @@ export default function NotesCoursesPage() {
               {filteredBatchNotes.map((note) => (
                 <div
                   key={note.id}
-                  className="glass-card hover-lift rounded-3xl p-6 flex flex-col justify-between gap-6"
+                  className="glass-card hover-lift rounded-3xl p-6 flex flex-col justify-between gap-6 bg-card border border-border-color shadow-sm"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-accent-grape/15 text-accent-grape rounded-xl flex items-center justify-center shrink-0 border border-accent-grape/25">
                         <FileText className="w-4.5 h-4.5" />
                       </div>
-                      <h4 className="text-sm font-black text-white truncate">
+                      <h4 className="text-sm font-black text-foreground truncate">
                         {note.title}
                       </h4>
                     </div>
@@ -280,7 +280,7 @@ export default function NotesCoursesPage() {
                       {user?.role === 'ADMIN' && (
                         <button
                           onClick={() => handleDeleteNote(note.id)}
-                          className="flex items-center justify-center p-2 text-rose-500 hover:text-rose-600 dark:hover:text-rose-455 bg-rose-500/5 hover:bg-rose-500/10 border border-rose-550/10 hover:border-rose-500 rounded-xl transition-all cursor-pointer shadow-sm"
+                          className="flex items-center justify-center p-2 text-error hover:text-error bg-error/10 hover:bg-error/20 border border-error/20 rounded-xl transition-all cursor-pointer shadow-sm"
                           title="Delete Note"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -288,7 +288,7 @@ export default function NotesCoursesPage() {
                       )}
                       <Link
                         href={`/dashboard/notes/view/${note.id}`}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-white/5 hover:bg-gradient-to-r hover:from-accent-grape hover:to-primary-blue border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-muted/50 hover:bg-gradient-to-r hover:from-accent-grape hover:to-primary-blue border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         View Secure PDF
@@ -318,10 +318,10 @@ export default function NotesCoursesPage() {
                 <select
                   value={selectedBatchId}
                   onChange={(e) => setSelectedBatchId(e.target.value)}
-                  className="bg-white/5 border border-border-color rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-accent-grape"
+                  className="input-premium rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none transition-all cursor-pointer"
                 >
                   {batches.map(b => (
-                    <option key={b.id} value={b.id} className="bg-slate-900 text-white">
+                    <option key={b.id} value={b.id} className="bg-card text-foreground">
                       {b.name}
                     </option>
                   ))}
@@ -339,13 +339,13 @@ export default function NotesCoursesPage() {
                 <button
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
-                  className="group text-left flex items-start gap-4 p-5 glass-card hover-lift rounded-3xl hover:border-accent-grape/50 transition-all cursor-pointer select-none"
+                  className="group text-left flex items-start gap-4 p-5 glass-card hover-lift rounded-3xl border border-border-color hover:border-accent-grape/50 transition-all cursor-pointer select-none bg-card shadow-sm"
                 >
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br border ${colorClass} group-hover:scale-105 transition-transform`}>
                     <Folder className="w-5 h-5 fill-current opacity-70" />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="text-sm font-bold text-white group-hover:text-accent-grape transition-colors truncate">
+                    <h3 className="text-sm font-bold text-foreground group-hover:text-accent-grape transition-colors truncate">
                       {subject}
                     </h3>
                     <p className="text-xs text-text-muted font-bold uppercase tracking-wider">
@@ -380,13 +380,13 @@ export default function NotesCoursesPage() {
                 <Link
                   key={course.id}
                   href={`/dashboard/notes/course/${course.id}`}
-                  className="group flex items-start gap-4 p-5 glass-card hover-lift rounded-3xl hover:border-accent-grape/50 transition-all cursor-pointer select-none"
+                  className="group flex items-start gap-4 p-5 glass-card hover-lift rounded-3xl border border-border-color hover:border-accent-grape/50 transition-all cursor-pointer select-none bg-card shadow-sm"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-accent-grape/10 to-primary-blue/10 text-accent-grape border border-accent-grape/20 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Folder className="w-5 h-5 fill-current opacity-70" />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="text-sm font-bold text-white group-hover:text-accent-grape transition-colors truncate">
+                    <h3 className="text-sm font-bold text-foreground group-hover:text-accent-grape transition-colors truncate">
                       {course.title}
                     </h3>
                     <p className="text-xs text-text-muted font-bold uppercase tracking-wider">
@@ -402,9 +402,9 @@ export default function NotesCoursesPage() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 glass-card rounded-3xl text-center border border-border-color">
+            <div className="flex flex-col items-center justify-center py-16 glass-card rounded-3xl text-center border border-border-color bg-card">
               <BookOpen className="w-12 h-12 text-text-muted mb-4 opacity-70" />
-              <h4 className="text-sm font-bold text-white">No course note folders found.</h4>
+              <h4 className="text-sm font-bold text-foreground">No course note folders found.</h4>
               <p className="text-xs text-text-secondary max-w-xs mt-1.5 font-medium leading-relaxed">
                 {searchQuery ? 'No folders match your search query.' : 'Once you enroll in courses that have notes, they will appear here.'}
               </p>

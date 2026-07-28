@@ -189,19 +189,19 @@ export default function CreateExamPage() {
       )}
 
       {/* Clean Form */}
-      <form onSubmit={handleSubmit} className="glass-card rounded-3xl p-6 md:p-8 space-y-6 border border-white/10 shadow-2xl">
+      <form onSubmit={handleSubmit} className="glass-card rounded-3xl p-6 md:p-8 space-y-6 border border-border-color shadow-2xl bg-card text-foreground">
         
         {/* 1. Batch and Subject Selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-primary" /> Target Batch *
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-accent-grape" /> Target Batch *
             </label>
             <select
               value={selectedBatchId}
               onChange={(e) => setSelectedBatchId(e.target.value)}
               disabled={isLoadingBatches}
-              className="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary transition-colors cursor-pointer"
+              className="input-premium w-full rounded-xl px-4 py-3 text-xs text-foreground focus:outline-none transition-colors cursor-pointer"
             >
               {batches.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
@@ -210,13 +210,13 @@ export default function CreateExamPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-primary" /> Subject Area *
+            <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-accent-grape" /> Subject Area *
             </label>
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full bg-surface-dark border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary transition-colors cursor-pointer"
+              className="input-premium w-full rounded-xl px-4 py-3 text-xs text-foreground focus:outline-none transition-colors cursor-pointer"
             >
               {currentBatch?.subjects?.map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -227,17 +227,17 @@ export default function CreateExamPage() {
 
         {/* 2. GCP Bucket PDF Notes Picker */}
         <div className="space-y-2">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary flex items-center justify-between">
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
             <span>📁 Select Batch PDF Notes (GCP Cloud Storage)</span>
-            <span className="text-[9px] text-primary lowercase">{bucketNotes.length} files available</span>
+            <span className="text-[9px] text-accent-grape lowercase font-bold">{bucketNotes.length} files available</span>
           </label>
 
           {isLoadingNotes ? (
-            <div className="p-4 bg-surface-dark/50 rounded-2xl border border-white/5 text-xs text-text-muted animate-pulse">
+            <div className="p-4 bg-muted/50 rounded-2xl border border-border-color text-xs text-muted-foreground animate-pulse">
               Fetching notes from GCP Bucket...
             </div>
           ) : bucketNotes.length === 0 ? (
-            <div className="p-4 bg-surface-dark/50 rounded-2xl border border-white/5 text-xs text-text-muted">
+            <div className="p-4 bg-muted/50 rounded-2xl border border-border-color text-xs text-muted-foreground">
               No pre-uploaded PDF notes found for {selectedSubject}. You can upload book photos below or type custom instructions!
             </div>
           ) : (
@@ -248,21 +248,21 @@ export default function CreateExamPage() {
                   <div
                     key={note.id}
                     onClick={() => toggleNoteSelection(note.id)}
-                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected 
-                        ? 'bg-primary/10 border-primary text-white' 
-                        : 'bg-surface-dark/40 border-white/5 text-text-secondary hover:border-white/20'
+                        ? 'bg-accent-grape/15 border-accent-grape text-foreground shadow-sm' 
+                        : 'bg-muted/40 border-border-color text-muted-foreground hover:border-accent-grape/50'
                     }`}
                   >
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <FileText className={`w-4 h-4 shrink-0 ${isSelected ? 'text-primary' : 'text-text-muted'}`} />
+                      <FileText className={`w-4 h-4 shrink-0 ${isSelected ? 'text-accent-grape' : 'text-muted-foreground'}`} />
                       <div className="truncate">
-                        <div className="text-xs font-bold truncate">{note.title}</div>
-                        <div className="text-[10px] text-text-muted">{note.originalFilename} • {(note.fileSize / 1024 / 1024).toFixed(2)} MB</div>
+                        <div className="text-xs font-bold truncate text-foreground">{note.title}</div>
+                        <div className="text-[10px] text-muted-foreground">{note.originalFilename} • {(note.fileSize / 1024 / 1024).toFixed(2)} MB</div>
                       </div>
                     </div>
                     <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-primary border-primary text-white' : 'border-white/20'
+                      isSelected ? 'bg-accent-grape border-accent-grape text-white' : 'border-border-color'
                     }`}>
                       {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
@@ -275,11 +275,11 @@ export default function CreateExamPage() {
 
         {/* 3. Drag & Drop Image Uploader (Vision OCR) */}
         <div className="space-y-2">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary flex items-center gap-1.5">
-            <ImageIcon className="w-3.5 h-3.5 text-primary" /> Upload Book Photos / Test Sheets (Auto-Cleans Ticks)
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <ImageIcon className="w-3.5 h-3.5 text-accent-grape" /> Upload Book Photos / Test Sheets (Auto-Cleans Ticks)
           </label>
           
-          <div className="relative border-2 border-dashed border-white/10 hover:border-primary/50 rounded-2xl p-6 text-center transition-colors bg-surface-dark/30">
+          <div className="relative border-2 border-dashed border-border-color hover:border-accent-grape/50 rounded-2xl p-6 text-center transition-colors bg-muted/20">
             <input 
               type="file" 
               multiple 
@@ -287,17 +287,17 @@ export default function CreateExamPage() {
               onChange={handleImageUpload}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             />
-            <Upload className="w-8 h-8 text-primary mx-auto mb-2 opacity-80" />
-            <div className="text-xs font-bold text-white">Drag & drop photos or click to browse</div>
-            <div className="text-[10px] text-text-muted mt-1">Supports PNG, JPG, JPEG (Handwritten ticks and red ink will be cleaned automatically)</div>
+            <Upload className="w-8 h-8 text-accent-grape mx-auto mb-2 opacity-80" />
+            <div className="text-xs font-bold text-foreground">Drag & drop photos or click to browse</div>
+            <div className="text-[10px] text-muted-foreground mt-1">Supports PNG, JPG, JPEG (Handwritten ticks and red ink will be cleaned automatically)</div>
           </div>
 
           {uploadedImages.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2">
               {uploadedImages.map((file, i) => (
-                <div key={i} className="flex items-center gap-2 bg-surface-dark px-3 py-1.5 rounded-xl border border-white/10 text-xs text-white">
+                <div key={i} className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-xl border border-border-color text-xs text-foreground font-medium">
                   <span className="truncate max-w-[150px]">{file.name}</span>
-                  <button type="button" onClick={() => removeImage(i)} className="text-text-muted hover:text-error text-xs font-bold">×</button>
+                  <button type="button" onClick={() => removeImage(i)} className="text-muted-foreground hover:text-error text-xs font-bold">×</button>
                 </div>
               ))}
             </div>
@@ -306,16 +306,16 @@ export default function CreateExamPage() {
 
         {/* 4. Optional Custom Prompt Box */}
         <div className="space-y-2">
-          <label className="text-[10px] font-extrabold uppercase tracking-wider text-text-secondary flex items-center justify-between">
+          <label className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
             <span>💬 Custom Instructions / Prompt (Optional)</span>
-            <span className="text-[9px] text-text-muted">Parses dynamic requests like "6 mcq, 2 long"</span>
+            <span className="text-[9px] text-muted-foreground">Parses dynamic requests like "6 mcq, 2 long"</span>
           </label>
           <textarea
             rows={3}
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder="Default: Extract text from selected materials as-is and convert into question style without ticks. (Or type custom requests e.g. 'Create 6 mcq, 2 long questions, 20 marks total')"
-            className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-text-muted focus:outline-none focus:border-primary transition-colors resize-none"
+            className="input-premium w-full rounded-2xl p-4 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors resize-none"
           />
         </div>
 
@@ -323,7 +323,7 @@ export default function CreateExamPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-4 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-primary/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          className="btn-premium w-full py-4 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {loading ? (
             <>
@@ -332,7 +332,7 @@ export default function CreateExamPage() {
             </>
           ) : (
             <>
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 stroke-[3]" />
               Generate Exam Paper
             </>
           )}

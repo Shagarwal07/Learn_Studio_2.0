@@ -103,8 +103,8 @@ public class VertexAiMultimodalProvider {
                 }
             }
 
-            combinedText.append("\nStrict Output Requirement: Respond ONLY with a valid JSON array of Question objects. Format:\n");
-            combinedText.append("[{\"questionText\":\"...\",\"questionType\":\"MCQ\",\"options\":[\"Option A\",\"Option B\",\"Option C\",\"Option D\"],\"correctOption\":\"A\",\"solutionExplanation\":\"...\",\"marks\":1}]\n");
+            combinedText.append("\nStrict Output Requirement: Respond ONLY with a valid JSON array of Question objects representing the exam paper. Use appropriate individual mark weights based on question depth (e.g. 1-2 for MCQ, 3-4 for SHORT_ANSWER, 5-10 for LONG_ANSWER or NUMERICAL). Example schema:\n");
+            combinedText.append("[\n  {\"questionText\":\"...\",\"questionType\":\"MCQ\",\"options\":[\"Option A\",\"Option B\",\"Option C\",\"Option D\"],\"correctOption\":\"A\",\"solutionExplanation\":\"...\",\"marks\":1,\"difficulty\":\"MEDIUM\",\"bloomLevel\":\"Understanding\",\"chapter\":\"Unit 1\"},\n  {\"questionText\":\"...\",\"questionType\":\"LONG_ANSWER\",\"options\":[],\"correctOption\":\"N/A\",\"solutionExplanation\":\"Detailed step-by-step answer...\",\"marks\":5,\"difficulty\":\"HARD\",\"bloomLevel\":\"Application\",\"chapter\":\"Unit 1\"}\n]\n");
 
             partsList.add(Map.of("text", combinedText.toString()));
 

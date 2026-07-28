@@ -80,6 +80,16 @@ public class PromptSanitizerService {
         int totalQuestions = sections.stream().mapToInt(SectionRequirement::getCount).sum();
         int totalMarks = sections.stream().mapToInt(s -> s.getCount() * s.getMarksPerQuestion()).sum();
 
+        Pattern marksPattern = Pattern.compile("(\\d+)\\s*(?:marks?|mks|pts?|points?)", Pattern.CASE_INSENSITIVE);
+        Matcher marksMatcher = marksPattern.matcher(input);
+        if (marksMatcher.find()) {
+            int requestedMarks = Integer.parseInt(marksMatcher.group(1));
+            if (requestedMarks > 0) {
+                totalMarks = requestedMarks;
+                log.info("Parsed instructor explicit target total marks: {}", totalMarks);
+            }
+        }
+
         StringBuilder promptBuilder = new StringBuilder();
         if (input.isBlank()) {
             promptBuilder.append(String.format(
@@ -89,6 +99,7 @@ public class PromptSanitizerService {
         } else {
             promptBuilder.append(String.format("Subject: %s (Batch: %s). ", subjectName != null ? subjectName : "General", batchName != null ? batchName : "General"));
             promptBuilder.append("Instructor Special Instructions: ").append(input).append(". ");
+            promptBuilder.append(String.format("IMPORTANT: The total exam paper marks MUST sum up to exactly %d marks. Assign sensible individual marks (e.g. 1-2 for MCQs, 3-4 for short answers, 5-10 for long essay questions) so the total sum matches %d. ", totalMarks, totalMarks));
             if (removeTickMarks) {
                 promptBuilder.append("Automatically detect and eliminate any handwritten tick marks, circled options, red ink, or previous answers in images. ");
             }
