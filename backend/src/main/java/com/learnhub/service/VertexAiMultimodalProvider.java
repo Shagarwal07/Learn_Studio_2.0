@@ -14,16 +14,16 @@ import java.util.*;
 @Slf4j
 public class VertexAiMultimodalProvider {
 
-    @Value("${google.cloud.project:}")
+    @Value("${google.cloud.project:learnstudio-503107}")
     private String projectId;
 
     @Value("${google.cloud.location:us-central1}")
     private String location;
 
-    @Value("${google.application.credentials:}")
+    @Value("${google.application.credentials:../resources/google-credentials.json}")
     private String credentialsPath;
 
-    @Value("${vertex.model:gemini-2.5-flash}")
+    @Value("${vertex.model:gemini-1.5-flash}")
     private String model;
 
     private final WebClient webClient = WebClient.builder().build();
@@ -44,8 +44,12 @@ public class VertexAiMultimodalProvider {
             credentials.refreshIfExpired();
             String token = credentials.getAccessToken().getTokenValue();
 
+            String activeProject = (projectId != null && !projectId.trim().isEmpty()) ? projectId.trim() : "learnstudio-503107";
+            String activeLocation = (location != null && !location.trim().isEmpty()) ? location.trim() : "us-central1";
+            String activeModel = (model != null && !model.trim().isEmpty()) ? model.trim() : "gemini-1.5-flash";
+
             String apiUrl = String.format("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:generateContent",
-                    location, projectId, location, model);
+                    activeLocation, activeProject, activeLocation, activeModel);
 
             List<Map<String, Object>> partsList = new ArrayList<>();
 
