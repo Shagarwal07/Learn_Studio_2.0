@@ -126,7 +126,10 @@ public class VertexAiMultimodalProvider {
             }
 
             Map<String, Object> requestBody = Map.of(
-                    "contents", List.of(Map.of("parts", partsList))
+                    "contents", List.of(Map.of(
+                            "role", "user",
+                            "parts", partsList
+                    ))
             );
 
             Map response = webClient.post()
