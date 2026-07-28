@@ -243,7 +243,9 @@ public class EmailService {
             return;
         }
         try {
-            String websiteUrl = "https://learn-studio-2-0.vercel.ap            String htmlContent = """
+            String websiteUrl = "https://learn-studio-2-0.vercel.app/";
+
+            String htmlContent = """
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -254,7 +256,7 @@ public class EmailService {
                             .outer-padding { padding: 10px 6px !important; }
                             .card-padding { padding: 22px 14px !important; border-radius: 18px !important; }
                             .welcome-title { font-size: 20px !important; letter-spacing: 4px !important; }
-                            .cta-btn { display: block !important; width: 100%% !important; box-sizing: border-box !important; padding: 14px 12px !important; font-size: 13px !important; }
+                            .cta-btn { display: block !important; width: 100% !important; box-sizing: border-box !important; padding: 14px 12px !important; font-size: 13px !important; }
                         }
                     </style>
                 </head>
