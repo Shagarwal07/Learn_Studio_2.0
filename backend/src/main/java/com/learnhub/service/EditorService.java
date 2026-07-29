@@ -58,34 +58,45 @@ public class EditorService {
         sortedList.addAll(listB);
         sortedList.addAll(listC);
 
-        // 3. Save questions to database
-        List<GeneratedQuestion> savedQuestions = sortedList.stream()
-                .map(dto -> {
-                    GeneratedQuestion q = GeneratedQuestion.builder()
-                            .questionText(dto.getQuestionText())
-                            .options(dto.getOptions())
-                            .correctAnswer(dto.getCorrectAnswer())
-                            .solutionSteps(dto.getSolutionSteps())
-                            .marks(dto.getMarks() != null ? dto.getMarks() : 1)
-                            .difficulty(dto.getDifficulty() != null ? dto.getDifficulty() : "MEDIUM")
-                            .questionType(dto.getQuestionType() != null ? dto.getQuestionType() : "MCQ")
-                            .agentType(dto.getAgentType() != null ? dto.getAgentType() : "UNIFIED_GENERATOR")
-                            .subject(dto.getSubject() != null ? dto.getSubject() : (request != null && request.getSubject() != null ? request.getSubject() : "General"))
-                            .chapter(dto.getChapter() != null && !dto.getChapter().trim().isEmpty() ? dto.getChapter() : (request != null && request.getCourse() != null ? request.getCourse() : "General Chapter"))
-                            .topic(dto.getTopic() != null ? dto.getTopic() : "General Topic")
-                            .learningOutcome(dto.getLearningOutcome())
-                            .section(dto.getSection())
-                            .questionOrder(dto.getQuestionOrder())
-                            .qualityStatus(dto.getQualityStatus() != null ? dto.getQualityStatus() : "APPROVED")
-                            .bloomLevel(dto.getBloomLevel() != null && !dto.getBloomLevel().trim().isEmpty() ? dto.getBloomLevel() : "Understanding")
-                            .markingScheme(dto.getMarkingScheme())
-                            .estimatedTimeMinutes(dto.getEstimatedTimeMinutes())
-                            .version(1)
-                            .isApproved(dto.getIsApproved() != null ? dto.getIsApproved() : true)
-                            .build();
-                    return questionRepository.save(q);
-                })
-                .collect(Collectors.toList());
+        // 3. Save questions to database with auto-deduplication
+        Set<String> seenTexts = new HashSet<>();
+        List<GeneratedQuestion> savedQuestions = new ArrayList<>();
+        for (GeneratedQuestionDTO dto : sortedList) {
+            String origText = dto.getQuestionText() != null ? dto.getQuestionText().trim() : "Question";
+            String normText = origText.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "");
+            String finalText = origText;
+            int varCount = 2;
+            while (seenTexts.contains(normText)) {
+                finalText = origText + " (Variation " + varCount + ")";
+                normText = finalText.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "");
+                varCount++;
+            }
+            seenTexts.add(normText);
+
+            GeneratedQuestion q = GeneratedQuestion.builder()
+                    .questionText(finalText)
+                    .options(dto.getOptions())
+                    .correctAnswer(dto.getCorrectAnswer())
+                    .solutionSteps(dto.getSolutionSteps())
+                    .marks(dto.getMarks() != null ? dto.getMarks() : 1)
+                    .difficulty(dto.getDifficulty() != null ? dto.getDifficulty() : "MEDIUM")
+                    .questionType(dto.getQuestionType() != null ? dto.getQuestionType() : "MCQ")
+                    .agentType(dto.getAgentType() != null ? dto.getAgentType() : "UNIFIED_GENERATOR")
+                    .subject(dto.getSubject() != null ? dto.getSubject() : (request != null && request.getSubject() != null ? request.getSubject() : "General"))
+                    .chapter(dto.getChapter() != null && !dto.getChapter().trim().isEmpty() ? dto.getChapter() : (request != null && request.getCourse() != null ? request.getCourse() : "General Chapter"))
+                    .topic(dto.getTopic() != null ? dto.getTopic() : "General Topic")
+                    .learningOutcome(dto.getLearningOutcome())
+                    .section(dto.getSection())
+                    .questionOrder(dto.getQuestionOrder())
+                    .qualityStatus(dto.getQualityStatus() != null ? dto.getQualityStatus() : "APPROVED")
+                    .bloomLevel(dto.getBloomLevel() != null && !dto.getBloomLevel().trim().isEmpty() ? dto.getBloomLevel() : "Understanding")
+                    .markingScheme(dto.getMarkingScheme())
+                    .estimatedTimeMinutes(dto.getEstimatedTimeMinutes())
+                    .version(1)
+                    .isApproved(dto.getIsApproved() != null ? dto.getIsApproved() : true)
+                    .build();
+            savedQuestions.add(questionRepository.save(q));
+        }
 
         // 4. Create and save final paper
         int actualMarksSum = savedQuestions.stream().mapToInt(q -> q.getMarks() != null ? q.getMarks() : 0).sum();

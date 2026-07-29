@@ -217,7 +217,8 @@ public class PromptSanitizerService {
             promptBuilder.append(String.format("\nFINAL JSON VERIFICATION CHECKLIST:\n" +
                 "1. The JSON array MUST contain exactly %d elements in total (no more, no less).\n" +
                 "2. The sum of the 'marks' field across all %d objects in the JSON array MUST equal exactly %d marks.\n" +
-                "3. Only MCQ questions should contain options. For SHORT_ANSWER or LONG_ANSWER sections (such as when only short or long questions are requested, or in Sections B & C), you MUST leave the 'options' array completely empty [].\n", 
+                "3. Only MCQ questions should contain options. For SHORT_ANSWER or LONG_ANSWER sections (such as when only short or long questions are requested, or in Sections B & C), you MUST leave the 'options' array completely empty [].\n" +
+                "4. Every question in the generated JSON array MUST have completely unique text, concepts, and scenarios. Absolutely NO duplicates or repeating questions are allowed.\n", 
                 totalQuestions, totalQuestions, totalMarks));
             
             if (removeTickMarks) {
