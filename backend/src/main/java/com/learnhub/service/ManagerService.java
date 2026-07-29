@@ -34,12 +34,21 @@ public class ManagerService {
         public int questionCount;
         public int marksPerQuestion;
         public int targetMarks;
+
+        public SectionBlueprint() {}
+
+        public SectionBlueprint(String name, int count, int marks, int target) {
+            this.sectionName = name;
+            this.questionCount = count;
+            this.marksPerQuestion = marks;
+            this.targetMarks = target;
+        }
     }
 
     public static class PaperBlueprint {
-        public SectionBlueprint sectionA;
-        public SectionBlueprint sectionB;
-        public SectionBlueprint sectionC;
+        public SectionBlueprint sectionA = new SectionBlueprint("SECTION_A", 0, 0, 0);
+        public SectionBlueprint sectionB = new SectionBlueprint("SECTION_B", 0, 0, 0);
+        public SectionBlueprint sectionC = new SectionBlueprint("SECTION_C", 0, 0, 0);
     }
 
     public static PaperBlueprint createBlueprint(int totalMarks, int totalQuestions) {

@@ -124,12 +124,12 @@ public class PromptSanitizerService {
         } else {
             promptBuilder.append(String.format("Subject: %s (Batch: %s). ", subjectName != null ? subjectName : "General", batchName != null ? batchName : "General"));
             promptBuilder.append("INSTRUCTOR EXPLICIT OVERRIDE INSTRUCTIONS: ").append(input).append(". ");
-            promptBuilder.append("CRITICAL REQUIREMENT: You MUST strictly follow the instructor's special instructions above regarding question counts (e.g. 10 or 20 questions), formats, alignments, and individual marking schemes (for example, if the instructor specified 'one mark for each question' or a custom total, obey that exact rule to all questions). When explicit instructions are given, they OVERRIDE the default section framework completely. ");
+            promptBuilder.append("CRITICAL REQUIREMENT: You MUST strictly follow the instructor's special instructions above regarding question counts (e.g. 10 or 20 questions), topics, and difficulty. Unless the instructor explicitly demanded a single uniform question type (such as 'all MCQs' or 'only fill in the blanks'), you MUST strictly preserve and apply our default 3-Section Pedagogical Framework: 1) SECTION_A (Objective & MCQs, 1-2 marks each), 2) SECTION_B (Short Answer & Conceptual, 3-4 marks each), and 3) SECTION_C (Long Answer, Analytical & Problem Solving, 5-10 marks each). ");
             
             if (isExplicitMarksRequested) {
-                promptBuilder.append(String.format("The instructor explicitly requested an overall target of approximately %d total marks. Assign sensible individual marks so the total sum aligns with this target without omitting required questions. ", totalMarks));
+                promptBuilder.append(String.format("The instructor explicitly requested an overall target of precisely %d total marks. Distribute question counts and assign appropriate individual marks across Section A (~20%% of marks), Section B (~30%% of marks), and Section C (~50%% of marks) so the sum of all questions equals exactly %d total marks. ", totalMarks, totalMarks));
             } else {
-                promptBuilder.append("Do NOT skip, omit, or drop any questions from the provided input images or materials unless explicitly instructed to filter them. Extract and format ALL questions found in the photos and texts. Assign sensible individual marks according to the instructor's guidance or reasonable question depth. ");
+                promptBuilder.append("Do NOT skip, omit, or drop any questions from the provided input images or study materials unless explicitly instructed to filter them. Extract, generate, and cleanly categorize ALL questions into SECTION_A, SECTION_B, and SECTION_C with appropriate individual marks. ");
             }
             if (removeTickMarks) {
                 promptBuilder.append("Automatically detect and eliminate any handwritten tick marks, circled options, red ink, or teacher annotations in images. ");

@@ -180,7 +180,11 @@ export default function PaperPreviewPage() {
         setEditClass(p.course || '');
         setEditSubject(p.subject || '');
         setEditSyllabus(p.syllabus || '');
-        setEditChapters(p.chapters || '');
+        let cleanChaps = p.chapters || '';
+        if (cleanChaps.includes('INSTRUCTOR EXPLICIT OVERRIDE') || cleanChaps.includes('CRITICAL REQUIREMENT') || cleanChaps.includes('SUBJECT:') || cleanChaps.length > 80) {
+          cleanChaps = p.subject && p.course ? `${p.subject} - ${p.course}` : (p.subject || 'Syllabus Core');
+        }
+        setEditChapters(cleanChaps);
         setEditTopics(p.topics || '');
         setEditDuration(p.duration || 100);
         setEditTotalMarks(p.totalMarks || 50);
@@ -1321,7 +1325,7 @@ export default function PaperPreviewPage() {
                     <div className="justify-self-start border-2 border-black px-2.5 py-0.5 text-black">
                       Time – {editDuration} min
                     </div>
-                    <div className="justify-self-center text-black font-black tracking-wide uppercase">
+                    <div className="justify-self-center text-black font-black tracking-wide uppercase text-center max-w-[320px] line-clamp-2 text-ellipsis overflow-hidden">
                       {editChapters || 'Syllabus Core'}
                     </div>
                     <div className="justify-self-end border-2 border-black px-2.5 py-0.5 text-black">

@@ -227,9 +227,9 @@ public class AutoTaController {
             try {
                 int qSize = paper.getQuestions() != null ? paper.getQuestions().size() : 0;
                 ManagerService.PaperBlueprint blueprint = ManagerService.createBlueprint(expectedTotal, qSize);
-                targetA = blueprint.sectionA.targetMarks;
-                targetB = blueprint.sectionB.targetMarks;
-                targetC = blueprint.sectionC.targetMarks;
+                targetA = blueprint.sectionA != null ? blueprint.sectionA.targetMarks : 0;
+                targetB = blueprint.sectionB != null ? blueprint.sectionB.targetMarks : 0;
+                targetC = blueprint.sectionC != null ? blueprint.sectionC.targetMarks : 0;
             } catch (Exception e) {
                 warnings.add("Blueprint targets could not be calculated: " + e.getMessage());
             }
@@ -448,15 +448,24 @@ public class AutoTaController {
             // 1. Sanitize Prompt & Extract Intent
             var promptResult = promptSanitizerService.sanitizePrompt(customPrompt, subject, batch.getName());
 
-            // 2. Fetch PDF Texts
+            // 2. Fetch PDF Texts and Note Titles
             List<String> pdfTexts = new ArrayList<>();
+            List<String> noteTitles = new ArrayList<>();
             if (selectedNoteIds != null && !selectedNoteIds.isEmpty()) {
                 List<com.learnhub.entity.Note> notes = noteRepository.findAllById(selectedNoteIds);
                 for (com.learnhub.entity.Note n : notes) {
+                    if (n.getTitle() != null && !n.getTitle().isBlank()) {
+                        noteTitles.add(n.getTitle().trim());
+                    }
                     if (n.getExtractedText() != null && !n.getExtractedText().isBlank()) {
                         pdfTexts.add(n.getExtractedText());
                     }
                 }
+            }
+
+            String cleanSyllabus = !noteTitles.isEmpty() ? String.join(", ", noteTitles) : (subject + " - " + batch.getName());
+            if (customPrompt != null && !customPrompt.isBlank() && customPrompt.length() <= 60 && !customPrompt.toLowerCase().contains("create") && !customPrompt.toLowerCase().contains("generate") && !customPrompt.toLowerCase().contains("paper") && !customPrompt.toLowerCase().contains("marks")) {
+                cleanSyllabus = customPrompt.trim();
             }
 
             // 3. Generate Paper JSON via Vertex AI Multimodal
@@ -466,7 +475,7 @@ public class AutoTaController {
             ExamRequest request = ExamRequest.builder()
                     .subject(subject)
                     .course(batch.getName())
-                    .syllabus(promptResult.getSanitizedPrompt())
+                    .syllabus(cleanSyllabus)
                     .marks(promptResult.getTotalMarks())
                     .difficulty("MEDIUM")
                     .questionPattern(promptResult.isMcqOnly() ? "MCQ_ONLY" : "MIXED")
