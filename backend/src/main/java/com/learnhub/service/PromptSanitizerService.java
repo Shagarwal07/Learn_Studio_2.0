@@ -246,24 +246,24 @@ public class PromptSanitizerService {
         if (targetQCount <= 0) {
             switch (targetMarks) {
                 case 10:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(3).marksPerQuestion(1).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(2).marksPerQuestion(1).build());
                     result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(1).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(1).marksPerQuestion(4).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(1).marksPerQuestion(5).build());
                     return result;
                 case 15:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(5).marksPerQuestion(1).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(3).marksPerQuestion(1).build());
                     result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(3).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(4).build());
                     return result;
                 case 20:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(6).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(2).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(4).marksPerQuestion(1).build());
+                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(3).build());
                     result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(5).build());
                     return result;
                 case 25:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(7).marksPerQuestion(1).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(5).marksPerQuestion(1).build());
                     result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(4).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(5).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(6).build());
                     return result;
                 case 30:
                     result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(6).marksPerQuestion(1).build());
@@ -273,7 +273,7 @@ public class PromptSanitizerService {
                 case 40:
                     result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(8).marksPerQuestion(1).build());
                     result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(4).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(4).marksPerQuestion(5).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(10).build());
                     return result;
                 case 50:
                     result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(10).marksPerQuestion(1).build());
@@ -281,62 +281,54 @@ public class PromptSanitizerService {
                     result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(5).marksPerQuestion(5).build());
                     return result;
                 case 60:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(12).marksPerQuestion(1).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(6).marksPerQuestion(2).build());
                     result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(6).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(6).marksPerQuestion(5).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(3).marksPerQuestion(10).build());
                     return result;
                 case 70:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(14).marksPerQuestion(1).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(7).marksPerQuestion(2).build());
                     result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(7).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(7).marksPerQuestion(5).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(5).marksPerQuestion(7).build());
                     return result;
                 case 75:
                     result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(15).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(10).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(8).marksPerQuestion(5).build());
+                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(5).marksPerQuestion(4).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(4).marksPerQuestion(10).build());
                     return result;
                 case 80:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(16).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(8).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(8).marksPerQuestion(5).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(8).marksPerQuestion(2).build());
+                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(6).marksPerQuestion(4).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(4).marksPerQuestion(10).build());
                     return result;
                 case 100:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(20).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(10).marksPerQuestion(3).build());
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(10).marksPerQuestion(2).build());
+                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(6).marksPerQuestion(5).build());
                     result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(5).marksPerQuestion(10).build());
                     return result;
                 default:
-                    // For custom mark totals, dynamically calculate proportions
+                    // For custom mark totals, enforce strictly ~20% A, ~30% B, and ~50% C
                     if (targetMarks <= 6) {
                         result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(targetMarks).marksPerQuestion(1).build());
                         return result;
                     }
-                    int countA = Math.max(1, (int) Math.round(targetMarks * 0.25));
-                    int remaining = targetMarks - countA;
-                    int marksB = targetMarks >= 25 ? 3 : 2;
-                    int countB = Math.max(1, (int) Math.round((targetMarks * 0.35) / marksB));
-                    if ((countB * marksB) >= remaining) {
-                        countB = Math.max(1, (remaining - 2) / marksB);
-                    }
-                    remaining = remaining - (countB * marksB);
-                    int countC = 1;
-                    int marksC = remaining;
-                    if (remaining >= 20 && remaining % 10 == 0) {
-                        marksC = 10;
-                        countC = remaining / 10;
-                    } else if (remaining >= 10 && remaining % 5 == 0) {
-                        marksC = 5;
-                        countC = remaining / 5;
-                    } else if (remaining >= 6 && remaining % 3 == 0) {
-                        marksC = 3;
-                        countC = remaining / 3;
-                    } else if (remaining >= 4 && remaining % 2 == 0) {
-                        marksC = 2;
-                        countC = remaining / 2;
-                    }
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(countA).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(countB).marksPerQuestion(marksB).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(countC).marksPerQuestion(marksC).build());
+                    int targetA = Math.max(1, (int) Math.round(targetMarks * 0.20));
+                    int targetB = Math.max(1, (int) Math.round(targetMarks * 0.30));
+                    
+                    int marksPerA = targetA >= 14 ? 2 : 1;
+                    int countA = Math.max(1, targetA / marksPerA);
+                    targetA = countA * marksPerA;
+                    
+                    int marksPerB = targetB >= 15 ? (targetB % 5 == 0 ? 5 : (targetB % 4 == 0 ? 4 : 3)) : 2;
+                    int countB = Math.max(1, targetB / marksPerB);
+                    targetB = countB * marksPerB;
+                    
+                    int targetC_actual = Math.max(1, targetMarks - targetA - targetB);
+                    int marksPerC = targetC_actual >= 30 && targetC_actual % 10 == 0 ? 10 : (targetC_actual >= 15 && targetC_actual % 5 == 0 ? 5 : (targetC_actual % 4 == 0 ? 4 : (targetC_actual % 3 == 0 ? 3 : (targetC_actual % 2 == 0 ? 2 : targetC_actual))));
+                    int countC = Math.max(1, targetC_actual / marksPerC);
+                    
+                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(countA).marksPerQuestion(marksPerA).build());
+                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(countB).marksPerQuestion(marksPerB).build());
+                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(countC).marksPerQuestion(marksPerC).build());
                     return result;
             }
         } else {
