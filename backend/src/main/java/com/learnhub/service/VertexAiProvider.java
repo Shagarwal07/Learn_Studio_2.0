@@ -46,7 +46,8 @@ public class VertexAiProvider implements AiProvider {
                 location, projectId, location, model);
 
             Map<String, Object> body = Map.of(
-                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt))))
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("maxOutputTokens", 8192, "temperature", 0.2)
             );
 
             Map response = webClient.post()

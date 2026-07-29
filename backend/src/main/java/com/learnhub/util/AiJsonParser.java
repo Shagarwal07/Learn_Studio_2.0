@@ -60,7 +60,46 @@ public class AiJsonParser {
             }
         }
 
+        try {
+            mapper.readTree(cleaned);
+        } catch (Exception e) {
+            System.err.println("Detected truncated or broken AI JSON response, initiating auto-repair...");
+            cleaned = repairJson(cleaned);
+        }
+
         return cleaned;
+    }
+
+    public static String repairJson(String json) {
+        if (json == null || json.isBlank()) return "[]";
+        String candidate = json.trim();
+        if (candidate.startsWith("[")) {
+            int idx = candidate.lastIndexOf('}');
+            while (idx > 0) {
+                String testJson = candidate.substring(0, idx + 1) + "\n]";
+                try {
+                    mapper.readTree(testJson);
+                    System.out.println("Successfully recovered truncated JSON array at character index: " + idx);
+                    return testJson;
+                } catch (Exception ignored) {
+                    idx = candidate.lastIndexOf('}', idx - 1);
+                }
+            }
+            return "[]";
+        } else if (candidate.startsWith("{")) {
+            int idx = candidate.lastIndexOf('}');
+            while (idx > 0) {
+                String testJson = candidate.substring(0, idx + 1);
+                try {
+                    mapper.readTree(testJson);
+                    return testJson;
+                } catch (Exception ignored) {
+                    idx = candidate.lastIndexOf('}', idx - 1);
+                }
+            }
+            return "{}";
+        }
+        return json;
     }
 
     public static ObjectMapper getMapper() {

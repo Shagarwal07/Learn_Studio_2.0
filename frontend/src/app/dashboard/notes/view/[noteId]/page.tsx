@@ -29,6 +29,7 @@ interface NoteDTO {
   batchId: number | null;
   batchName: string | null;
   subjectName: string | null;
+  fileUrl?: string;
 }
 
 interface ChatMessage {
@@ -179,6 +180,7 @@ export default function NoteViewPage() {
             noteId={Number(noteId)} 
             courseTitle={courseTitle} 
             noteTitle={title} 
+            fallbackFileUrl={noteMetadata?.fileUrl}
           />
         </div>
 

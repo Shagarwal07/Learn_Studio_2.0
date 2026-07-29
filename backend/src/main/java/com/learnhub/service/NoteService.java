@@ -181,20 +181,7 @@ public class NoteService {
                 .orElseThrow(() -> new RuntimeException("Note not found"));
 
         // Validate access
-        if (user.getRole() == User.Role.STUDENT) {
-            if (note.getBatch() != null) {
-                if (user.getBatch() == null || !user.getBatch().getId().equals(note.getBatch().getId())) {
-                    throw new RuntimeException("You are not in the batch assigned to this study note");
-                }
-            } else if (note.getCourse() != null) {
-                boolean enrolled = enrollmentRepository.existsByUserIdAndCourseId(user.getId(), note.getCourse().getId());
-                if (!enrolled) {
-                    throw new RuntimeException("You must be enrolled in this course to view this note");
-                }
-            } else {
-                throw new RuntimeException("Access denied: Note is not assigned to a batch or course");
-            }
-        }
+        validateStudentNoteAccess(user, note);
 
         // Log the view event
         NoteViewLog log = NoteViewLog.builder()
@@ -346,20 +333,7 @@ public class NoteService {
         Note note = noteRepository.findById(noteId)
                 .orElseThrow(() -> new RuntimeException("Note not found"));
 
-        if (user.getRole() == User.Role.STUDENT) {
-            if (note.getBatch() != null) {
-                if (user.getBatch() == null || !user.getBatch().getId().equals(note.getBatch().getId())) {
-                    throw new RuntimeException("You are not in the batch assigned to this study note");
-                }
-            } else if (note.getCourse() != null) {
-                boolean enrolled = enrollmentRepository.existsByUserIdAndCourseId(user.getId(), note.getCourse().getId());
-                if (!enrolled) {
-                    throw new RuntimeException("You must be enrolled in this course to view this note");
-                }
-            } else {
-                throw new RuntimeException("Access denied: Note is not assigned to a batch or course");
-            }
-        }
+        validateStudentNoteAccess(user, note);
 
         return toDTO(note);
     }
@@ -400,20 +374,7 @@ public class NoteService {
                 .orElseThrow(() -> new RuntimeException("Note not found"));
 
         // Students must be enrolled or assigned to the batch
-        if (user.getRole() == User.Role.STUDENT) {
-            if (note.getBatch() != null) {
-                if (user.getBatch() == null || !user.getBatch().getId().equals(note.getBatch().getId())) {
-                    throw new RuntimeException("Unauthorized");
-                }
-            } else if (note.getCourse() != null) {
-                boolean enrolled = enrollmentRepository.existsByUserIdAndCourseId(user.getId(), note.getCourse().getId());
-                if (!enrolled) {
-                    throw new RuntimeException("Unauthorized");
-                }
-            } else {
-                throw new RuntimeException("Unauthorized");
-            }
-        }
+        validateStudentNoteAccess(user, note);
 
         if (note.getExtractedText() == null || note.getExtractedText().isBlank()) {
             return "AI notes assistant cannot find text in this PDF to answer your question.";
@@ -450,6 +411,17 @@ public class NoteService {
         } catch (Exception e) {
             System.err.println("PDFBox text extraction failed: " + e.getMessage());
             return "";
+        }
+    }
+
+    private void validateStudentNoteAccess(User user, Note note) {
+        if (user.getRole() != User.Role.STUDENT) return;
+
+        boolean batchMatch = (note.getBatch() != null && user.getBatch() != null && user.getBatch().getId().equals(note.getBatch().getId()));
+        boolean courseMatch = (note.getCourse() != null && enrollmentRepository.existsByUserIdAndCourseId(user.getId(), note.getCourse().getId()));
+
+        if (!batchMatch && !courseMatch) {
+            throw new RuntimeException("Access denied: User is neither assigned to the offline batch nor enrolled in the corresponding course for this note.");
         }
     }
 

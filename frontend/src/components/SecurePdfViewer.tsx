@@ -9,9 +9,10 @@ interface SecurePdfViewerProps {
   noteId: number;
   courseTitle: string;
   noteTitle: string;
+  fallbackFileUrl?: string;
 }
 
-export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: SecurePdfViewerProps) {
+export default function SecurePdfViewer({ noteId, courseTitle, noteTitle, fallbackFileUrl }: SecurePdfViewerProps) {
   const { user } = useAuth();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,8 +39,14 @@ export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: Secu
         const url = URL.createObjectURL(blob);
         setBlobUrl(url);
       } catch (err: any) {
-        console.warn('Failed to load secure PDF:', err.message || err);
-        setError('Unauthorized access or failed to load resource. Please verify your enrollment.');
+        console.warn('Failed to load secure PDF via stream proxy:', err.message || err);
+        if (fallbackFileUrl && fallbackFileUrl.trim()) {
+          console.info('Using fallback cloud file URL:', fallbackFileUrl);
+          setBlobUrl(fallbackFileUrl);
+          setError(null);
+        } else {
+          setError('Unauthorized access or failed to load resource. Please verify your enrollment or ensure the server is running.');
+        }
       } finally {
         setLoading(false);
       }
@@ -48,11 +55,11 @@ export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: Secu
     loadPdf();
 
     return () => {
-      if (blobUrl) {
+      if (blobUrl && blobUrl.startsWith('blob:')) {
         URL.revokeObjectURL(blobUrl);
       }
     };
-  }, [noteId]);
+  }, [noteId, fallbackFileUrl]);
 
   // 2. Prevent Keyboard Shortcuts (Ctrl+S, Ctrl+P, F12, Right-click)
   useEffect(() => {
@@ -128,9 +135,19 @@ export default function SecurePdfViewer({ noteId, courseTitle, noteTitle }: Secu
         <div className="w-16 h-16 bg-error/10 text-error rounded-2xl flex items-center justify-center border border-error/20 mx-auto">
           <ShieldAlert className="w-7 h-7" />
         </div>
-        <div className="space-y-1">
-          <h4 className="text-sm font-black text-white uppercase tracking-wider">Secure Access Denied</h4>
+        <div className="space-y-2">
+          <h4 className="text-sm font-black text-white uppercase tracking-wider">Secure Access Denied or Stream Offline</h4>
           <p className="text-xs text-text-secondary max-w-sm leading-relaxed">{error}</p>
+          {fallbackFileUrl && (
+            <a 
+              href={fallbackFileUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 mt-2 bg-gradient-to-r from-accent-grape to-primary-blue hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-lg transition-all"
+            >
+              Open Direct Cloud PDF
+            </a>
+          )}
         </div>
       </div>
     );

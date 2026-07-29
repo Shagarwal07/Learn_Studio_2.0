@@ -30,7 +30,7 @@ public class GroqAiProvider implements AiProvider {
         
         Map<String, Object> body = Map.of(
             "model", model,
-            "max_tokens", 2048,
+            "max_tokens", 8192,
             "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 
