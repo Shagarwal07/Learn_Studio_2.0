@@ -45,7 +45,7 @@ public class GroqAiProvider implements AiProvider {
             .onStatus(s -> s.is4xxClientError() || s.is5xxServerError(),
                 r -> r.bodyToMono(String.class).map(b -> new RuntimeException("API_ERROR: " + b)))
             .bodyToMono(Map.class)
-            .timeout(java.time.Duration.ofSeconds(60))
+            .timeout(java.time.Duration.ofSeconds(300))
             .block();
 
         if (response == null) {

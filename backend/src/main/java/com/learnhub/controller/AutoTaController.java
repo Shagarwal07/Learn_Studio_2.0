@@ -501,6 +501,20 @@ public class AutoTaController {
                     String diff = node.path("difficulty").asText("MEDIUM");
                     String bloom = node.path("bloomLevel").asText("Understanding");
                     String chapter = node.path("chapter").asText(batch.getName());
+
+                    String targetSection = node.path("section").asText("");
+                    if (targetSection.isBlank()) {
+                        targetSection = "SECTION_B";
+                        if (qType.equalsIgnoreCase("MCQ") || qType.equalsIgnoreCase("FILL_IN_THE_BLANK") || qType.equalsIgnoreCase("TRUE_FALSE")) {
+                            targetSection = "SECTION_A";
+                        } else if (qType.equalsIgnoreCase("LONG_ANSWER") || qType.equalsIgnoreCase("LONG") || qType.equalsIgnoreCase("ESSAY") || qType.equalsIgnoreCase("NUMERICAL")) {
+                            targetSection = "SECTION_C";
+                        }
+                    } else {
+                        targetSection = targetSection.toUpperCase().trim().replace(" ", "_");
+                        if (!targetSection.startsWith("SEC")) targetSection = "SECTION_" + targetSection;
+                    }
+
                     GeneratedQuestionDTO qDto = GeneratedQuestionDTO.builder()
                             .questionText(qText)
                             .questionType(qType)
@@ -513,7 +527,7 @@ public class AutoTaController {
                             .chapter(chapter)
                             .agentType("VERTEX_AI")
                             .subject(subject != null && !subject.trim().isEmpty() ? subject : "General")
-                            .section(qType.equalsIgnoreCase("MCQ") ? "SECTION_A" : "SECTION_B")
+                            .section(targetSection)
                             .build();
                     questionDTOList.add(qDto);
                 }
@@ -523,12 +537,16 @@ public class AutoTaController {
             savedPaper.setStatus(GeneratedPaper.Status.APPROVED);
             savedPaper = paperRepository.save(savedPaper);
 
+            savedRequest.setTotalQuestions(questionDTOList.size());
+            savedRequest.setMarks(savedPaper.getTotalMarks() != null ? savedPaper.getTotalMarks() : promptResult.getTotalMarks());
+            examRequestRepository.save(savedRequest);
+
             Map<String, Object> res = new HashMap<>();
             res.put("requestId", savedRequest.getId());
             res.put("paperId", savedPaper.getId());
             res.put("status", "COMPLETED");
             res.put("totalQuestions", questionDTOList.size());
-            res.put("totalMarks", promptResult.getTotalMarks());
+            res.put("totalMarks", savedRequest.getMarks());
 
             return ResponseEntity.ok(ApiResponse.success(res, "Exam paper generated successfully"));
 

@@ -46,12 +46,25 @@ public class PromptSanitizerService {
         boolean isMcqOnly = sections.size() == 1 && "MCQ".equalsIgnoreCase(sections.get(0).getQuestionType());
 
         if (sections.isEmpty()) {
-            if (containsKeywords(input, "mcq", "objective", "multiple choice") && !containsKeywords(input, "long", "short")) {
+            Pattern generalQPattern = Pattern.compile("(\\d+)\\s*(?:questions?|ques|q's|qs\\b)", Pattern.CASE_INSENSITIVE);
+            Matcher generalQMatcher = generalQPattern.matcher(input);
+            int detectedQCount = 0;
+            if (generalQMatcher.find()) {
+                detectedQCount = Integer.parseInt(generalQMatcher.group(1));
+            }
+            if (containsKeywords(input, "mcq", "objective", "multiple choice") && !containsKeywords(input, "long", "short", "fill in", "direct")) {
                 isMcqOnly = true;
                 sections.add(SectionRequirement.builder()
                         .sectionName("Section A - Multiple Choice Questions")
                         .questionType("MCQ")
-                        .count(20)
+                        .count(detectedQCount > 0 ? detectedQCount : 20)
+                        .marksPerQuestion(1)
+                        .build());
+            } else if (detectedQCount > 0) {
+                sections.add(SectionRequirement.builder()
+                        .sectionName("Section A - Questions")
+                        .questionType("MIXED")
+                        .count(detectedQCount)
                         .marksPerQuestion(1)
                         .build());
             } else {
@@ -79,32 +92,50 @@ public class PromptSanitizerService {
 
         int totalQuestions = sections.stream().mapToInt(SectionRequirement::getCount).sum();
         int totalMarks = sections.stream().mapToInt(s -> s.getCount() * s.getMarksPerQuestion()).sum();
+        boolean isExplicitMarksRequested = false;
 
         Pattern marksPattern = Pattern.compile("(\\d+)\\s*(?:marks?|mks|pts?|points?)", Pattern.CASE_INSENSITIVE);
         Matcher marksMatcher = marksPattern.matcher(input);
         if (marksMatcher.find()) {
             int requestedMarks = Integer.parseInt(marksMatcher.group(1));
-            if (requestedMarks > 0) {
+            String lowerInput = input.toLowerCase();
+            boolean isPerQuestionMark = lowerInput.contains("for each question") || lowerInput.contains("per question") || lowerInput.contains("each question") || lowerInput.contains("marks each") || lowerInput.contains("mark each");
+            if (requestedMarks > 0 && !isPerQuestionMark) {
                 totalMarks = requestedMarks;
+                isExplicitMarksRequested = true;
                 log.info("Parsed instructor explicit target total marks: {}", totalMarks);
+            } else if (isPerQuestionMark && totalQuestions > 0) {
+                totalMarks = totalQuestions * requestedMarks;
+                log.info("Parsed per-question marks rule: {} marks each, estimated total marks: {}", requestedMarks, totalMarks);
             }
         }
 
         StringBuilder promptBuilder = new StringBuilder();
         if (input.isBlank()) {
             promptBuilder.append(String.format(
-                "Extract text from the provided materials for %s as-is, remove all handwritten tick marks, circled answers, and teacher annotations, and convert the content directly into clean question style.",
-                subjectName != null ? subjectName : "Subject"
+                "Subject: %s (Batch: %s). AUTONOMOUS FRAMEWORK MODE: No explicit instructor prompt was provided. You must autonomously apply our 3-Section Pedagogical Framework without skipping or truncating any questions from the provided materials or images:\n" +
+                "1) SECTION_A (Objective & MCQs, Fill-in-the-Blanks, True/False - 1-2 marks each),\n" +
+                "2) SECTION_B (Short Answer & Direct Conceptual Explanations - 3-4 marks each),\n" +
+                "3) SECTION_C (Long Answer, Analytical, & Problem Solving / Numerical - 5-10 marks each).\n" +
+                "Extract ALL questions found in the test sheets or notes exactly as they appear, remove all handwritten tick marks, circled answers, red ink, and teacher annotations, and classify each question cleanly into these three sections.",
+                subjectName != null ? subjectName : "Subject",
+                batchName != null ? batchName : "General"
             ));
         } else {
             promptBuilder.append(String.format("Subject: %s (Batch: %s). ", subjectName != null ? subjectName : "General", batchName != null ? batchName : "General"));
-            promptBuilder.append("Instructor Special Instructions: ").append(input).append(". ");
-            promptBuilder.append(String.format("IMPORTANT: The total exam paper marks MUST sum up to exactly %d marks. Assign sensible individual marks (e.g. 1-2 for MCQs, 3-4 for short answers, 5-10 for long essay questions) so the total sum matches %d. ", totalMarks, totalMarks));
+            promptBuilder.append("INSTRUCTOR EXPLICIT OVERRIDE INSTRUCTIONS: ").append(input).append(". ");
+            promptBuilder.append("CRITICAL REQUIREMENT: You MUST strictly follow the instructor's special instructions above regarding question counts (e.g. 10 or 20 questions), formats, alignments, and individual marking schemes (for example, if the instructor specified 'one mark for each question' or a custom total, obey that exact rule to all questions). When explicit instructions are given, they OVERRIDE the default section framework completely. ");
+            
+            if (isExplicitMarksRequested) {
+                promptBuilder.append(String.format("The instructor explicitly requested an overall target of approximately %d total marks. Assign sensible individual marks so the total sum aligns with this target without omitting required questions. ", totalMarks));
+            } else {
+                promptBuilder.append("Do NOT skip, omit, or drop any questions from the provided input images or materials unless explicitly instructed to filter them. Extract and format ALL questions found in the photos and texts. Assign sensible individual marks according to the instructor's guidance or reasonable question depth. ");
+            }
             if (removeTickMarks) {
-                promptBuilder.append("Automatically detect and eliminate any handwritten tick marks, circled options, red ink, or previous answers in images. ");
+                promptBuilder.append("Automatically detect and eliminate any handwritten tick marks, circled options, red ink, or teacher annotations in images. ");
             }
             if (generateNewQuestions) {
-                promptBuilder.append("Synthesize fresh, new conceptual questions and numerical variations based on the study materials. ");
+                promptBuilder.append("Synthesize fresh, conceptual questions and numerical variations based on the study materials as requested. ");
             }
         }
 

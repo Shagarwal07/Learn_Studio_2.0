@@ -103,8 +103,8 @@ public class VertexAiMultimodalProvider {
                 }
             }
 
-            combinedText.append("\nStrict Output Requirement: Respond ONLY with a valid JSON array of Question objects representing the exam paper. Use appropriate individual mark weights based on question depth (e.g. 1-2 for MCQ, 3-4 for SHORT_ANSWER, 5-10 for LONG_ANSWER or NUMERICAL). Example schema:\n");
-            combinedText.append("[\n  {\"questionText\":\"...\",\"questionType\":\"MCQ\",\"options\":[\"Option A\",\"Option B\",\"Option C\",\"Option D\"],\"correctOption\":\"A\",\"solutionExplanation\":\"...\",\"marks\":1,\"difficulty\":\"MEDIUM\",\"bloomLevel\":\"Understanding\",\"chapter\":\"Unit 1\"},\n  {\"questionText\":\"...\",\"questionType\":\"LONG_ANSWER\",\"options\":[],\"correctOption\":\"N/A\",\"solutionExplanation\":\"Detailed step-by-step answer...\",\"marks\":5,\"difficulty\":\"HARD\",\"bloomLevel\":\"Application\",\"chapter\":\"Unit 1\"}\n]\n");
+            combinedText.append("\nStrict Output Requirement: Respond ONLY with a valid JSON array of Question objects representing ALL extracted or generated questions in the exam paper without skipping any question. Assign individual mark weights strictly adhering to any marks instructions specified by the instructor (or default to sensible weights like 1-2 for MCQ, 3-4 for SHORT_ANSWER, 5-10 for LONG_ANSWER if the instructor did not specify mark rules). Supported questionTypes include MCQ, SHORT_ANSWER, LONG_ANSWER, FILL_IN_THE_BLANK, TRUE_FALSE, DIRECT, NUMERICAL. Example schema:\n");
+            combinedText.append("[\n  {\"questionText\":\"...\",\"questionType\":\"MCQ\",\"options\":[\"Option A\",\"Option B\",\"Option C\",\"Option D\"],\"correctOption\":\"A\",\"solutionExplanation\":\"...\",\"marks\":1,\"difficulty\":\"MEDIUM\",\"bloomLevel\":\"Understanding\",\"chapter\":\"Unit 1\",\"section\":\"SECTION_A\"},\n  {\"questionText\":\"...\",\"questionType\":\"FILL_IN_THE_BLANK\",\"options\":[],\"correctOption\":\"correct answer term\",\"solutionExplanation\":\"Detailed step-by-step explanation...\",\"marks\":1,\"difficulty\":\"MEDIUM\",\"bloomLevel\":\"Understanding\",\"chapter\":\"Unit 1\",\"section\":\"SECTION_A\"}\n]\n");
 
             partsList.add(Map.of("text", combinedText.toString()));
 
@@ -125,11 +125,18 @@ public class VertexAiMultimodalProvider {
                 }
             }
 
+            Map<String, Object> generationConfig = Map.of(
+                    "maxOutputTokens", 8192,
+                    "temperature", 0.2,
+                    "responseMimeType", "application/json"
+            );
+
             Map<String, Object> requestBody = Map.of(
                     "contents", List.of(Map.of(
                             "role", "user",
                             "parts", partsList
-                    ))
+                    )),
+                    "generationConfig", generationConfig
             );
 
             Map response = webClient.post()
@@ -141,7 +148,7 @@ public class VertexAiMultimodalProvider {
                     .onStatus(s -> s.is4xxClientError() || s.is5xxServerError(),
                             r -> r.bodyToMono(String.class).map(b -> new RuntimeException("VERTEX_AI_ERROR: " + b)))
                     .bodyToMono(Map.class)
-                    .timeout(java.time.Duration.ofSeconds(90))
+                    .timeout(java.time.Duration.ofSeconds(300))
                     .block();
 
             if (response == null) {

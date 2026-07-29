@@ -240,15 +240,18 @@ public class NoteService {
                     }
                 }
             } else {
-                throw new RuntimeException("Note is not a Google Drive file, legacy Cloudinary notes are no longer supported.");
+                System.out.println("Note file URL is not Google Drive (likely GCP Cloud Storage or public URL): " + note.getFileUrl());
             }
 
-            // Fallback for either if pdfBytes is still null
+            // Fallback for either if pdfBytes is still null (e.g. GCP storage URLs, S3, or standard HTTP links)
             if (pdfBytes == null) {
                 if (note.getFileUrl() != null && !note.getFileUrl().isBlank()) {
                     System.out.println("Downloading PDF directly from public URL: " + note.getFileUrl());
                     URL url = new URL(note.getFileUrl());
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(60000);
+                    conn.setInstanceFollowRedirects(true);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
                     try (InputStream is = conn.getInputStream()) {
                         pdfBytes = is.readAllBytes();
