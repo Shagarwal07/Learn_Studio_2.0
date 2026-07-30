@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
+import ExamGenerationLoading from './ExamGenerationLoading';
 import { 
   ArrowLeft, 
   Sparkles, 
@@ -151,6 +152,19 @@ export default function CreateExamPage() {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <ExamGenerationLoading
+        subject={selectedSubject || 'Course Examination'}
+        batchName={currentBatch?.name || 'Academic Batch'}
+        isPhotoUpload={uploadedImages.length > 0}
+        selectedNotesCount={selectedNoteIds.length}
+        uploadedPhotosCount={uploadedImages.length}
+        customPrompt={customPrompt}
+      />
+    );
+  }
 
   return (
     <motion.div 
