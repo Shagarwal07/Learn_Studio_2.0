@@ -25,38 +25,31 @@ public class EditorService {
 
     @Transactional
     public GeneratedPaper compileExamPaper(ExamRequest request, List<GeneratedQuestionDTO> allQuestions) {
-        // 1. Sort questions into sections
-        List<GeneratedQuestionDTO> listA = new ArrayList<>();
-        List<GeneratedQuestionDTO> listB = new ArrayList<>();
-        List<GeneratedQuestionDTO> listC = new ArrayList<>();
-
+        // 1. Sort questions dynamically into sections (supporting all sections like SECTION_A through SECTION_G)
+        Map<String, List<GeneratedQuestionDTO>> sectionMap = new TreeMap<>();
         for (GeneratedQuestionDTO dto : allQuestions) {
             String sec = dto.getSection();
-            if ("SECTION_B".equalsIgnoreCase(sec)) {
-                listB.add(dto);
-            } else if ("SECTION_C".equalsIgnoreCase(sec)) {
-                listC.add(dto);
+            if (sec == null || sec.isBlank()) {
+                sec = "SECTION_A";
+                dto.setSection(sec);
             } else {
-                dto.setSection("SECTION_A");
-                listA.add(dto);
+                sec = sec.toUpperCase().trim().replace(" ", "_");
+                if (!sec.startsWith("SECTION_")) {
+                    sec = sec.startsWith("SEC_") ? sec.replace("SEC_", "SECTION_") : "SECTION_" + sec;
+                }
+                dto.setSection(sec);
             }
+            sectionMap.computeIfAbsent(sec, k -> new ArrayList<>()).add(dto);
         }
 
         // 2. Set question order within each section
-        for (int i = 0; i < listA.size(); i++) {
-            listA.get(i).setQuestionOrder(i + 1);
-        }
-        for (int i = 0; i < listB.size(); i++) {
-            listB.get(i).setQuestionOrder(i + 1);
-        }
-        for (int i = 0; i < listC.size(); i++) {
-            listC.get(i).setQuestionOrder(i + 1);
-        }
-
         List<GeneratedQuestionDTO> sortedList = new ArrayList<>();
-        sortedList.addAll(listA);
-        sortedList.addAll(listB);
-        sortedList.addAll(listC);
+        for (List<GeneratedQuestionDTO> list : sectionMap.values()) {
+            for (int i = 0; i < list.size(); i++) {
+                list.get(i).setQuestionOrder(i + 1);
+            }
+            sortedList.addAll(list);
+        }
 
         // 3. Save questions to database with auto-deduplication
         Set<String> seenTexts = new HashSet<>();
@@ -184,22 +177,10 @@ public class EditorService {
             }
 
             actualTotal += m;
-            if ("SECTION_A".equalsIgnoreCase(q.getSection())) {
-                actualA += m;
-                if (q.getQuestionOrder() != null && q.getQuestionOrder() != orderA++) {
-                    errors.add(String.format("Section A question ID %d has wrong numbering order %d (expected %d).", q.getId(), q.getQuestionOrder(), orderA - 1));
-                }
-            } else if ("SECTION_B".equalsIgnoreCase(q.getSection())) {
-                actualB += m;
-                if (q.getQuestionOrder() != null && q.getQuestionOrder() != orderB++) {
-                    errors.add(String.format("Section B question ID %d has wrong numbering order %d (expected %d).", q.getId(), q.getQuestionOrder(), orderB - 1));
-                }
-            } else if ("SECTION_C".equalsIgnoreCase(q.getSection())) {
-                actualC += m;
-                if (q.getQuestionOrder() != null && q.getQuestionOrder() != orderC++) {
-                    errors.add(String.format("Section C question ID %d has wrong numbering order %d (expected %d).", q.getId(), q.getQuestionOrder(), orderC - 1));
-                }
-            } else {
+            if (q.getSection().equalsIgnoreCase("SECTION_A")) actualA += m;
+            else if (q.getSection().equalsIgnoreCase("SECTION_B")) actualB += m;
+            else if (q.getSection().equalsIgnoreCase("SECTION_C")) actualC += m;
+            else if (!q.getSection().startsWith("SECTION_")) {
                 errors.add(String.format("Question ID %d has invalid section code: '%s'.", q.getId(), q.getSection()));
             }
 

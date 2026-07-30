@@ -204,35 +204,61 @@ public class AutoTaController {
             result.put("paperTarget", expectedTotal); // flat fallback
             result.put("paperActual", actualTotal); // flat fallback
 
-            int actualA = 0;
-            int actualB = 0;
-            int actualC = 0;
-
+            // Dynamically collect actual marks per section
+            Map<String, Integer> actualMap = new java.util.TreeMap<>();
             if (paper.getQuestions() != null) {
-                actualA = paper.getQuestions().stream()
-                        .filter(q -> q.getSection() != null && "SECTION_A".equalsIgnoreCase(q.getSection()))
-                        .mapToInt(q -> q.getMarks() != null ? q.getMarks() : 0).sum();
-                actualB = paper.getQuestions().stream()
-                        .filter(q -> q.getSection() != null && "SECTION_B".equalsIgnoreCase(q.getSection()))
-                        .mapToInt(q -> q.getMarks() != null ? q.getMarks() : 0).sum();
-                actualC = paper.getQuestions().stream()
-                        .filter(q -> q.getSection() != null && "SECTION_C".equalsIgnoreCase(q.getSection()))
-                        .mapToInt(q -> q.getMarks() != null ? q.getMarks() : 0).sum();
+                for (var q : paper.getQuestions()) {
+                    String sec = q.getSection() != null && !q.getSection().isBlank() ? q.getSection() : "SECTION_A";
+                    int m = q.getMarks() != null ? q.getMarks() : 0;
+                    actualMap.put(sec, actualMap.getOrDefault(sec, 0) + m);
+                }
             }
 
-            int targetA = 0;
-            int targetB = 0;
-            int targetC = 0;
-
-            try {
-                int qSize = paper.getQuestions() != null ? paper.getQuestions().size() : 0;
-                ManagerService.PaperBlueprint blueprint = ManagerService.createBlueprint(expectedTotal, qSize);
-                targetA = blueprint.sectionA != null ? blueprint.sectionA.targetMarks : 0;
-                targetB = blueprint.sectionB != null ? blueprint.sectionB.targetMarks : 0;
-                targetC = blueprint.sectionC != null ? blueprint.sectionC.targetMarks : 0;
-            } catch (Exception e) {
-                warnings.add("Blueprint targets could not be calculated: " + e.getMessage());
+            // Determine target marks per section based on whether it's Single Section, 3-Section Default, or 7-Section Super Duper
+            Map<String, Integer> targetMap = new java.util.TreeMap<>();
+            int distCount = actualMap.size();
+            if (distCount > 3 || actualMap.containsKey("SECTION_D")) {
+                // 7-Section Super Duper Blueprint
+                boolean is100 = (expectedTotal == 100);
+                targetMap.put("SECTION_A", is100 ? 10 : 5);
+                targetMap.put("SECTION_B", is100 ? 10 : 5);
+                targetMap.put("SECTION_C", is100 ? 4 : 2);
+                targetMap.put("SECTION_D", is100 ? 20 : 10);
+                targetMap.put("SECTION_E", is100 ? 20 : 10);
+                targetMap.put("SECTION_F", is100 ? 16 : 8);
+                targetMap.put("SECTION_G", is100 ? 20 : 10);
+            } else if (distCount == 1) {
+                // Single Section Override
+                for (String k : actualMap.keySet()) {
+                    targetMap.put(k, expectedTotal);
+                }
+            } else {
+                // Default 3-Section Balanced Blueprint (20%, 30%, 50%)
+                targetMap.put("SECTION_A", Math.round(expectedTotal * 0.20f));
+                targetMap.put("SECTION_B", Math.round(expectedTotal * 0.30f));
+                targetMap.put("SECTION_C", expectedTotal - targetMap.getOrDefault("SECTION_A", 0) - targetMap.getOrDefault("SECTION_B", 0));
             }
+
+            // Build dynamic sections list for Live Validation Dashboard
+            List<Map<String, Object>> sectionDetailsList = new ArrayList<>();
+            java.util.Set<String> allSecs = new java.util.TreeSet<>(actualMap.keySet());
+            allSecs.addAll(targetMap.keySet());
+            for (String sec : allSecs) {
+                Map<String, Object> secObj = new HashMap<>();
+                secObj.put("sectionName", sec);
+                secObj.put("actual", actualMap.getOrDefault(sec, 0));
+                secObj.put("target", targetMap.getOrDefault(sec, 0));
+                sectionDetailsList.add(secObj);
+            }
+            result.put("sections", sectionDetailsList);
+            sectionTotals.put("sections", sectionDetailsList);
+
+            int actualA = actualMap.getOrDefault("SECTION_A", 0);
+            int actualB = actualMap.getOrDefault("SECTION_B", 0);
+            int actualC = actualMap.getOrDefault("SECTION_C", 0);
+            int targetA = targetMap.getOrDefault("SECTION_A", 0);
+            int targetB = targetMap.getOrDefault("SECTION_B", 0);
+            int targetC = targetMap.getOrDefault("SECTION_C", 0);
 
             sectionTotals.put("sectionATarget", targetA);
             sectionTotals.put("sectionBTarget", targetB);

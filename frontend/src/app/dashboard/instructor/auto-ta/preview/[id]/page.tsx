@@ -125,6 +125,7 @@ export default function PaperPreviewPage() {
     sectionAActual: number;
     sectionBActual: number;
     sectionCActual: number;
+    sections?: Array<{ sectionName: string; actual: number; target: number }>;
   } | null>(null);
   
   // Review comments / revision modal
@@ -227,17 +228,18 @@ export default function PaperPreviewPage() {
 
   const recalculateSectionOrders = (questionsList: QuestionDTO[]) => {
     if (!paper) return;
-    const listA = questionsList.filter(q => q.section === 'SECTION_A');
-    const listB = questionsList.filter(q => q.section === 'SECTION_B');
-    const listC = questionsList.filter(q => q.section === 'SECTION_C');
-    
-    listA.forEach((q, idx) => q.questionOrder = idx + 1);
-    listB.forEach((q, idx) => q.questionOrder = idx + 1);
-    listC.forEach((q, idx) => q.questionOrder = idx + 1);
+    // Dynamically preserve and order all sections (A through G, etc.)
+    const uniqueSections = Array.from(new Set(questionsList.map(q => q.section || 'SECTION_A'))).sort();
+    const orderedQuestions: QuestionDTO[] = [];
+    uniqueSections.forEach(sec => {
+      const secList = questionsList.filter(q => (q.section || 'SECTION_A') === sec);
+      secList.forEach((q, idx) => q.questionOrder = idx + 1);
+      orderedQuestions.push(...secList);
+    });
 
     setPaper({
       ...paper,
-      questions: [...listA, ...listB, ...listC]
+      questions: orderedQuestions
     });
   };
 
@@ -905,7 +907,7 @@ export default function PaperPreviewPage() {
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-indigo-400">
-                          {q.section === 'SECTION_A' ? 'Sec A' : q.section === 'SECTION_B' ? 'Sec B' : 'Sec C'} - Q{q.questionOrder || index + 1}
+                          {(q.section || 'SECTION_A').replace('SECTION_', 'Sec ')} - Q{q.questionOrder || index + 1}
                         </span>
                         <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-455 bg-slate-800 px-2 py-0.5 rounded border border-slate-750">{q.questionType}</span>
                         <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-900">{q.agentType}</span>
@@ -959,9 +961,13 @@ export default function PaperPreviewPage() {
                               onChange={(e) => setEditSection(e.target.value)}
                               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none"
                             >
-                              <option value="SECTION_A">Section A (Short)</option>
-                              <option value="SECTION_B">Section B (Medium)</option>
-                              <option value="SECTION_C">Section C (Long)</option>
+                              <option value="SECTION_A">Section A</option>
+                              <option value="SECTION_B">Section B</option>
+                              <option value="SECTION_C">Section C</option>
+                              <option value="SECTION_D">Section D</option>
+                              <option value="SECTION_E">Section E</option>
+                              <option value="SECTION_F">Section F</option>
+                              <option value="SECTION_G">Section G</option>
                             </select>
                           </div>
                           
@@ -1475,35 +1481,46 @@ export default function PaperPreviewPage() {
               </span>
             </div>
 
-            {/* Section A metrics */}
-            <div className="border-t border-slate-855 pt-2 space-y-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-slate-455 font-semibold">Section A (Target: {validation?.sectionATarget || 0}):</span>
-                <span className={`font-bold ${validation?.sectionAActual === validation?.sectionATarget ? 'text-emerald-450' : 'text-amber-455'}`}>
-                  {validation?.sectionAActual || 0} Marks
-                </span>
-              </div>
-            </div>
-
-            {/* Section B metrics */}
-            <div className="border-t border-slate-855 pt-2 space-y-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-slate-455 font-semibold">Section B (Target: {validation?.sectionBTarget || 0}):</span>
-                <span className={`font-bold ${validation?.sectionBActual === validation?.sectionBTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
-                  {validation?.sectionBActual || 0} Marks
-                </span>
-              </div>
-            </div>
-
-            {/* Section C metrics */}
-            <div className="border-t border-slate-855 pt-2 space-y-1">
-              <div className="flex justify-between text-[11px]">
-                <span className="text-slate-455 font-semibold">Section C (Target: {validation?.sectionCTarget || 0}):</span>
-                <span className={`font-bold ${validation?.sectionCActual === validation?.sectionCTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
-                  {validation?.sectionCActual || 0} Marks
-                </span>
-              </div>
-            </div>
+            {/* Dynamic Section Metrics */}
+            {validation?.sections && validation.sections.length > 0 ? (
+              validation.sections.map((sec) => (
+                <div key={sec.sectionName} className="border-t border-slate-855 pt-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-455 font-semibold">{sec.sectionName.replace('SECTION_', 'Section ')} (Target: {sec.target}):</span>
+                    <span className={`font-bold ${sec.actual === sec.target ? 'text-emerald-450' : 'text-amber-455'}`}>
+                      {sec.actual} Marks
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="border-t border-slate-855 pt-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-455 font-semibold">Section A (Target: {validation?.sectionATarget || 0}):</span>
+                    <span className={`font-bold ${validation?.sectionAActual === validation?.sectionATarget ? 'text-emerald-450' : 'text-amber-455'}`}>
+                      {validation?.sectionAActual || 0} Marks
+                    </span>
+                  </div>
+                </div>
+                <div className="border-t border-slate-855 pt-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-455 font-semibold">Section B (Target: {validation?.sectionBTarget || 0}):</span>
+                    <span className={`font-bold ${validation?.sectionBActual === validation?.sectionBTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
+                      {validation?.sectionBActual || 0} Marks
+                    </span>
+                  </div>
+                </div>
+                <div className="border-t border-slate-855 pt-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-455 font-semibold">Section C (Target: {validation?.sectionCTarget || 0}):</span>
+                    <span className={`font-bold ${validation?.sectionCActual === validation?.sectionCTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
+                      {validation?.sectionCActual || 0} Marks
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
             
             <div className="flex justify-between border-t border-slate-855 pt-2">
               <span className="text-slate-455 font-bold">Paper Status:</span>

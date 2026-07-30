@@ -95,11 +95,18 @@ public class DocxExportService {
             // Add spacing after header
             document.createParagraph();
 
-            // 3. Render Section lists
-            List<GeneratedQuestionDTO> questions = paper.getQuestions();
-            writeSection(document, questions, "SECTION_A", "Section A: Short Answer Questions");
-            writeSection(document, questions, "SECTION_B", "Section B: Medium Answer Questions");
-            writeSection(document, questions, "SECTION_C", "Section C: Long / Numerical Questions");
+            // 3. Render Section lists dynamically
+            List<GeneratedQuestionDTO> questions = paper.getQuestions() != null ? paper.getQuestions() : new java.util.ArrayList<>();
+            java.util.Set<String> allSections = questions.stream()
+                    .map(q -> q.getSection() != null && !q.getSection().isBlank() ? q.getSection() : "SECTION_A")
+                    .collect(java.util.stream.Collectors.toCollection(java.util.TreeSet::new));
+            if (allSections.isEmpty()) {
+                allSections.add("SECTION_A");
+            }
+            for (String sec : allSections) {
+                String label = sec.replace("SECTION_", "Section ");
+                writeSection(document, questions, sec, label);
+            }
 
             // Footer
             XWPFParagraph footerPara = document.createParagraph();
