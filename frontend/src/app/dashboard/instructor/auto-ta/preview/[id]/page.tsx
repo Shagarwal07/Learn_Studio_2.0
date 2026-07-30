@@ -85,11 +85,31 @@ interface VersionDTO {
 const ALLOWED_MARKS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
 export function calculateSectionTotals(questions: QuestionDTO[]) {
-  const sQs = questions.filter(q => q.section === 'SECTION_A');
-  const lQs = questions.filter(q => q.section === 'SECTION_B');
-  const eQs = questions.filter(q => q.section === 'SECTION_C');
+  const map: Record<string, QuestionDTO[]> = {};
+  questions.forEach(q => {
+    const sec = q.section || 'SECTION_A';
+    if (!map[sec]) map[sec] = [];
+    map[sec].push(q);
+  });
+
+  const sortedKeys = Object.keys(map).sort();
+  const dynamicSections = sortedKeys.map(key => {
+    const qs = map[key];
+    const totalMarks = qs.reduce((acc, q) => acc + Number(q.marks || 0), 0);
+    const count = qs.length;
+    const avgMarks = count > 0 ? qs[0].marks : 0;
+    const allSameMarks = qs.every(q => q.marks === avgMarks);
+
+    const displayLabel = key.replace('_', ' ').replace(/SECTION/i, 'Section');
+    return { key, displayLabel, questions: qs, totalMarks, count, avgMarks, allSameMarks };
+  });
+
+  const sQs = map['SECTION_A'] || [];
+  const lQs = map['SECTION_B'] || [];
+  const eQs = map['SECTION_C'] || [];
 
   return {
+    dynamicSections,
     finalShort: sQs,
     longQuestions: lQs,
     essayQuestions: eQs,
@@ -215,7 +235,7 @@ export default function PaperPreviewPage() {
   }, [paper?.questions]);
 
   // Section calculations using pure section fields only
-  const { finalShort, longQuestions, essayQuestions, shortTotal, longTotal, essayTotal, shortCount, longCount, essayCount, shortAvgMarks, longAvgMarks, essayAvgMarks } = useMemo(() => {
+  const { dynamicSections, finalShort, longQuestions, essayQuestions, shortTotal, longTotal, essayTotal, shortCount, longCount, essayCount, shortAvgMarks, longAvgMarks, essayAvgMarks } = useMemo(() => {
     return calculateSectionTotals(paper?.questions || []);
   }, [paper?.questions]);
 
@@ -687,7 +707,19 @@ export default function PaperPreviewPage() {
               Auto-TA Dashboard
             </Link>
             <h2 className="text-xl sm:text-2xl font-black text-white mt-2.5">{paper.title}</h2>
-            <p className="text-xs text-slate-400 mt-1">Version {paper.version} • Total Marks: {paper.totalMarks}</p>
+            <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-300 font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-indigo-300 font-bold">
+                <BookOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                {paper.subject || 'Examination'} {paper.course ? `(${paper.course})` : ''}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-amber-300 font-bold">
+                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                {paper.duration || 100} Mins
+              </span>
+              <span className="px-2 py-1 bg-slate-900/60 border border-slate-800 rounded-lg text-slate-400">
+                Version {paper.version} • Total Marks: {paper.totalMarks}
+              </span>
+            </div>
           </div>
 
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold border self-start ${
@@ -1095,7 +1127,11 @@ export default function PaperPreviewPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <p className="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed">{q.questionText}</p>
+                        <div className="text-xs sm:text-sm text-slate-100 font-medium leading-relaxed prose prose-invert max-w-none">
+                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                            {q.questionText}
+                          </ReactMarkdown>
+                        </div>
                         
                         {/* MCQ Options representation */}
                         {q.options && (() => {
@@ -1104,8 +1140,13 @@ export default function PaperPreviewPage() {
                             return (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-4 pt-1">
                                 {Object.entries(parsedOpts).map(([key, val]) => (
-                                  <div key={key} className="text-xs text-slate-400 font-semibold">
-                                    <span className="text-indigo-400 font-bold mr-1.5">{key}.</span> {val as string}
+                                  <div key={key} className="text-xs text-slate-400 font-semibold flex items-baseline gap-1.5">
+                                    <span className="text-indigo-400 font-bold shrink-0">{key}.</span>
+                                    <div className="inline-block flex-1 prose prose-invert prose-sm max-w-none">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                        {val as string}
+                                      </ReactMarkdown>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -1247,48 +1288,71 @@ export default function PaperPreviewPage() {
             </div>
 
             {/* A4 Container */}
-            <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner">
+            <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner print-container">
               <div id="printable-exam-paper" className="bg-white text-black font-serif p-12 sm:p-16 rounded-none border-[6px] border-double border-black shadow-2xl mx-auto w-[210mm] min-h-[297mm] flex flex-col space-y-6 text-left relative select-text">
                 
-                {/* Print Stylesheet injection */}
+                {/* Print Stylesheet injection for clean multi-page pagination */}
                 <style dangerouslySetInnerHTML={{ __html: `
+                  @page {
+                    size: A4 portrait;
+                    margin: 18mm 15mm 18mm 15mm;
+                    border: 4px double #000000;
+                    padding: 6mm;
+                  }
                   @media print {
-                    body {
+                    html, body {
+                      width: 210mm !important;
+                      height: auto !important;
+                      overflow: visible !important;
                       background: white !important;
                       color: black !important;
+                      margin: 0 !important;
+                      padding: 0 !important;
                     }
                     aside, nav, header, button, .no-print, .tab-selector, .print-toolbar, .lg\\:col-span-3, .review-decision-panel {
                       display: none !important;
                     }
-                    main, .max-w-7xl, .lg\\:col-span-2, .space-y-5 {
+                    main, .max-w-7xl, .lg\\:col-span-2, .space-y-5, .overflow-auto, .print-container {
                       width: 100% !important;
                       max-width: 100% !important;
+                      height: auto !important;
+                      max-height: none !important;
+                      overflow: visible !important;
+                      display: block !important;
                       padding: 0 !important;
                       margin: 0 !important;
-                      background: transparent !important;
-                    }
-                    .bg-slate-900\\/60, .bg-slate-955, .border, .shadow-xl, .shadow-inner {
                       background: transparent !important;
                       border: none !important;
                       box-shadow: none !important;
-                      padding: 0 !important;
-                      margin: 0 !important;
                     }
                     #printable-exam-paper {
-                      position: absolute !important;
-                      left: 0 !important;
-                      top: 0 !important;
-                      width: 210mm !important;
-                      min-height: 297mm !important;
-                      padding: 16mm !important;
+                      position: static !important;
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      min-height: auto !important;
+                      height: auto !important;
+                      padding: 0 !important;
                       margin: 0 !important;
                       background: white !important;
                       color: black !important;
                       font-family: "Times New Roman", Times, Georgia, serif !important;
                       box-shadow: none !important;
-                      border: 6px double black !important;
-                      display: flex !important;
-                      flex-direction: column !important;
+                      border: none !important; /* Border around every page handled directly by @page rule */
+                      display: block !important;
+                      overflow: visible !important;
+                    }
+                    .print-section-header {
+                      page-break-after: avoid !important;
+                      break-after: avoid !important;
+                    }
+                    .print-question-item {
+                      page-break-inside: avoid !important;
+                      break-inside: avoid !important;
+                      margin-bottom: 14px !important;
+                    }
+                    .print-mcq-options {
+                      page-break-inside: avoid !important;
+                      break-inside: avoid !important;
                     }
                   }
                 ` }} />
@@ -1340,28 +1404,30 @@ export default function PaperPreviewPage() {
                   </div>
                 </div>
 
-                {/* Question Sections in A4 page */}
-                <div className="space-y-6 pt-2 flex-1 text-black relative z-10">
-                  
-                  {/* Part A: Short */}
-                  {finalShort.length > 0 && (
-                    <div className="space-y-4">
-                      <div className="text-center font-bold font-serif text-[13px] tracking-wide mt-2">
-                        <span className="underline uppercase font-extrabold">Section A: Short Answer Questions</span>
+                {/* Question Sections dynamically mapped across all pages */}
+                <div className="space-y-7 pt-2 flex-1 text-black relative z-10">
+                  {dynamicSections.map((sec) => (
+                    <div key={sec.key} className="space-y-4 print-section-container">
+                      <div className="text-center font-bold font-serif text-[13px] tracking-wide pt-2 print-section-header">
+                        <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
                         <span className="font-extrabold ml-1">
-                          {finalShort.every(q => q.marks === shortAvgMarks)
-                            ? `(${shortCount} × ${shortAvgMarks} = ${shortTotal} Marks)`
-                            : `(${shortCount} Questions, Total: ${shortTotal} Marks)`
+                          {sec.allSameMarks
+                            ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
+                            : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
                           }
                         </span>
                       </div>
                       
-                      <div className="space-y-4">
-                        {finalShort.map((q, sIdx) => (
-                          <div key={q.id} className="text-sm space-y-2 relative leading-relaxed text-black">
+                      <div className="space-y-4 pt-1">
+                        {sec.questions.map((q, qIdx) => (
+                          <div key={q.id} className="text-sm space-y-2 relative leading-relaxed text-black print-question-item">
                             <div className="flex gap-2.5 items-start">
-                              <span className="font-bold shrink-0 min-w-[20px] text-right">{sIdx + 1})</span>
-                              <p className="flex-1 font-medium text-black">{q.questionText}</p>
+                              <span className="font-bold shrink-0 min-w-[24px] text-right">{q.questionOrder || qIdx + 1})</span>
+                              <div className="flex-1 font-medium text-black text-justify prose prose-sm max-w-none print-math-container">
+                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                  {q.questionText}
+                                </ReactMarkdown>
+                              </div>
                               <span className="font-bold text-xs shrink-0 pl-2">[{q.marks}]</span>
                             </div>
 
@@ -1369,10 +1435,15 @@ export default function PaperPreviewPage() {
                               try {
                                 const parsed = JSON.parse(q.options);
                                 return (
-                                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 pl-8 pt-1 text-black">
+                                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 pl-8 pt-1 text-black print-mcq-options">
                                     {Object.entries(parsed).map(([key, val]) => (
-                                      <div key={key} className="text-xs text-black">
-                                        <span className="font-bold mr-2 text-black">({key.toLowerCase()})</span> {val as string}
+                                      <div key={key} className="text-xs text-black flex items-baseline gap-1.5">
+                                        <span className="font-bold mr-1 text-black shrink-0">({key.toLowerCase()})</span>
+                                        <div className="inline-block flex-1 prose prose-sm max-w-none text-black">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                            {val as string}
+                                          </ReactMarkdown>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -1385,66 +1456,11 @@ export default function PaperPreviewPage() {
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* Part B: Long */}
-                  {longQuestions.length > 0 && (
-                    <div className="space-y-4 pt-4">
-                      <div className="text-center font-bold font-serif text-[13px] tracking-wide">
-                        <span className="underline uppercase font-extrabold">Section B: Medium/Long Answer Questions</span>
-                        <span className="font-extrabold ml-1">
-                          {longQuestions.every(q => q.marks === longAvgMarks)
-                            ? `(${longCount} × ${longAvgMarks} = ${longTotal} Marks)`
-                            : `(${longCount} Questions, Total: ${longTotal} Marks)`
-                          }
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        {longQuestions.map((q, lIdx) => (
-                          <div key={q.id} className="text-sm space-y-2 relative leading-relaxed text-black">
-                            <div className="flex gap-2.5 items-start">
-                              <span className="font-bold shrink-0 min-w-[20px] text-right">{lIdx + 1})</span>
-                              <p className="flex-1 font-medium text-black">{q.questionText}</p>
-                              <span className="font-bold text-xs shrink-0 pl-2">[{q.marks}]</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Part C: Essay / Numerical */}
-                  {essayQuestions.length > 0 && (
-                    <div className="space-y-4 pt-4">
-                      <div className="text-center font-bold font-serif text-[13px] tracking-wide">
-                        <span className="underline uppercase font-extrabold">Section C: Long/Numerical Questions</span>
-                        <span className="font-extrabold ml-1">
-                          {essayQuestions.every(q => q.marks === essayAvgMarks)
-                            ? `(${essayCount} × ${essayAvgMarks} = ${essayTotal} Marks)`
-                            : `(${essayCount} Questions, Total: ${essayTotal} Marks)`
-                          }
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        {essayQuestions.map((q, eIdx) => (
-                          <div key={q.id} className="text-sm space-y-2 relative leading-relaxed text-black">
-                            <div className="flex gap-2.5 items-start">
-                              <span className="font-bold shrink-0 min-w-[20px] text-right">{eIdx + 1})</span>
-                              <p className="flex-1 font-medium text-black">{q.questionText}</p>
-                              <span className="font-bold text-xs shrink-0 pl-2">[{q.marks}]</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
+                  ))}
                 </div>
 
                 {/* Footer divider */}
-                <div className="text-center text-[10px] font-bold border-t border-black/25 pt-4 text-slate-500 uppercase tracking-widest mt-auto z-10">
+                <div className="text-center text-[10px] font-bold border-t border-black/25 pt-6 text-slate-500 uppercase tracking-widest mt-auto z-10 print-section-header">
                   — End of Examination Paper —
                 </div>
 
