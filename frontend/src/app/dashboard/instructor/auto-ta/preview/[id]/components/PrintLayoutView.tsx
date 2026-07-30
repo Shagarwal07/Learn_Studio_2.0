@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Printer, Save } from 'lucide-react';
+import { Printer, Save, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -16,6 +16,7 @@ interface PrintLayoutViewProps {
   setPrintLayoutMode: (mode: 'formal' | 'worksheet') => void;
   handlePrintTrigger: () => void;
   handleDownloadDocx: () => void;
+  handleDownloadStudioPdf?: () => void;
   editTestType: string;
   editClass: string;
   editSubject: string;
@@ -31,6 +32,7 @@ export function PrintLayoutView({
   setPrintLayoutMode,
   handlePrintTrigger,
   handleDownloadDocx,
+  handleDownloadStudioPdf,
   editTestType,
   editClass,
   editSubject,
@@ -70,13 +72,22 @@ export function PrintLayoutView({
             </button>
           </div>
         </div>
-        <div className="flex gap-2.5 self-start xl:self-auto">
+        <div className="flex flex-wrap gap-2.5 self-start xl:self-auto">
+          {handleDownloadStudioPdf && (
+            <button
+              onClick={handleDownloadStudioPdf}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0 shadow-lg shadow-rose-500/25"
+            >
+              <FileText className="w-4 h-4" />
+              Download Studio PDF (.pdf)
+            </button>
+          )}
           <button
             onClick={handlePrintTrigger}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0 shadow-lg shadow-indigo-500/25"
           >
             <Printer className="w-4 h-4" />
-            Download PDF / Print
+            Browser Print Preview
           </button>
           <button
             onClick={handleDownloadDocx}

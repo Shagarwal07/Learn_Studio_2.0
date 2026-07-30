@@ -32,6 +32,7 @@ public class AutoTaController {
     private final ReviewService reviewService;
     private final EditorService editorService;
     private final DocxExportService docxExportService;
+    private final com.learnhub.service.PdfExportService pdfExportService;
     private final ExamRequestRepository examRequestRepository;
     private final GeneratedPaperRepository paperRepository;
     private final AgentExecutionLogRepository executionLogRepository;
@@ -331,6 +332,33 @@ public class AutoTaController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"exam-paper-" + id + ".docx\"")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
                 .body(docxBytes);
+    }
+
+    @GetMapping("/papers/{id}/export/pdf")
+    public ResponseEntity<?> exportPdf(@PathVariable Long id) {
+        GeneratedPaper paper = paperRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Paper not found"));
+
+        // Validate first
+        List<String> errors = editorService.runValidation(paper);
+        if (!errors.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("PDF Export Blocked: Validation errors present: " + String.join("; ", errors)));
+        }
+
+        // Validate status: must be APPROVED or REVIEWED, or COMPLETED_WITH_WARNINGS to allow export
+        GeneratedPaper.Status status = paper.getStatus();
+        boolean hasWarnings = paper.getExamRequest() != null && paper.getExamRequest().getStatus() == com.learnhub.entity.ExamRequest.Status.COMPLETED_WITH_WARNINGS;
+        
+        if (status != GeneratedPaper.Status.APPROVED && status != GeneratedPaper.Status.REVIEWED && status != GeneratedPaper.Status.EXPORTED && status != GeneratedPaper.Status.PUBLISHED && !hasWarnings) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("PDF Export Blocked: Exam paper must be APPROVED or REVIEWED before exporting."));
+        }
+
+        byte[] pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"studio-exam-paper-" + id + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 
     @PostMapping("/papers/{id}/review")

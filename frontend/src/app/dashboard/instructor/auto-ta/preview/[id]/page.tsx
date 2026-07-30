@@ -622,6 +622,40 @@ export default function PaperPreviewPage() {
     }
   };
 
+  // Safe Java OpenPDF Studio-Grade Document Download Trigger
+  const handleDownloadStudioPdf = async () => {
+    if (validation && !validation.isValid) {
+      alert('Studio PDF Export Blocked: Paper validation failed:\n' + validation.errors.join('\n'));
+      return;
+    }
+    if (paper?.status !== 'APPROVED' && paper?.status !== 'EXPORTED' && paper?.status !== 'PUBLISHED' && paper?.status !== 'REVIEWED') {
+      alert('Studio PDF Export Blocked: You must Approve the paper first to authorize PDF export.');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const response = await api.get(`/autota/papers/${paperId}/export/pdf`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `studio-exam-paper-${paperId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Failed to export Studio PDF:', err);
+      alert('Failed to download Studio PDF: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const toggleQuestionRejection = (id: number) => {
     if (selectedRejectedIds.includes(id)) {
       setSelectedRejectedIds(selectedRejectedIds.filter(item => item !== id));
@@ -1230,6 +1264,7 @@ export default function PaperPreviewPage() {
             setPrintLayoutMode={setPrintLayoutMode}
             handlePrintTrigger={handlePrintTrigger}
             handleDownloadDocx={handleDownloadDocx}
+            handleDownloadStudioPdf={handleDownloadStudioPdf}
             editTestType={editTestType}
             editClass={editClass}
             editSubject={editSubject}
