@@ -1098,17 +1098,20 @@ export default function PaperPreviewPage() {
                           try {
                             const parsedOpts = JSON.parse(q.options);
                             return (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-4 pt-1">
-                                {Object.entries(parsedOpts).map(([key, val]) => (
-                                  <div key={key} className="text-xs text-slate-400 font-semibold flex items-baseline gap-1.5">
-                                    <span className="text-indigo-400 font-bold shrink-0">{key}.</span>
-                                    <div className="inline-block flex-1 prose prose-invert prose-sm max-w-none">
-                                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                        {val as string}
-                                      </ReactMarkdown>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 pl-4 pt-1.5 w-full">
+                                {Object.entries(parsedOpts).map(([key, val], optIdx) => {
+                                  const stdLabel = ['a', 'b', 'c', 'd', 'e', 'f'][optIdx] || key.toLowerCase();
+                                  return (
+                                    <div key={key} className="text-xs sm:text-[13px] text-slate-300 font-semibold flex items-baseline gap-2">
+                                      <span className="text-indigo-400 font-extrabold shrink-0 select-none">({stdLabel})</span>
+                                      <div className="inline-block flex-1 prose prose-invert prose-sm max-w-none">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                          {val as string}
+                                        </ReactMarkdown>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             );
                           } catch (e) {

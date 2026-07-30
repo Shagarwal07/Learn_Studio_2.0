@@ -204,12 +204,15 @@ public class PromptSanitizerService {
                     sec.getSectionName(), secId, sec.getCount(), sec.getQuestionType(), sec.getMarksPerQuestion(), sec.getCount() * sec.getMarksPerQuestion(), optionInstruction));
             }
             
-            promptBuilder.append(String.format("\nFINAL JSON VERIFICATION CHECKLIST:\n" +
+            promptBuilder.append(String.format("\nFINAL JSON VERIFICATION AND FORMATTING CHECKLIST:\n" +
                 "1. The JSON array MUST contain exactly %d elements in total (no more, no less).\n" +
                 "2. The sum of the 'marks' field across all %d objects in the JSON array MUST equal exactly %d marks.\n" +
                 "3. Only MCQ and ASSERTION_REASON questions should contain options. For FILL_IN_THE_BLANK, SHORT_ANSWER, VERY_SHORT_ANSWER, LONG_ANSWER, or CASE_STUDY sections, you MUST leave the 'options' array completely empty [].\n" +
                 "4. Every question in the generated JSON array MUST have completely unique text, concepts, and scenarios. Absolutely NO duplicates or repeating questions are allowed.\n" +
-                "5. CONCISE METADATA RULE: Keep 'solutionExplanation' and 'markingScheme' strictly under 30 words per question so the entire exam paper generates completely without token truncation.\n", 
+                "5. CONCISE METADATA RULE: Keep 'solutionExplanation' and 'markingScheme' strictly under 30 words per question so the entire exam paper generates completely without token truncation.\n" +
+                "6. MCQ LABELS: Ensure MCQ options are cleanly structured without unnatural numerical numbering (0, 1, 2, 3).\n" +
+                "7. FILL-IN-THE-BLANKS: For Fill-in-the-Blank questions (Section B), embed explicit underscores (e.g., '__________') at the exact target word position.\n" +
+                "8. SUB-QUESTIONS: For Case Study or Long Answer questions (Section G) containing multiple sub-prompts, explicitly prefix each sub-question with lowercase alphabetical letters '(a)', '(b)', '(c)', '(d)' on new lines.\n", 
                 totalQuestions, totalQuestions, totalMarks));
             
             if (removeTickMarks) {

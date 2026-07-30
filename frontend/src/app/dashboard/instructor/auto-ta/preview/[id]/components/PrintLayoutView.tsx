@@ -247,94 +247,144 @@ export function PrintLayoutView({
 
           {/* Question Sections dynamically mapped across all pages */}
           <div className="space-y-6 pt-1 flex-1 text-black relative z-10">
-            {dynamicSections.map((sec) => {
-              const avgLen = sec.questions.reduce((sum, q) => sum + (q.questionText?.length || 0), 0) / (sec.questions.length || 1);
-              const isMcqPresent = sec.questions.some(q => q.questionType === 'MCQ' || (q.options && q.options !== 'null' && q.options !== '{}'));
-              
-              // Antigravity Continuous Flow Grid calculation for worksheets
-              let isCompactGrid = false;
-              let gridClass = "space-y-3.5 pt-1.5";
-              if (printLayoutMode === 'worksheet' && !isMcqPresent && sec.questions.length >= 3) {
-                if (avgLen <= 26) {
-                  isCompactGrid = true;
-                  gridClass = "grid grid-cols-4 gap-x-6 gap-y-3.5 pt-2.5 space-y-0";
-                } else if (avgLen <= 48) {
-                  isCompactGrid = true;
-                  gridClass = "grid grid-cols-2 gap-x-10 gap-y-3.5 pt-2.5 space-y-0";
-                } else if (avgLen <= 70) {
-                  gridClass = "space-y-2.5 pt-2";
-                } else {
+            {(() => {
+              const formatQuestionText = (text: string, secName: string, qType: string): string => {
+                let t = text ? text.trim() : '';
+                if (!t) return '';
+
+                const secUpper = (secName || '').toUpperCase();
+                const typeUpper = (qType || '').toUpperCase();
+
+                // 1. Fill-in-the-Blanks: Add Blank Lines in Section B or FILL_IN_THE_BLANK
+                if (secUpper.includes('SECTION_B') || secUpper.includes('FILL') || typeUpper === 'FILL_IN_THE_BLANK') {
+                  if (!t.includes('___') && !t.includes('...')) {
+                    if (t.endsWith('.') || t.endsWith('?')) {
+                      t = t.slice(0, -1) + ' __________' + t.slice(-1);
+                    } else {
+                      t += ' __________';
+                    }
+                  }
+                }
+
+                // 2. Label Sub-questions in Section G / Case Study / Long form
+                if (secUpper.includes('SECTION_G') || secUpper.includes('CASE') || typeUpper === 'CASE_STUDY' || typeUpper === 'LONG_ANSWER') {
+                  const lines = t.split(/\n+/).map(l => l.trim()).filter(Boolean);
+                  if (lines.length > 1) {
+                    const alpha = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)'];
+                    let subIdx = 0;
+                    return lines.map((line, idx) => {
+                      if (idx === 0 && !line.match(/^[\-\*\•\d]+\.?\s/) && !line.match(/^\([a-zA-Z\d]+\)\s/)) {
+                        return line;
+                      }
+                      if (line.match(/^\([a-zA-Z\d]+\)\s/)) {
+                        return `\n\n${line}`;
+                      }
+                      const cleaned = line.replace(/^[\-\*\•\d]+\.?\s+/, '').trim();
+                      const lbl = alpha[subIdx++] || `(${subIdx})`;
+                      return `\n\n**${lbl}** ${cleaned}`;
+                    }).join('');
+                  }
+                }
+
+                return t;
+              };
+
+              return dynamicSections.map((sec) => {
+                const avgLen = sec.questions.reduce((sum, q) => sum + (q.questionText?.length || 0), 0) / (sec.questions.length || 1);
+                const isMcqPresent = sec.questions.some(q => q.questionType === 'MCQ' || (q.options && q.options !== 'null' && q.options !== '{}'));
+                
+                // Antigravity Continuous Flow Grid calculation for worksheets
+                let isCompactGrid = false;
+                let gridClass = "space-y-3.5 pt-1.5";
+                if (printLayoutMode === 'worksheet' && !isMcqPresent && sec.questions.length >= 3) {
+                  if (avgLen <= 26) {
+                    isCompactGrid = true;
+                    gridClass = "grid grid-cols-4 gap-x-6 gap-y-3.5 pt-2.5 space-y-0";
+                  } else if (avgLen <= 48) {
+                    isCompactGrid = true;
+                    gridClass = "grid grid-cols-2 gap-x-10 gap-y-3.5 pt-2.5 space-y-0";
+                  } else if (avgLen <= 70) {
+                    gridClass = "space-y-2.5 pt-2";
+                  } else {
+                    gridClass = "space-y-3.5 pt-2";
+                  }
+                } else if (printLayoutMode === 'worksheet') {
                   gridClass = "space-y-3.5 pt-2";
                 }
-              } else if (printLayoutMode === 'worksheet') {
-                gridClass = "space-y-3.5 pt-2";
-              }
 
-              return (
-                <div key={sec.key} className="space-y-2 print-section-container">
-                  {printLayoutMode === 'worksheet' ? (
-                    <div className="text-left font-extrabold font-serif text-[16px] tracking-wide pt-2.5 pb-0.5 text-black flex items-center gap-2 print-section-header">
-                      {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-4.5 inline-block my-auto shrink-0" />}
-                      <span>{sec.displayLabel}</span>
-                    </div>
-                  ) : (
-                    <div className="text-center font-bold font-serif text-[14px] tracking-wide pt-1.5 print-section-header">
-                      <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
-                      <span className="font-extrabold ml-1.5">
-                        {sec.allSameMarks
-                          ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
-                          : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
-                        }
-                      </span>
-                    </div>
-                  )}
-
-                  <div className={gridClass}>
-                    {sec.questions.map((q, qIdx) => (
-                      <div key={q.id} className={`text-[15px] sm:text-[15.5px] relative leading-relaxed text-black print-question-item ${isCompactGrid ? '' : 'space-y-1.5'}`}>
-                        <div className={`flex gap-2 items-baseline ${isCompactGrid ? 'justify-start' : ''}`}>
-                          {!isCompactGrid && (
-                            <span className="font-extrabold shrink-0 min-w-[22px] text-right text-[15px]">
-                              {q.questionOrder || qIdx + 1}{printLayoutMode === 'worksheet' ? '.' : ')'}
-                            </span>
-                          )}
-                          <div className="flex-1 font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[15px] sm:text-[15.5px]">
-                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                              {q.questionText}
-                            </ReactMarkdown>
-                          </div>
-                          {printLayoutMode !== 'worksheet' && Number(q.marks) > 0 && (
-                            <span className="font-extrabold text-[13px] shrink-0 pl-2">[{q.marks}]</span>
-                          )}
-                        </div>
-
-                        {q.options && (() => {
-                          try {
-                            const parsed = JSON.parse(q.options);
-                            return (
-                              <div className="grid grid-cols-2 gap-x-10 gap-y-1.5 pl-7 pt-1 text-black print-mcq-options">
-                                {Object.entries(parsed).map(([key, val]) => (
-                                  <div key={key} className="text-[13.5px] sm:text-[14px] text-black flex items-baseline gap-1.5">
-                                    <span className="font-extrabold mr-1 text-black shrink-0">({key.toLowerCase()})</span>
-                                    <div className="inline-block flex-1 prose prose-slate max-w-none text-black text-[13.5px] sm:text-[14px]">
-                                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                        {val as string}
-                                      </ReactMarkdown>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            );
-                          } catch (e) {
-                            return null;
-                          }
-                        })()}
+                return (
+                  <div key={sec.key} className="space-y-2 print-section-container">
+                    {printLayoutMode === 'worksheet' ? (
+                      <div className="text-left font-extrabold font-serif text-[16px] tracking-wide pt-2.5 pb-0.5 text-black flex items-center gap-2 print-section-header">
+                        {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-4.5 inline-block my-auto shrink-0" />}
+                        <span>{sec.displayLabel}</span>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="text-center font-bold font-serif text-[14px] tracking-wide pt-1.5 print-section-header">
+                        <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
+                        <span className="font-extrabold ml-1.5">
+                          {sec.allSameMarks
+                            ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
+                            : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
+                          }
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={gridClass}>
+                      {sec.questions.slice().sort((a, b) => (a.questionOrder || 999) - (b.questionOrder || 999)).map((q, qIdx) => (
+                        <div key={q.id} className={`text-[15px] sm:text-[15.5px] relative leading-relaxed text-black print-question-item ${isCompactGrid ? '' : 'space-y-1.5'}`}>
+                          <div className={`flex items-baseline justify-between w-full gap-4 ${isCompactGrid ? 'justify-start' : ''}`}>
+                            <div className="flex gap-2 items-baseline flex-1 min-w-0">
+                              {!isCompactGrid && (
+                                <span className="font-extrabold shrink-0 min-w-[22px] text-right text-[15px] select-none">
+                                  {qIdx + 1}{printLayoutMode === 'worksheet' ? '.' : ')'}
+                                </span>
+                              )}
+                              <div className="flex-1 font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[15px] sm:text-[15.5px]">
+                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                  {formatQuestionText(q.questionText, sec.displayLabel, q.questionType)}
+                                </ReactMarkdown>
+                              </div>
+                            </div>
+                            {printLayoutMode !== 'worksheet' && Number(q.marks) > 0 && (
+                              <span className="font-extrabold text-[13.5px] sm:text-[14px] shrink-0 ml-auto pl-4 text-right select-none min-w-[40px]">
+                                [{q.marks}]
+                              </span>
+                            )}
+                          </div>
+
+                          {q.options && (() => {
+                            try {
+                              const parsed = JSON.parse(q.options);
+                              return (
+                                <div className="grid grid-cols-2 w-full gap-x-12 gap-y-2 pl-8 pt-1 text-black print-mcq-options">
+                                  {Object.entries(parsed).map(([key, val], optIdx) => {
+                                    const stdLabel = ['a', 'b', 'c', 'd', 'e', 'f'][optIdx] || key.toLowerCase();
+                                    return (
+                                      <div key={key} className="text-[13.5px] sm:text-[14px] text-black flex items-baseline gap-1.5">
+                                        <span className="font-extrabold mr-1 text-black shrink-0 select-none">({stdLabel})</span>
+                                        <div className="inline-block flex-1 prose prose-slate max-w-none text-black text-[13.5px] sm:text-[14px]">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                            {val as string}
+                                          </ReactMarkdown>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            } catch (e) {
+                              return null;
+                            }
+                          })()}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
 
           {/* Footer divider */}

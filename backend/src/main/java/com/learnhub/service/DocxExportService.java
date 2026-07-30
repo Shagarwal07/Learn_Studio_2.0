@@ -222,12 +222,16 @@ public class DocxExportService {
                         
                         XWPFRun optRun = optPara.createRun();
                         StringBuilder optStr = new StringBuilder();
+                        String[] alpha = {"a", "b", "c", "d", "e", "f"};
+                        int optIdx = 0;
                         for (Map.Entry<?, ?> entry : opts.entrySet()) {
+                            String label = (optIdx < alpha.length) ? alpha[optIdx] : entry.getKey().toString().toLowerCase();
                             optStr.append("(")
-                                  .append(entry.getKey().toString().toLowerCase())
+                                  .append(label)
                                   .append(") ")
                                   .append(entry.getValue().toString())
                                   .append("     ");
+                            optIdx++;
                         }
                         optRun.setText(optStr.toString().trim());
                         optRun.setFontFamily("Times New Roman");
