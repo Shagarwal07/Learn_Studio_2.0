@@ -91,16 +91,16 @@ export function PrintLayoutView({
       {/* A4 Container */}
       <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner print-container">
         <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-[210mm] min-h-[297mm] flex flex-col space-y-6 text-left relative select-text ${
-          printLayoutMode === 'worksheet' ? 'p-10 sm:p-12 border-none' : 'p-12 sm:p-16 border-[6px] border-double border-black'
+          printLayoutMode === 'worksheet' ? 'p-8 sm:p-10 border-none' : 'p-9 sm:p-12 border-[5px] border-double border-black'
         }`}>
           
-          {/* Print Stylesheet injection for clean multi-page pagination */}
+          {/* Print Stylesheet injection for clean multi-page pagination and optimal typography */}
           <style dangerouslySetInnerHTML={{ __html: `
             @page {
               size: A4 portrait;
-              margin: ${printLayoutMode === 'worksheet' ? '15mm 20mm 15mm 20mm' : '18mm 15mm 18mm 15mm'};
-              border: ${printLayoutMode === 'worksheet' ? 'none' : '4px double #000000'};
-              padding: ${printLayoutMode === 'worksheet' ? '0' : '6mm'};
+              margin: ${printLayoutMode === 'worksheet' ? '12mm 15mm 12mm 15mm' : '14mm 12mm 14mm 12mm'};
+              border: ${printLayoutMode === 'worksheet' ? 'none' : '3.5px double #000000'};
+              padding: ${printLayoutMode === 'worksheet' ? '0' : '4.5mm'};
             }
             @media print {
               html, body {
@@ -111,6 +111,7 @@ export function PrintLayoutView({
                 color: black !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                font-size: 12pt !important;
               }
               aside, nav, header, button, .no-print, .tab-selector, .print-toolbar, .lg\\:col-span-3, .review-decision-panel {
                 display: none !important;
@@ -144,18 +145,41 @@ export function PrintLayoutView({
                 display: block !important;
                 overflow: visible !important;
               }
+              .print-section-container {
+                margin-bottom: 18px !important;
+              }
               .print-section-header {
                 page-break-after: avoid !important;
                 break-after: avoid !important;
+                font-size: 13.5pt !important;
+                font-weight: bold !important;
+                padding-top: 8px !important;
+                padding-bottom: 4px !important;
               }
               .print-question-item {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 margin-bottom: 12px !important;
+                font-size: ${printLayoutMode === 'worksheet' ? '12.5pt' : '12pt'} !important;
+                line-height: 1.45 !important;
+              }
+              .print-math-container, .print-math-container p, .print-math-container span {
+                font-size: ${printLayoutMode === 'worksheet' ? '12.5pt' : '12pt'} !important;
+                line-height: 1.45 !important;
+                color: black !important;
+                margin: 0 !important;
               }
               .print-mcq-options {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                font-size: 11pt !important;
+                margin-top: 4px !important;
+              }
+              .print-mcq-options div, .print-mcq-options p {
+                font-size: 11pt !important;
+                line-height: 1.35 !important;
+                color: black !important;
+                margin: 0 !important;
               }
             }
           ` }} />
@@ -186,32 +210,32 @@ export function PrintLayoutView({
 
           {/* Header */}
           {printLayoutMode === 'worksheet' ? (
-            <div className="pb-2 relative z-10 w-full text-center">
-              <h1 className="text-2xl sm:text-[28px] font-black tracking-wider uppercase text-black font-serif my-1.5 leading-none">
+            <div className="pb-1.5 relative z-10 w-full text-center">
+              <h1 className="text-2xl sm:text-[28px] font-black tracking-wider uppercase text-black font-serif my-1 leading-none">
                 {editTestType && editTestType.length < 45 ? editTestType : 'R. K. COACHING CLASSES, BALOTRA'}
               </h1>
-              <div className="text-sm font-bold italic text-black pb-2 font-serif">
+              <div className="text-sm sm:text-[15px] font-bold italic text-black pb-1.5 font-serif">
                 {editSubject || 'Mathematics'} Worksheet – Categorized Practice
               </div>
-              <div className="border-b-[2.5px] border-black w-full my-2"></div>
+              <div className="border-b-[2.5px] border-black w-full my-1.5"></div>
             </div>
           ) : (
-            <div className="pb-2 relative z-10 w-full text-center">
-              <h1 className="text-3xl sm:text-[32px] font-black tracking-wider uppercase text-black font-serif my-2 leading-none whitespace-nowrap">
+            <div className="pb-1.5 relative z-10 w-full text-center">
+              <h1 className="text-2xl sm:text-[32px] font-black tracking-wider uppercase text-black font-serif my-1.5 leading-none whitespace-nowrap">
                 R. K. COACHING CLASSES
               </h1>
-              <div className="border-b-[4px] border-black w-full my-1"></div>
+              <div className="border-b-[3.5px] border-black w-full my-1"></div>
               
-              <div className="text-center font-bold text-md my-2 flex items-center justify-center gap-2">
-                <span className="bg-yellow-200 border border-black text-black px-3 py-0.5 font-extrabold uppercase text-[10px] tracking-wider">{editTestType}</span>
-                <span className="text-black font-extrabold text-sm font-serif">Class – {editClass || '9th'} ({editSubject || 'Mathematics'})</span>
+              <div className="text-center font-bold text-sm sm:text-base my-2 flex items-center justify-center gap-2">
+                <span className="bg-yellow-200 border border-black text-black px-3 py-0.5 font-extrabold uppercase text-[11px] tracking-wider">{editTestType}</span>
+                <span className="text-black font-extrabold text-[15px] font-serif">Class – {editClass || '9th'} ({editSubject || 'Mathematics'})</span>
               </div>
               
-              <div className="grid grid-cols-3 items-center text-xs font-bold font-serif py-1.5 border-t-2 border-b-4 border-double border-black mt-2">
+              <div className="grid grid-cols-3 items-center text-xs sm:text-[13px] font-bold font-serif py-1.5 border-t-2 border-b-4 border-double border-black mt-2">
                 <div className="justify-self-start border-2 border-black px-2.5 py-0.5 text-black">
                   Time – {editDuration} min
                 </div>
-                <div className="justify-self-center text-black font-black tracking-wide uppercase text-center max-w-[320px] line-clamp-2 text-ellipsis overflow-hidden">
+                <div className="justify-self-center text-black font-black tracking-wide uppercase text-center max-w-[340px] line-clamp-2 text-ellipsis overflow-hidden">
                   {editChapters || 'Syllabus Core'}
                 </div>
                 <div className="justify-self-end border-2 border-black px-2.5 py-0.5 text-black">
@@ -222,41 +246,41 @@ export function PrintLayoutView({
           )}
 
           {/* Question Sections dynamically mapped across all pages */}
-          <div className="space-y-6 pt-2 flex-1 text-black relative z-10">
+          <div className="space-y-6 pt-1 flex-1 text-black relative z-10">
             {dynamicSections.map((sec) => {
               const avgLen = sec.questions.reduce((sum, q) => sum + (q.questionText?.length || 0), 0) / (sec.questions.length || 1);
               const isMcqPresent = sec.questions.some(q => q.questionType === 'MCQ' || (q.options && q.options !== 'null' && q.options !== '{}'));
               
               // Antigravity Continuous Flow Grid calculation for worksheets
               let isCompactGrid = false;
-              let gridClass = "space-y-4 pt-1";
+              let gridClass = "space-y-3.5 pt-1.5";
               if (printLayoutMode === 'worksheet' && !isMcqPresent && sec.questions.length >= 3) {
                 if (avgLen <= 26) {
                   isCompactGrid = true;
-                  gridClass = "grid grid-cols-4 gap-x-6 gap-y-3.5 pt-3 space-y-0";
+                  gridClass = "grid grid-cols-4 gap-x-6 gap-y-3.5 pt-2.5 space-y-0";
                 } else if (avgLen <= 48) {
                   isCompactGrid = true;
-                  gridClass = "grid grid-cols-2 gap-x-10 gap-y-3.5 pt-3 space-y-0";
+                  gridClass = "grid grid-cols-2 gap-x-10 gap-y-3.5 pt-2.5 space-y-0";
                 } else if (avgLen <= 70) {
-                  gridClass = "space-y-2 pt-2";
+                  gridClass = "space-y-2.5 pt-2";
                 } else {
-                  gridClass = "space-y-3 pt-2";
+                  gridClass = "space-y-3.5 pt-2";
                 }
               } else if (printLayoutMode === 'worksheet') {
-                gridClass = "space-y-3 pt-2";
+                gridClass = "space-y-3.5 pt-2";
               }
 
               return (
                 <div key={sec.key} className="space-y-2 print-section-container">
                   {printLayoutMode === 'worksheet' ? (
-                    <div className="text-left font-extrabold font-serif text-[15px] tracking-wide pt-3 pb-1 text-black flex items-center gap-2 print-section-header">
-                      {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-4 inline-block my-auto shrink-0" />}
+                    <div className="text-left font-extrabold font-serif text-[16px] tracking-wide pt-2.5 pb-0.5 text-black flex items-center gap-2 print-section-header">
+                      {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-4.5 inline-block my-auto shrink-0" />}
                       <span>{sec.displayLabel}</span>
                     </div>
                   ) : (
-                    <div className="text-center font-bold font-serif text-[13px] tracking-wide pt-2 print-section-header">
+                    <div className="text-center font-bold font-serif text-[14px] tracking-wide pt-1.5 print-section-header">
                       <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
-                      <span className="font-extrabold ml-1">
+                      <span className="font-extrabold ml-1.5">
                         {sec.allSameMarks
                           ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
                           : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
@@ -267,20 +291,20 @@ export function PrintLayoutView({
 
                   <div className={gridClass}>
                     {sec.questions.map((q, qIdx) => (
-                      <div key={q.id} className={`text-sm relative leading-relaxed text-black print-question-item ${isCompactGrid ? '' : 'space-y-2'}`}>
+                      <div key={q.id} className={`text-[15px] sm:text-[15.5px] relative leading-relaxed text-black print-question-item ${isCompactGrid ? '' : 'space-y-1.5'}`}>
                         <div className={`flex gap-2 items-baseline ${isCompactGrid ? 'justify-start' : ''}`}>
                           {!isCompactGrid && (
-                            <span className="font-bold shrink-0 min-w-[20px] text-right">
+                            <span className="font-extrabold shrink-0 min-w-[22px] text-right text-[15px]">
                               {q.questionOrder || qIdx + 1}{printLayoutMode === 'worksheet' ? '.' : ')'}
                             </span>
                           )}
-                          <div className="flex-1 font-medium text-black text-left prose prose-sm max-w-none print-math-container">
+                          <div className="flex-1 font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[15px] sm:text-[15.5px]">
                             <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                               {q.questionText}
                             </ReactMarkdown>
                           </div>
                           {printLayoutMode !== 'worksheet' && Number(q.marks) > 0 && (
-                            <span className="font-bold text-xs shrink-0 pl-2">[{q.marks}]</span>
+                            <span className="font-extrabold text-[13px] shrink-0 pl-2">[{q.marks}]</span>
                           )}
                         </div>
 
@@ -288,11 +312,11 @@ export function PrintLayoutView({
                           try {
                             const parsed = JSON.parse(q.options);
                             return (
-                              <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 pl-7 pt-1 text-black print-mcq-options">
+                              <div className="grid grid-cols-2 gap-x-10 gap-y-1.5 pl-7 pt-1 text-black print-mcq-options">
                                 {Object.entries(parsed).map(([key, val]) => (
-                                  <div key={key} className="text-xs text-black flex items-baseline gap-1.5">
-                                    <span className="font-bold mr-1 text-black shrink-0">({key.toLowerCase()})</span>
-                                    <div className="inline-block flex-1 prose prose-sm max-w-none text-black">
+                                  <div key={key} className="text-[13.5px] sm:text-[14px] text-black flex items-baseline gap-1.5">
+                                    <span className="font-extrabold mr-1 text-black shrink-0">({key.toLowerCase()})</span>
+                                    <div className="inline-block flex-1 prose prose-slate max-w-none text-black text-[13.5px] sm:text-[14px]">
                                       <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                         {val as string}
                                       </ReactMarkdown>

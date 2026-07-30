@@ -214,29 +214,51 @@ public class AutoTaController {
                 }
             }
 
-            // Determine target marks per section based on whether it's Single Section, 3-Section Default, or 7-Section Super Duper
+            // Determine target marks per section (Super Duper 7-Section vs Zero-Mark Worksheet vs 3-Section vs Single/Custom)
             Map<String, Integer> targetMap = new java.util.TreeMap<>();
-            int distCount = actualMap.size();
-            if (distCount > 3 || actualMap.containsKey("SECTION_D")) {
-                // 7-Section Super Duper Blueprint
-                boolean is100 = (expectedTotal == 100);
-                targetMap.put("SECTION_A", is100 ? 10 : 5);
-                targetMap.put("SECTION_B", is100 ? 10 : 5);
-                targetMap.put("SECTION_C", is100 ? 4 : 2);
-                targetMap.put("SECTION_D", is100 ? 20 : 10);
-                targetMap.put("SECTION_E", is100 ? 20 : 10);
-                targetMap.put("SECTION_F", is100 ? 16 : 8);
-                targetMap.put("SECTION_G", is100 ? 20 : 10);
-            } else if (distCount == 1) {
+            boolean isSuperDuper = actualMap.size() > 3 || actualMap.keySet().stream().anyMatch(k -> k.toUpperCase().contains("SECTION_D") || k.toUpperCase().contains("SECTION_G"));
+            
+            if (expectedTotal <= 0) {
+                // Zero marks practice worksheet - target is 0 for all existing sections
+                for (String sec : actualMap.keySet()) {
+                    targetMap.put(sec, 0);
+                }
+            } else if (isSuperDuper) {
+                // 7-Section Super Duper Blueprint (Sections A to G) matching SuperDuperBlueprint exact marks
+                boolean isHighMarks = (expectedTotal >= 75);
+                String secA = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_A")).findFirst().orElse("SECTION_A - Multiple Choice Questions");
+                String secB = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_B")).findFirst().orElse("SECTION_B - Fill in the Blanks");
+                String secC = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_C")).findFirst().orElse("SECTION_C - Assertion Reason Questions");
+                String secD = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_D")).findFirst().orElse("SECTION_D - Very Short Answer Type Questions");
+                String secE = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_E")).findFirst().orElse("SECTION_E - Short Answer Type Questions");
+                String secF = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_F")).findFirst().orElse("SECTION_F - Long Answer Type Questions");
+                String secG = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_G")).findFirst().orElse("SECTION_G - Case Study Questions");
+                
+                targetMap.put(secA, isHighMarks ? 10 : 5);
+                targetMap.put(secB, isHighMarks ? 10 : 5);
+                targetMap.put(secC, isHighMarks ? 4 : 2);
+                targetMap.put(secD, isHighMarks ? 16 : 8);
+                targetMap.put(secE, isHighMarks ? 20 : 10);
+                targetMap.put(secF, isHighMarks ? 16 : 8);
+                targetMap.put(secG, isHighMarks ? 24 : 12);
+            } else if (actualMap.size() == 1) {
                 // Single Section Override
                 for (String k : actualMap.keySet()) {
                     targetMap.put(k, expectedTotal);
                 }
+            } else if (actualTotal == expectedTotal && !actualMap.isEmpty()) {
+                // If marks are balanced across custom worksheet/practice groupings, match actual distribution
+                targetMap.putAll(actualMap);
             } else {
                 // Default 3-Section Balanced Blueprint (20%, 30%, 50%)
-                targetMap.put("SECTION_A", Math.round(expectedTotal * 0.20f));
-                targetMap.put("SECTION_B", Math.round(expectedTotal * 0.30f));
-                targetMap.put("SECTION_C", expectedTotal - targetMap.getOrDefault("SECTION_A", 0) - targetMap.getOrDefault("SECTION_B", 0));
+                String secA = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_A")).findFirst().orElse("SECTION_A");
+                String secB = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_B")).findFirst().orElse("SECTION_B");
+                String secC = actualMap.keySet().stream().filter(k -> k.toUpperCase().contains("SECTION_C")).findFirst().orElse("SECTION_C");
+                int tA = Math.round(expectedTotal * 0.20f);
+                int tB = Math.round(expectedTotal * 0.30f);
+                targetMap.put(secA, tA);
+                targetMap.put(secB, tB);
+                targetMap.put(secC, expectedTotal - tA - tB);
             }
 
             // Build dynamic sections list for Live Validation Dashboard

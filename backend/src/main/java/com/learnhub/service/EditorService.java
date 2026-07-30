@@ -166,22 +166,21 @@ public class EditorService {
             }
 
             Integer m = q.getMarks();
-            if (m == null || m <= 0) {
+            if (m == null || (m <= 0 && paper.getTotalMarks() > 0)) {
                 errors.add(String.format("Question ID %d has invalid or missing marks.", q.getId()));
                 continue;
             }
 
-            if (!isAiGenerated && !ALLOWED_MARKS.contains(m)) {
+            if (!isAiGenerated && paper.getTotalMarks() > 0 && !ALLOWED_MARKS.contains(m)) {
                 errors.add(String.format("Question ID %d has invalid marks weight (%d). Allowed marks only: %s", 
                     q.getId(), m, ALLOWED_MARKS.toString()));
             }
 
-            actualTotal += m;
-            if (q.getSection().equalsIgnoreCase("SECTION_A")) actualA += m;
-            else if (q.getSection().equalsIgnoreCase("SECTION_B")) actualB += m;
-            else if (q.getSection().equalsIgnoreCase("SECTION_C")) actualC += m;
-            else if (!q.getSection().startsWith("SECTION_")) {
-                errors.add(String.format("Question ID %d has invalid section code: '%s'.", q.getId(), q.getSection()));
+            if (m != null) {
+                actualTotal += m;
+                if (q.getSection().equalsIgnoreCase("SECTION_A")) actualA += m;
+                else if (q.getSection().equalsIgnoreCase("SECTION_B")) actualB += m;
+                else if (q.getSection().equalsIgnoreCase("SECTION_C")) actualC += m;
             }
 
             // Empty fields validation
@@ -203,8 +202,8 @@ public class EditorService {
             }
 
             String text = q.getQuestionText().toLowerCase().trim();
-            if (text.length() < 15) {
-                errors.add(String.format("Question ID %d is too short (< 15 characters).", q.getId()));
+            if (text.length() < 2) {
+                errors.add(String.format("Question ID %d is too short (< 2 characters).", q.getId()));
             }
             String[] placeholders = {"placeholder", "lorem ipsum", "todo", "mock question", "insert question", "test question"};
             for (String p : placeholders) {
@@ -216,12 +215,12 @@ public class EditorService {
 
         // 3. Validate paper totals
         int expectedTotal = paper.getTotalMarks();
-        if (actualTotal != expectedTotal) {
+        if (expectedTotal > 0 && actualTotal != expectedTotal) {
             errors.add(String.format("Paper marks mismatch: Expected sum is %d, but actual sum is %d.", expectedTotal, actualTotal));
         }
 
-        // 4. Validate section totals against blueprint target totals only for rigid multi-agent tests
-        if (!isAiGenerated) {
+        // 4. Validate section totals against blueprint target totals only for rigid non-AI tests with standard 3 sections
+        if (!isAiGenerated && expectedTotal > 0 && questions.stream().allMatch(q -> q.getSection() != null && (q.getSection().equals("SECTION_A") || q.getSection().equals("SECTION_B") || q.getSection().equals("SECTION_C")))) {
             try {
                 ManagerService.PaperBlueprint blueprint = ManagerService.createBlueprint(expectedTotal, questions.size());
                 if (actualA != blueprint.sectionA.targetMarks) {

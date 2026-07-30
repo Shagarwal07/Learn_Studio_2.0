@@ -950,6 +950,9 @@ export default function PaperPreviewPage() {
                               onChange={(e) => setEditSection(e.target.value)}
                               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none"
                             >
+                              {!['SECTION_A', 'SECTION_B', 'SECTION_C', 'SECTION_D', 'SECTION_E', 'SECTION_F', 'SECTION_G'].includes(editSection) && (
+                                <option value={editSection}>{editSection}</option>
+                              )}
                               <option value="SECTION_A">Section A</option>
                               <option value="SECTION_B">Section B</option>
                               <option value="SECTION_C">Section C</option>
