@@ -90,7 +90,7 @@ export function PrintLayoutView({
 
       {/* A4 Container */}
       <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner print-container">
-        <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-[210mm] min-h-[297mm] flex flex-col space-y-6 text-left relative select-text ${
+        <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-[210mm] min-h-[297mm] block overflow-visible space-y-6 text-left relative select-text ${
           printLayoutMode === 'worksheet' ? 'p-8 sm:p-10 border-none' : 'p-9 sm:p-12 border-[5px] border-double border-black'
         }`}>
           
@@ -147,6 +147,8 @@ export function PrintLayoutView({
               }
               .print-section-container {
                 margin-bottom: 18px !important;
+                display: block !important;
+                overflow: visible !important;
               }
               .print-section-header {
                 page-break-after: avoid !important;
@@ -157,17 +159,20 @@ export function PrintLayoutView({
                 padding-bottom: 4px !important;
               }
               .print-question-item {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                margin-bottom: 12px !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+                margin-bottom: 16px !important;
                 font-size: ${printLayoutMode === 'worksheet' ? '12.5pt' : '12pt'} !important;
                 line-height: 1.45 !important;
+                display: block !important;
+                overflow: visible !important;
               }
               .print-math-container, .print-math-container p, .print-math-container span {
                 font-size: ${printLayoutMode === 'worksheet' ? '12.5pt' : '12pt'} !important;
                 line-height: 1.45 !important;
                 color: black !important;
                 margin: 0 !important;
+                overflow: visible !important;
               }
               .print-mcq-options {
                 page-break-inside: avoid !important;
@@ -333,25 +338,24 @@ export function PrintLayoutView({
 
                     <div className={gridClass}>
                       {sec.questions.slice().sort((a, b) => (a.questionOrder || 999) - (b.questionOrder || 999)).map((q, qIdx) => (
-                        <div key={q.id} className={`text-[15px] sm:text-[15.5px] relative leading-relaxed text-black print-question-item ${isCompactGrid ? '' : 'space-y-1.5'}`}>
-                          <div className={`flex items-baseline justify-between w-full gap-4 ${isCompactGrid ? 'justify-start' : ''}`}>
-                            <div className="flex gap-2 items-baseline flex-1 min-w-0">
-                              {!isCompactGrid && (
-                                <span className="font-extrabold shrink-0 min-w-[22px] text-right text-[15px] select-none">
-                                  {qIdx + 1}{printLayoutMode === 'worksheet' ? '.' : ')'}
-                                </span>
-                              )}
-                              <div className="flex-1 font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[15px] sm:text-[15.5px]">
-                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                  {formatQuestionText(q.questionText, sec.displayLabel, q.questionType)}
-                                </ReactMarkdown>
-                              </div>
-                            </div>
+                        <div key={q.id} className={`text-[15px] sm:text-[15.5px] relative leading-relaxed text-black print-question-item block overflow-visible ${isCompactGrid ? '' : 'space-y-2 mb-4'}`}>
+                          <div className="block w-full overflow-visible relative">
                             {printLayoutMode !== 'worksheet' && Number(q.marks) > 0 && (
-                              <span className="font-extrabold text-[13.5px] sm:text-[14px] shrink-0 ml-auto pl-4 text-right select-none min-w-[40px]">
+                              <span className="float-right font-extrabold text-[13.5px] sm:text-[14px] pl-4 text-right select-none min-w-[40px] print-mark-badge">
                                 [{q.marks}]
                               </span>
                             )}
+                            <div className="font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[15px] sm:text-[15.5px] block overflow-visible">
+                              {!isCompactGrid && (
+                                <span className="font-extrabold mr-2 float-left select-none inline-block text-[15px]">
+                                  {qIdx + 1}{printLayoutMode === 'worksheet' ? '.' : ')'}
+                                </span>
+                              )}
+                              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                {formatQuestionText(q.questionText, sec.displayLabel, q.questionType)}
+                              </ReactMarkdown>
+                            </div>
+                            <div className="clear-both"></div>
                           </div>
 
                           {q.options && (() => {
@@ -388,7 +392,7 @@ export function PrintLayoutView({
           </div>
 
           {/* Footer divider */}
-          <div className="text-center text-[10px] font-bold border-t border-black/25 pt-6 text-slate-500 uppercase tracking-widest mt-auto z-10 print-section-header">
+          <div className="text-center text-[10px] font-bold border-t border-black/25 pt-6 text-slate-500 uppercase tracking-widest mt-16 z-10 print-section-header block overflow-visible">
             — End of Examination Paper —
           </div>
 
