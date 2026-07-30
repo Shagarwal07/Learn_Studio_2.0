@@ -445,8 +445,10 @@ public class AutoTaController {
             com.learnhub.entity.Batch batch = batchRepository.findById(batchId)
                     .orElseThrow(() -> new RuntimeException("Batch not found"));
 
-            // 1. Sanitize Prompt & Extract Intent
-            var promptResult = promptSanitizerService.sanitizePrompt(customPrompt, subject, batch.getName());
+            boolean hasUploadedImages = (images != null && !images.isEmpty() && images.stream().anyMatch(f -> f != null && !f.isEmpty()));
+
+            // 1. Sanitize Prompt & Extract Intent (distinguish UI image extraction vs Notes blueprinting)
+            var promptResult = promptSanitizerService.sanitizePrompt(customPrompt, subject, batch.getName(), hasUploadedImages);
 
             // 2. Fetch PDF Texts and Note Titles
             List<String> pdfTexts = new ArrayList<>();

@@ -9,6 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.learnhub.service.blueprint.SuperDuperBlueprint;
+import com.learnhub.service.blueprint.SingleSectionBlueprint;
+import com.learnhub.service.blueprint.DefaultBalancedBlueprint;
 
 @Service
 @Slf4j
@@ -36,11 +39,39 @@ public class PromptSanitizerService {
     }
 
     public SanitizedPromptResult sanitizePrompt(String rawPrompt, String subjectName, String batchName) {
+        return sanitizePrompt(rawPrompt, subjectName, batchName, false);
+    }
+
+    public SanitizedPromptResult sanitizePrompt(String rawPrompt, String subjectName, String batchName, boolean hasUploadedImages) {
         String input = rawPrompt != null ? rawPrompt.trim() : "";
-        log.info("Sanitizing prompt for subject '{}', batch '{}': '{}'", subjectName, batchName, input);
+        log.info("Sanitizing prompt for subject '{}', batch '{}', hasUploadedImages {}: '{}'", subjectName, batchName, hasUploadedImages, input);
 
         boolean removeTickMarks = true; // Always clean vision photos
         boolean generateNewQuestions = containsKeywords(input, "new", "fresh", "numerical", "change values", "different numbers", "create new");
+
+        if (hasUploadedImages) {
+            log.info("Processing UI Photo Upload mode: Applying ink cleaning, category grouping, and RK Coaching Brand Template without forced mark blueprints.");
+            StringBuilder visionPrompt = new StringBuilder();
+            visionPrompt.append(String.format("Subject: %s (Batch: %s). UI PHOTO EXTRACTION MODE (RK COACHING BRAND TEMPLATE):\n", 
+                subjectName != null ? subjectName : "Subject", batchName != null ? batchName : "General"));
+            if (!input.isBlank()) {
+                visionPrompt.append("Instructor Note: ").append(input).append(".\n");
+            }
+            visionPrompt.append("1) PEN & INK CLEANING LOGIC (CRITICAL): Automatically analyze all uploaded images and completely erase any handwritten tick marks, circled options, student writing, red pen ink, rough notes, watermarks, or teacher annotations. Only extract the clean, original question text and options.\n");
+            visionPrompt.append("2) CONTENT EXTRACTION & GROUP BY CATEGORY: Do NOT enforce any predetermined mark totals or question count limits. Extract ALL questions found in the photos and group them cleanly by category/question type into sections (e.g., SECTION_A for MCQs, SECTION_B for Short Answers/Fill in Blanks, SECTION_C for Long/Numerical Answers).\n");
+            visionPrompt.append("3) BRANDING & OUTPUT FORMAT: Format all extracted content under the RK Coaching Brand Template. Each question object in the JSON array must reflect the extracted content cleanly without duplicate text or repeating entries.\n");
+            visionPrompt.append("4) CONCISE METADATA RULE: Keep 'solutionExplanation' and 'markingScheme' strictly under 30 words per question so the entire exam paper generates completely without token truncation.\n");
+
+            return SanitizedPromptResult.builder()
+                    .sanitizedPrompt(visionPrompt.toString().trim())
+                    .sectionRequirements(new ArrayList<>())
+                    .totalMarks(0) // No forced marks (null/0 value)
+                    .totalQuestions(0) // No forced question counts
+                    .isMcqOnly(false)
+                    .removeTickMarks(true)
+                    .generateNewQuestions(generateNewQuestions)
+                    .build();
+        }
 
         // 1. Parse target marks and questions from input first
         int explicitTotalMarks = 0;
@@ -69,112 +100,53 @@ public class PromptSanitizerService {
             isExplicitMarksRequested = true;
         }
 
+        // Validate and normalize target total marks before checking categories or generating blueprints
+        if (explicitTotalMarks <= 0) {
+            explicitTotalMarks = 20; // Default paper total marks when not explicitly specified
+        } else if (explicitTotalMarks < 20 && explicitTotalMarks != 10) {
+            throw new IllegalArgumentException("Please give correct marks. Supported paper totals are 10 marks, or round values greater than or equal to 20.");
+        } else if (explicitTotalMarks >= 20 && explicitTotalMarks % 10 != 0) {
+            int original = explicitTotalMarks;
+            explicitTotalMarks = ((explicitTotalMarks + 5) / 10) * 10;
+            log.info("Rounded target marks from {} to nearest roundoff {}", original, explicitTotalMarks);
+        }
+
         // 2. Parse section instructions if specified (e.g., "5 mcq, 2 long")
         List<SectionRequirement> sections = parseSectionsFromPrompt(input);
+        
+        boolean isSuperDuperBlueprint = input != null && (input.toLowerCase().contains("super duper blueprint") || input.toLowerCase().contains("super duper"));
+        boolean hasFillInTheBlanks = input != null && (input.toLowerCase().contains("fill in the blank") || input.toLowerCase().contains("fill in the blanks") || input.toLowerCase().contains("fib"));
+        
         boolean isMcqOnly = (sections.size() == 1 && "MCQ".equalsIgnoreCase(sections.get(0).getQuestionType()))
                 || (containsKeywords(input, "mcq", "objective", "multiple choice", "mcqs only", "all mcqs") 
                     && !containsKeywords(input, "long", "short", "fill in", "direct", "section b", "section c", "subjective"));
         
         boolean isShortOnly = (sections.size() == 1 && "SHORT_ANSWER".equalsIgnoreCase(sections.get(0).getQuestionType()))
                 || (containsKeywords(input, "short only", "only short", "all short", "short answer only", "only short questions", "short questions only", "short answers only", "all short answer") 
-                    && !containsKeywords(input, "mcq", "objective", "multiple choice", "long", "essay", "section a", "section c"));
+                    && !containsKeywords(input, "mcq", "objective", "multiple choice", "long", "essay", "fill", "section a", "section c"));
 
         boolean isLongOnly = (sections.size() == 1 && "LONG_ANSWER".equalsIgnoreCase(sections.get(0).getQuestionType()))
                 || (containsKeywords(input, "long only", "only long", "all long", "long answer only", "only long questions", "long questions only", "long answers only", "all long answer", "essay only") 
-                    && !containsKeywords(input, "mcq", "objective", "multiple choice", "short", "brief", "section a", "section b"));
+                    && !containsKeywords(input, "mcq", "objective", "multiple choice", "short", "brief", "fill", "section a", "section b"));
 
-        if (sections.isEmpty()) {
-            if (isMcqOnly) {
-                int count = detectedQCount > 0 ? detectedQCount : (explicitTotalMarks > 0 ? explicitTotalMarks : 20);
-                int marksPerQ = 1;
-                if (explicitTotalMarks > 0 && count > 0) {
-                    marksPerQ = Math.max(1, explicitTotalMarks / count);
-                }
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section A - Multiple Choice Questions")
-                        .questionType("MCQ")
-                        .count(count)
-                        .marksPerQuestion(marksPerQ)
-                        .build());
+        boolean isFillOnly = (sections.size() == 1 && "FILL_IN_THE_BLANK".equalsIgnoreCase(sections.get(0).getQuestionType()))
+                || (containsKeywords(input, "fill only", "only fill", "all fill in the blanks", "only fill in the blanks", "only fill in the blank", "fill in the blanks only") 
+                    && !containsKeywords(input, "mcq", "objective", "multiple choice", "short", "long", "section a", "section c"));
+
+        if (sections.isEmpty() || isSuperDuperBlueprint) {
+            sections.clear();
+            if (isSuperDuperBlueprint) {
+                sections.addAll(SuperDuperBlueprint.generate(explicitTotalMarks));
+            } else if (isMcqOnly) {
+                sections.addAll(SingleSectionBlueprint.generateMcqOnly(explicitTotalMarks));
             } else if (isShortOnly) {
-                int count = detectedQCount;
-                int marksPerQ = 3;
-                if (explicitTotalMarks > 0 && count > 0) {
-                    marksPerQ = Math.max(1, explicitTotalMarks / count);
-                } else if (explicitTotalMarks > 0) {
-                    marksPerQ = (explicitTotalMarks % 3 == 0) ? 3 : ((explicitTotalMarks % 4 == 0) ? 4 : 2);
-                    count = Math.max(1, explicitTotalMarks / marksPerQ);
-                } else if (count == 0) {
-                    count = 10;
-                }
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section B - Short Answer Questions")
-                        .questionType("SHORT_ANSWER")
-                        .count(count)
-                        .marksPerQuestion(marksPerQ)
-                        .build());
+                sections.addAll(SingleSectionBlueprint.generateShortOnly(explicitTotalMarks));
             } else if (isLongOnly) {
-                int count = detectedQCount;
-                int marksPerQ = 5;
-                if (explicitTotalMarks > 0 && count > 0) {
-                    marksPerQ = Math.max(1, explicitTotalMarks / count);
-                } else if (explicitTotalMarks > 0) {
-                    marksPerQ = (explicitTotalMarks >= 50 && explicitTotalMarks % 10 == 0) ? 10 : 5;
-                    count = Math.max(1, explicitTotalMarks / marksPerQ);
-                } else if (count == 0) {
-                    count = 5;
-                }
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section C - Long Answer / Problem Solving")
-                        .questionType("LONG_ANSWER")
-                        .count(count)
-                        .marksPerQuestion(marksPerQ)
-                        .build());
-            } else if (explicitTotalMarks > 0) {
-                // Dynamically build a rigid, mathematically balanced blueprint matching the requested marks exactly
-                sections.addAll(buildBalancedSectionsForMarks(explicitTotalMarks, detectedQCount));
-            } else if (detectedQCount > 0) {
-                int countA = Math.max(1, (int) Math.round(detectedQCount * 0.4));
-                int countB = Math.max(1, (int) Math.round(detectedQCount * 0.4));
-                int countC = Math.max(1, detectedQCount - countA - countB);
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section A - Multiple Choice Questions")
-                        .questionType("MCQ")
-                        .count(countA)
-                        .marksPerQuestion(1)
-                        .build());
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section B - Short Answer Questions")
-                        .questionType("SHORT_ANSWER")
-                        .count(countB)
-                        .marksPerQuestion(3)
-                        .build());
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section C - Long Answer / Problem Solving")
-                        .questionType("LONG_ANSWER")
-                        .count(countC)
-                        .marksPerQuestion(5)
-                        .build());
+                sections.addAll(SingleSectionBlueprint.generateLongOnly(explicitTotalMarks));
+            } else if (isFillOnly) {
+                sections.addAll(SingleSectionBlueprint.generateFillOnly(explicitTotalMarks));
             } else {
-                // Balanced Default Section Breakdown
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section A - Multiple Choice Questions")
-                        .questionType("MCQ")
-                        .count(5)
-                        .marksPerQuestion(1)
-                        .build());
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section B - Short Answer Questions")
-                        .questionType("SHORT_ANSWER")
-                        .count(3)
-                        .marksPerQuestion(3)
-                        .build());
-                sections.add(SectionRequirement.builder()
-                        .sectionName("Section C - Long Answer / Problem Solving")
-                        .questionType("LONG_ANSWER")
-                        .count(2)
-                        .marksPerQuestion(5)
-                        .build());
+                sections.addAll(DefaultBalancedBlueprint.generate(explicitTotalMarks, hasFillInTheBlanks));
             }
         }
 
@@ -201,24 +173,36 @@ public class PromptSanitizerService {
             promptBuilder.append(String.format("Subject: %s (Batch: %s). ", subjectName != null ? subjectName : "General", batchName != null ? batchName : "General"));
             promptBuilder.append("INSTRUCTOR EXPLICIT OVERRIDE INSTRUCTIONS: ").append(input).append(". ");
             
+            if (isSuperDuperBlueprint) {
+                promptBuilder.append("\nSPECIAL CASE ACTIVATED: SUPER DUPER BLUEPRINT (7-SECTION PEDAGOGICAL FRAMEWORK FROM SECTIONS A TO G).\n");
+            }
+
             promptBuilder.append(String.format("\nEXACT PAPER BLUEPRINT & MARKING STRUCTURE (CRITICAL REQUIREMENT):\n" +
                 "You MUST generate exactly %d total questions with an overall total of exactly %d marks. " +
                 "Do NOT generate only MCQs unless explicitly demanded by the instructor. " +
                 "You MUST rigorously follow this precise section-by-section distribution without skipping or altering counts or mark weights:\n", totalQuestions, totalMarks));
             
             for (SectionRequirement sec : sections) {
-                String optionInstruction = "MCQ".equalsIgnoreCase(sec.getQuestionType()) 
-                    ? "MUST populate the 'options' array with exactly 4 viable choices and set 'questionType' to 'MCQ'."
+                boolean needsOptions = "MCQ".equalsIgnoreCase(sec.getQuestionType()) || "ASSERTION_REASON".equalsIgnoreCase(sec.getQuestionType());
+                String optionInstruction = needsOptions 
+                    ? "MUST populate the 'options' array with exactly 4 viable choices and set 'questionType' to '" + sec.getQuestionType() + "'."
                     : "MUST leave the 'options' array completely empty [] and set 'questionType' to '" + sec.getQuestionType() + "'. Do NOT provide multiple choice options or MCQ format for this section.";
-                promptBuilder.append(String.format("- %s: Exactly %d questions, Question Type: %s, Marks per question: %d (Section Total: %d marks). Instruction: %s\n",
-                    sec.getSectionName(), sec.getCount(), sec.getQuestionType(), sec.getMarksPerQuestion(), sec.getCount() * sec.getMarksPerQuestion(), optionInstruction));
+                
+                String secId = sec.getSectionName().contains(" - ") ? sec.getSectionName().split(" - ")[0].trim() : sec.getSectionName().replace(" ", "_").toUpperCase();
+                if (!secId.startsWith("SECTION_")) {
+                    secId = secId.replace("Section ", "SECTION_").replace("SECTION ", "SECTION_");
+                }
+                
+                promptBuilder.append(String.format("- %s (Set JSON field 'section' to '%s'): Exactly %d questions, Question Type: %s, Marks per question: %d (Section Total: %d marks). Instruction: %s\n",
+                    sec.getSectionName(), secId, sec.getCount(), sec.getQuestionType(), sec.getMarksPerQuestion(), sec.getCount() * sec.getMarksPerQuestion(), optionInstruction));
             }
             
             promptBuilder.append(String.format("\nFINAL JSON VERIFICATION CHECKLIST:\n" +
                 "1. The JSON array MUST contain exactly %d elements in total (no more, no less).\n" +
                 "2. The sum of the 'marks' field across all %d objects in the JSON array MUST equal exactly %d marks.\n" +
-                "3. Only MCQ questions should contain options. For SHORT_ANSWER or LONG_ANSWER sections (such as when only short or long questions are requested, or in Sections B & C), you MUST leave the 'options' array completely empty [].\n" +
-                "4. Every question in the generated JSON array MUST have completely unique text, concepts, and scenarios. Absolutely NO duplicates or repeating questions are allowed.\n", 
+                "3. Only MCQ and ASSERTION_REASON questions should contain options. For FILL_IN_THE_BLANK, SHORT_ANSWER, VERY_SHORT_ANSWER, LONG_ANSWER, or CASE_STUDY sections, you MUST leave the 'options' array completely empty [].\n" +
+                "4. Every question in the generated JSON array MUST have completely unique text, concepts, and scenarios. Absolutely NO duplicates or repeating questions are allowed.\n" +
+                "5. CONCISE METADATA RULE: Keep 'solutionExplanation' and 'markingScheme' strictly under 30 words per question so the entire exam paper generates completely without token truncation.\n", 
                 totalQuestions, totalQuestions, totalMarks));
             
             if (removeTickMarks) {
@@ -235,116 +219,8 @@ public class PromptSanitizerService {
                 .totalMarks(totalMarks)
                 .totalQuestions(totalQuestions)
                 .isMcqOnly(isMcqOnly)
-                .removeTickMarks(removeTickMarks)
                 .generateNewQuestions(generateNewQuestions)
                 .build();
-    }
-
-    private List<SectionRequirement> buildBalancedSectionsForMarks(int targetMarks, int targetQCount) {
-        List<SectionRequirement> result = new ArrayList<>();
-        // If no custom question count was forced, use spotless pedagogical standard patterns
-        if (targetQCount <= 0) {
-            switch (targetMarks) {
-                case 10:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(2).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(1).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(1).marksPerQuestion(5).build());
-                    return result;
-                case 15:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(3).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(4).build());
-                    return result;
-                case 20:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(4).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(5).build());
-                    return result;
-                case 25:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(5).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(2).marksPerQuestion(4).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(6).build());
-                    return result;
-                case 30:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(6).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(3).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(3).marksPerQuestion(5).build());
-                    return result;
-                case 40:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(8).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(4).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(2).marksPerQuestion(10).build());
-                    return result;
-                case 50:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(10).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(5).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(5).marksPerQuestion(5).build());
-                    return result;
-                case 60:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(6).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(6).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(3).marksPerQuestion(10).build());
-                    return result;
-                case 70:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(7).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(7).marksPerQuestion(3).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(5).marksPerQuestion(7).build());
-                    return result;
-                case 75:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(15).marksPerQuestion(1).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(5).marksPerQuestion(4).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(4).marksPerQuestion(10).build());
-                    return result;
-                case 80:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(8).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(6).marksPerQuestion(4).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(4).marksPerQuestion(10).build());
-                    return result;
-                case 100:
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(10).marksPerQuestion(2).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(6).marksPerQuestion(5).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(5).marksPerQuestion(10).build());
-                    return result;
-                default:
-                    // For custom mark totals, enforce strictly ~20% A, ~30% B, and ~50% C
-                    if (targetMarks <= 6) {
-                        result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(targetMarks).marksPerQuestion(1).build());
-                        return result;
-                    }
-                    int targetA = Math.max(1, (int) Math.round(targetMarks * 0.20));
-                    int targetB = Math.max(1, (int) Math.round(targetMarks * 0.30));
-                    
-                    int marksPerA = targetA >= 14 ? 2 : 1;
-                    int countA = Math.max(1, targetA / marksPerA);
-                    targetA = countA * marksPerA;
-                    
-                    int marksPerB = targetB >= 15 ? (targetB % 5 == 0 ? 5 : (targetB % 4 == 0 ? 4 : 3)) : 2;
-                    int countB = Math.max(1, targetB / marksPerB);
-                    targetB = countB * marksPerB;
-                    
-                    int targetC_actual = Math.max(1, targetMarks - targetA - targetB);
-                    int marksPerC = targetC_actual >= 30 && targetC_actual % 10 == 0 ? 10 : (targetC_actual >= 15 && targetC_actual % 5 == 0 ? 5 : (targetC_actual % 4 == 0 ? 4 : (targetC_actual % 3 == 0 ? 3 : (targetC_actual % 2 == 0 ? 2 : targetC_actual))));
-                    int countC = Math.max(1, targetC_actual / marksPerC);
-                    
-                    result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(countA).marksPerQuestion(marksPerA).build());
-                    result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(countB).marksPerQuestion(marksPerB).build());
-                    result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(countC).marksPerQuestion(marksPerC).build());
-                    return result;
-            }
-        } else {
-            // Both marks and question count were forced by user
-            ManagerService.PaperBlueprint bp = ManagerService.createBlueprint(targetMarks, targetQCount);
-            if (bp.sectionA.questionCount > 0) {
-                result.add(SectionRequirement.builder().sectionName("Section A - Multiple Choice Questions").questionType("MCQ").count(bp.sectionA.questionCount).marksPerQuestion(bp.sectionA.marksPerQuestion).build());
-            }
-            if (bp.sectionB.questionCount > 0) {
-                result.add(SectionRequirement.builder().sectionName("Section B - Short Answer Questions").questionType("SHORT_ANSWER").count(bp.sectionB.questionCount).marksPerQuestion(bp.sectionB.marksPerQuestion).build());
-            }
-            if (bp.sectionC.questionCount > 0) {
-                result.add(SectionRequirement.builder().sectionName("Section C - Long Answer / Problem Solving").questionType("LONG_ANSWER").count(bp.sectionC.questionCount).marksPerQuestion(bp.sectionC.marksPerQuestion).build());
-            }
-            return result;
-        }
     }
 
     private List<SectionRequirement> parseSectionsFromPrompt(String prompt) {

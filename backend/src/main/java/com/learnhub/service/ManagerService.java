@@ -52,74 +52,54 @@ public class ManagerService {
     }
 
     public static PaperBlueprint createBlueprint(int totalMarks, int totalQuestions) {
-        int[] allowedA = {1, 2};
-        int[] allowedB = {3, 4, 5, 6};
-        int[] allowedC = {8, 10, 12, 15};
-
-        int idealCountA = Math.max(1, Math.round(totalQuestions * 0.40f));
-        int idealCountB = Math.max(1, Math.round(totalQuestions * 0.40f));
-        int idealCountC = Math.max(1, totalQuestions - idealCountA - idealCountB);
-
-        PaperBlueprint bestBlueprint = null;
-        int bestDistance = Integer.MAX_VALUE;
-
-        PaperBlueprint closestBlueprint = null;
-        int closestDiff = Integer.MAX_VALUE;
-
-        for (int countA = 1; countA <= totalQuestions - 2; countA++) {
-            for (int countB = 1; countB <= totalQuestions - countA - 1; countB++) {
-                int countC = totalQuestions - countA - countB;
-                if (countC <= 0) continue;
-
-                for (int marksA : allowedA) {
-                    for (int marksB : allowedB) {
-                        for (int marksC : allowedC) {
-                            int sum = countA * marksA + countB * marksB + countC * marksC;
-                            
-                            PaperBlueprint bp = new PaperBlueprint();
-                            SectionBlueprint sA = new SectionBlueprint();
-                            sA.sectionName = "SECTION_A"; sA.questionCount = countA; sA.marksPerQuestion = marksA; sA.targetMarks = countA * marksA; bp.sectionA = sA;
-                            SectionBlueprint sB = new SectionBlueprint();
-                            sB.sectionName = "SECTION_B"; sB.questionCount = countB; sB.marksPerQuestion = marksB; sB.targetMarks = countB * marksB; bp.sectionB = sB;
-                            SectionBlueprint sC = new SectionBlueprint();
-                            sC.sectionName = "SECTION_C"; sC.questionCount = countC; sC.marksPerQuestion = marksC; sC.targetMarks = countC * marksC; bp.sectionC = sC;
-                            
-                            if (sum == totalMarks) {
-                                int dist = Math.abs(countA - idealCountA) + Math.abs(countB - idealCountB) + Math.abs(countC - idealCountC);
-                                if (dist < bestDistance) {
-                                    bestDistance = dist;
-                                    bestBlueprint = bp;
-                                }
-                            }
-                            
-                            int diff = Math.abs(sum - totalMarks);
-                            if (diff < closestDiff) {
-                                closestDiff = diff;
-                                closestBlueprint = bp;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (bestBlueprint != null) {
-            return bestBlueprint;
-        }
-        
-        if (closestBlueprint != null) {
-            System.err.println("WARNING: Unable to find exact blueprint match. Falling back to nearest approximation.");
-            return closestBlueprint;
-        }
-
-        // Ultimate fallback if loops didn't run (e.g. totalQuestions < 3)
         PaperBlueprint bp = new PaperBlueprint();
+        int targetA, targetB, targetC;
+        int countA, countB, countC;
+        int marksA, marksB, marksC;
+
+        switch (totalMarks) {
+            case 10: targetA = 2; countA = 2; marksA = 1; targetB = 3; countB = 1; marksB = 3; targetC = 5; countC = 1; marksC = 5; break;
+            case 15: targetA = 3; countA = 3; marksA = 1; targetB = 4; countB = 2; marksB = 2; targetC = 8; countC = 2; marksC = 4; break;
+            case 20: targetA = 4; countA = 4; marksA = 1; targetB = 6; countB = 2; marksB = 3; targetC = 10; countC = 2; marksC = 5; break;
+            case 25: targetA = 5; countA = 5; marksA = 1; targetB = 8; countB = 2; marksB = 4; targetC = 12; countC = 2; marksC = 6; break;
+            case 30: targetA = 6; countA = 6; marksA = 1; targetB = 9; countB = 3; marksB = 3; targetC = 15; countC = 3; marksC = 5; break;
+            case 40: targetA = 8; countA = 4; marksA = 2; targetB = 12; countB = 4; marksB = 3; targetC = 20; countC = 2; marksC = 10; break;
+            case 50: targetA = 10; countA = 5; marksA = 2; targetB = 15; countB = 3; marksB = 5; targetC = 25; countC = 5; marksC = 5; break;
+            case 60: targetA = 12; countA = 6; marksA = 2; targetB = 18; countB = 6; marksB = 3; targetC = 30; countC = 3; marksC = 10; break;
+            case 70: targetA = 14; countA = 7; marksA = 2; targetB = 21; countB = 7; marksB = 3; targetC = 35; countC = 5; marksC = 7; break;
+            case 75: targetA = 15; countA = 15; marksA = 1; targetB = 20; countB = 5; marksB = 4; targetC = 40; countC = 4; marksC = 10; break;
+            case 80: targetA = 16; countA = 8; marksA = 2; targetB = 24; countB = 6; marksB = 4; targetC = 40; countC = 4; marksC = 10; break;
+            case 100: targetA = 20; countA = 10; marksA = 2; targetB = 30; countB = 6; marksB = 5; targetC = 50; countC = 5; marksC = 10; break;
+            default:
+                if (totalMarks <= 6) {
+                    targetA = totalMarks; countA = totalMarks; marksA = 1; targetB = 0; countB = 0; marksB = 0; targetC = 0; countC = 0; marksC = 0;
+                    break;
+                }
+                targetA = Math.max(1, (int) Math.round(totalMarks * 0.20));
+                targetB = Math.max(1, (int) Math.round(totalMarks * 0.30));
+                targetC = Math.max(1, totalMarks - targetA - targetB);
+                
+                marksA = targetA >= 14 ? 2 : 1;
+                countA = Math.max(1, targetA / marksA);
+                targetA = countA * marksA;
+                
+                marksB = targetB >= 15 ? (targetB % 5 == 0 ? 5 : (targetB % 4 == 0 ? 4 : 3)) : 2;
+                countB = Math.max(1, targetB / marksB);
+                targetB = countB * marksB;
+                
+                targetC = Math.max(1, totalMarks - targetA - targetB);
+                marksC = targetC >= 30 && targetC % 10 == 0 ? 10 : (targetC >= 15 && targetC % 5 == 0 ? 5 : (targetC % 4 == 0 ? 4 : (targetC % 3 == 0 ? 3 : (targetC % 2 == 0 ? 2 : targetC))));
+                countC = Math.max(1, targetC / marksC);
+                break;
+        }
+
         SectionBlueprint sA = new SectionBlueprint();
-        sA.sectionName = "SECTION_A"; sA.questionCount = totalQuestions; 
-        sA.marksPerQuestion = totalQuestions > 0 ? (totalMarks / totalQuestions) : totalMarks;
-        if (sA.marksPerQuestion == 0) sA.marksPerQuestion = 1;
-        sA.targetMarks = totalMarks; 
-        bp.sectionA = sA;
+        sA.sectionName = "SECTION_A"; sA.questionCount = countA; sA.marksPerQuestion = marksA; sA.targetMarks = targetA; bp.sectionA = sA;
+        SectionBlueprint sB = new SectionBlueprint();
+        sB.sectionName = "SECTION_B"; sB.questionCount = countB; sB.marksPerQuestion = marksB; sB.targetMarks = targetB; bp.sectionB = sB;
+        SectionBlueprint sC = new SectionBlueprint();
+        sC.sectionName = "SECTION_C"; sC.questionCount = countC; sC.marksPerQuestion = marksC; sC.targetMarks = targetC; bp.sectionC = sC;
+
         return bp;
     }
 
