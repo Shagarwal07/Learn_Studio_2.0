@@ -11,15 +11,11 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { 
   ArrowLeft, 
-  CheckCircle, 
   XCircle, 
   Edit, 
   RefreshCw, 
-  History, 
   AlertTriangle,
-  Save,
   X,
-  Printer,
   Plus,
   Trash2,
   ArrowUp,
@@ -28,59 +24,14 @@ import {
   Clock,
   Check,
   Settings,
-  Info,
   Copy,
   GitFork,
   Merge
 } from 'lucide-react';
-
-interface QuestionDTO {
-  id: number;
-  questionText: string;
-  options: string; // JSON string
-  correctAnswer: string;
-  solutionSteps: string;
-  marks: number;
-  difficulty: string;
-  questionType: string;
-  agentType: string;
-  version: number;
-  chapter?: string;
-  topic?: string;
-  learningOutcome?: string;
-  section?: string;
-  questionOrder?: number;
-  bloomLevel?: string;
-  markingScheme?: string;
-  qualityStatus?: string;
-  estimatedTimeMinutes?: number;
-}
-
-interface PaperDTO {
-  id: number;
-  examRequestId: number;
-  title: string;
-  totalMarks: number;
-  status: string;
-  version: number;
-  questions: QuestionDTO[];
-  createdAt: string;
-  duration?: number;
-  testType?: string;
-  chapters?: string;
-  topics?: string;
-  course?: string;
-  subject?: string;
-  syllabus?: string;
-}
-
-interface VersionDTO {
-  id: number;
-  version: number;
-  changeReason: string;
-  changedByName: string;
-  timestamp: string;
-}
+import { QuestionDTO, PaperDTO, VersionDTO } from './components/types';
+import { PrintLayoutView } from './components/PrintLayoutView';
+import { SidebarControls } from './components/SidebarControls';
+import { RevisionModal } from './components/RevisionModal';
 
 const ALLOWED_MARKS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
@@ -100,7 +51,7 @@ export function calculateSectionTotals(questions: QuestionDTO[]) {
     const avgMarks = count > 0 ? qs[0].marks : 0;
     const allSameMarks = qs.every(q => q.marks === avgMarks);
 
-    const displayLabel = key.replace('_', ' ').replace(/SECTION/i, 'Section');
+    const displayLabel = key.replaceAll('_', ' ').replace(/SECTION\b/i, 'Section');
     return { key, displayLabel, questions: qs, totalMarks, count, avgMarks, allSameMarks };
   });
 
@@ -135,6 +86,7 @@ export default function PaperPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'print'>('edit');
+  const [printLayoutMode, setPrintLayoutMode] = useState<'formal' | 'worksheet'>('formal');
   const [validation, setValidation] = useState<{
     isValid: boolean;
     errors: string[];
@@ -210,6 +162,11 @@ export default function PaperPreviewPage() {
         setEditDuration(p.duration || 100);
         setEditTotalMarks(p.totalMarks || 50);
         setEditTestType(p.testType || 'Parakh Test Series');
+
+        const isWs = p.totalMarks === 0 || p.testType === 'Categorized Practice' || p.title?.toLowerCase().includes('worksheet') || p.testType?.toLowerCase().includes('worksheet');
+        if (isWs) {
+          setPrintLayoutMode('worksheet');
+        }
       }
       
       const versionsRes = await api.get(`/autota/papers/${paperId}/versions`);
@@ -1260,457 +1217,49 @@ export default function PaperPreviewPage() {
 
           </div>
         ) : (
-          /* A4 Print Layout Sheet */
-          <div className="space-y-5 animate-in fade-in duration-200">
-            
-            {/* Toolbar */}
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 backdrop-blur-md no-print">
-              <div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Print / Export Exam Paper</h4>
-                <p className="text-[10px] text-slate-455 mt-1.5 leading-normal">Confirm formatting matches school requirements. The RK watermark logo is embedded cleanly.</p>
-              </div>
-              <div className="flex gap-2.5">
-                <button
-                  onClick={handlePrintTrigger}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0"
-                >
-                  <Printer className="w-4 h-4" />
-                  Download PDF
-                </button>
-                <button
-                  onClick={handleDownloadDocx}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0"
-                >
-                  <Save className="w-4 h-4" />
-                  Download MS Word (.docx)
-                </button>
-              </div>
-            </div>
-
-            {/* A4 Container */}
-            <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner print-container">
-              <div id="printable-exam-paper" className="bg-white text-black font-serif p-12 sm:p-16 rounded-none border-[6px] border-double border-black shadow-2xl mx-auto w-[210mm] min-h-[297mm] flex flex-col space-y-6 text-left relative select-text">
-                
-                {/* Print Stylesheet injection for clean multi-page pagination */}
-                <style dangerouslySetInnerHTML={{ __html: `
-                  @page {
-                    size: A4 portrait;
-                    margin: 18mm 15mm 18mm 15mm;
-                    border: 4px double #000000;
-                    padding: 6mm;
-                  }
-                  @media print {
-                    html, body {
-                      width: 210mm !important;
-                      height: auto !important;
-                      overflow: visible !important;
-                      background: white !important;
-                      color: black !important;
-                      margin: 0 !important;
-                      padding: 0 !important;
-                    }
-                    aside, nav, header, button, .no-print, .tab-selector, .print-toolbar, .lg\\:col-span-3, .review-decision-panel {
-                      display: none !important;
-                    }
-                    main, .max-w-7xl, .lg\\:col-span-2, .space-y-5, .overflow-auto, .print-container {
-                      width: 100% !important;
-                      max-width: 100% !important;
-                      height: auto !important;
-                      max-height: none !important;
-                      overflow: visible !important;
-                      display: block !important;
-                      padding: 0 !important;
-                      margin: 0 !important;
-                      background: transparent !important;
-                      border: none !important;
-                      box-shadow: none !important;
-                    }
-                    #printable-exam-paper {
-                      position: static !important;
-                      width: 100% !important;
-                      max-width: 100% !important;
-                      min-height: auto !important;
-                      height: auto !important;
-                      padding: 0 !important;
-                      margin: 0 !important;
-                      background: white !important;
-                      color: black !important;
-                      font-family: "Times New Roman", Times, Georgia, serif !important;
-                      box-shadow: none !important;
-                      border: none !important; /* Border around every page handled directly by @page rule */
-                      display: block !important;
-                      overflow: visible !important;
-                    }
-                    .print-section-header {
-                      page-break-after: avoid !important;
-                      break-after: avoid !important;
-                    }
-                    .print-question-item {
-                      page-break-inside: avoid !important;
-                      break-inside: avoid !important;
-                      margin-bottom: 14px !important;
-                    }
-                    .print-mcq-options {
-                      page-break-inside: avoid !important;
-                      break-inside: avoid !important;
-                    }
-                  }
-                ` }} />
-
-                {/* Circular Watermark Logo */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.035] pointer-events-none select-none z-0">
-                  <div className="w-[440px] h-[440px] rounded-full border-[8px] border-double border-black flex items-center justify-center relative">
-                    <div className="w-[410px] h-[410px] rounded-full border-2 border-dashed border-black flex items-center justify-center">
-                      <div className="w-[320px] h-[320px] rounded-full border-4 border-black flex flex-col items-center justify-center bg-transparent">
-                        <span className="text-9xl font-black font-serif tracking-tighter text-black leading-none">RK</span>
-                        <span className="text-[10px] font-black tracking-[0.25em] uppercase mt-4 text-black">ESTD 2015</span>
-                      </div>
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <path id="watermarkCirclePath" d="M 50,50 m -40,0 a 40,40 0 1,1 80,0 a 40,40 0 1,1 -80,0" fill="none" />
-                        <text className="text-[7px] font-black uppercase tracking-[0.165em]" fill="black">
-                          <textPath href="#watermarkCirclePath" startOffset="50%" textAnchor="middle">
-                            • R. K. COACHING CLASSES • SUCCESS THROUGH DEDICATION •
-                          </textPath>
-                        </text>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Header */}
-                <div className="pb-2 relative z-10 w-full text-center">
-                  <h1 className="text-3xl sm:text-[32px] font-black tracking-wider uppercase text-black font-serif my-2 leading-none whitespace-nowrap">
-                    R. K. COACHING CLASSES
-                  </h1>
-                  <div className="border-b-[4px] border-black w-full my-1"></div>
-                  
-                  <div className="text-center font-bold text-md my-2 flex items-center justify-center gap-2">
-                    <span className="bg-yellow-200 border border-black text-black px-3 py-0.5 font-extrabold uppercase text-[10px] tracking-wider">{editTestType}</span>
-                    <span className="text-black font-extrabold text-sm font-serif">Class – {editClass || '9th'} ({editSubject || 'Mathematics'})</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 items-center text-xs font-bold font-serif py-1.5 border-t-2 border-b-4 border-double border-black mt-2">
-                    <div className="justify-self-start border-2 border-black px-2.5 py-0.5 text-black">
-                      Time – {editDuration} min
-                    </div>
-                    <div className="justify-self-center text-black font-black tracking-wide uppercase text-center max-w-[320px] line-clamp-2 text-ellipsis overflow-hidden">
-                      {editChapters || 'Syllabus Core'}
-                    </div>
-                    <div className="justify-self-end border-2 border-black px-2.5 py-0.5 text-black">
-                      M.Marks – {editTotalMarks}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Question Sections dynamically mapped across all pages */}
-                <div className="space-y-7 pt-2 flex-1 text-black relative z-10">
-                  {dynamicSections.map((sec) => (
-                    <div key={sec.key} className="space-y-4 print-section-container">
-                      <div className="text-center font-bold font-serif text-[13px] tracking-wide pt-2 print-section-header">
-                        <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
-                        <span className="font-extrabold ml-1">
-                          {sec.allSameMarks
-                            ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
-                            : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
-                          }
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-4 pt-1">
-                        {sec.questions.map((q, qIdx) => (
-                          <div key={q.id} className="text-sm space-y-2 relative leading-relaxed text-black print-question-item">
-                            <div className="flex gap-2.5 items-start">
-                              <span className="font-bold shrink-0 min-w-[24px] text-right">{q.questionOrder || qIdx + 1})</span>
-                              <div className="flex-1 font-medium text-black text-justify prose prose-sm max-w-none print-math-container">
-                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                  {q.questionText}
-                                </ReactMarkdown>
-                              </div>
-                              <span className="font-bold text-xs shrink-0 pl-2">[{q.marks}]</span>
-                            </div>
-
-                            {q.options && (() => {
-                              try {
-                                const parsed = JSON.parse(q.options);
-                                return (
-                                  <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 pl-8 pt-1 text-black print-mcq-options">
-                                    {Object.entries(parsed).map(([key, val]) => (
-                                      <div key={key} className="text-xs text-black flex items-baseline gap-1.5">
-                                        <span className="font-bold mr-1 text-black shrink-0">({key.toLowerCase()})</span>
-                                        <div className="inline-block flex-1 prose prose-sm max-w-none text-black">
-                                          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                            {val as string}
-                                          </ReactMarkdown>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              } catch (e) {
-                                return null;
-                              }
-                            })()}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Footer divider */}
-                <div className="text-center text-[10px] font-bold border-t border-black/25 pt-6 text-slate-500 uppercase tracking-widest mt-auto z-10 print-section-header">
-                  — End of Examination Paper —
-                </div>
-
-                <div className="flex justify-between items-center text-[7.5px] font-mono text-slate-400 pt-2 border-t border-black/10 w-full z-10">
-                  <span className="font-semibold tracking-wider">LEARNSTUDIO SECURE AUTO-TA SYSTEM</span>
-                  <span>DOC-ID: LS-TA-{paper.id}-V{paper.version}</span>
-                  <span>GENERATED: {new Date(paper.createdAt).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <PrintLayoutView
+            paper={paper}
+            dynamicSections={dynamicSections}
+            printLayoutMode={printLayoutMode}
+            setPrintLayoutMode={setPrintLayoutMode}
+            handlePrintTrigger={handlePrintTrigger}
+            handleDownloadDocx={handleDownloadDocx}
+            editTestType={editTestType}
+            editClass={editClass}
+            editSubject={editSubject}
+            editDuration={editDuration}
+            editChapters={editChapters}
+            editTotalMarks={editTotalMarks}
+          />
         )}
 
       </div>
 
       {/* Right Column: controls & Snapshot history */}
-      <div className="space-y-6 no-print">
-        
-        {/* Live Validation Dashboard */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md space-y-4">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">Live Validation Dashboard</h3>
-          
-          <div className="bg-slate-955 p-4 rounded-xl border border-slate-855 space-y-3 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-455 font-bold">Paper Total:</span>
-              <span className="text-white font-extrabold">{calculatedTotalMarks} / {editTotalMarks} Marks</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-slate-455 font-bold">Validation Status:</span>
-              <span className={`font-extrabold ${validation?.isValid ? 'text-emerald-450' : 'text-rose-455'}`}>
-                {validation?.isValid ? 'CLEAN & VALID' : 'HAS ERRORS'}
-              </span>
-            </div>
-
-            {/* Dynamic Section Metrics */}
-            {validation?.sections && validation.sections.length > 0 ? (
-              validation.sections.map((sec) => (
-                <div key={sec.sectionName} className="border-t border-slate-855 pt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-455 font-semibold">{sec.sectionName.replace('SECTION_', 'Section ')} (Target: {sec.target}):</span>
-                    <span className={`font-bold ${sec.actual === sec.target ? 'text-emerald-450' : 'text-amber-455'}`}>
-                      {sec.actual} Marks
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="border-t border-slate-855 pt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-455 font-semibold">Section A (Target: {validation?.sectionATarget || 0}):</span>
-                    <span className={`font-bold ${validation?.sectionAActual === validation?.sectionATarget ? 'text-emerald-450' : 'text-amber-455'}`}>
-                      {validation?.sectionAActual || 0} Marks
-                    </span>
-                  </div>
-                </div>
-                <div className="border-t border-slate-855 pt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-455 font-semibold">Section B (Target: {validation?.sectionBTarget || 0}):</span>
-                    <span className={`font-bold ${validation?.sectionBActual === validation?.sectionBTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
-                      {validation?.sectionBActual || 0} Marks
-                    </span>
-                  </div>
-                </div>
-                <div className="border-t border-slate-855 pt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-455 font-semibold">Section C (Target: {validation?.sectionCTarget || 0}):</span>
-                    <span className={`font-bold ${validation?.sectionCActual === validation?.sectionCTarget ? 'text-emerald-450' : 'text-amber-455'}`}>
-                      {validation?.sectionCActual || 0} Marks
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-            
-            <div className="flex justify-between border-t border-slate-855 pt-2">
-              <span className="text-slate-455 font-bold">Paper Status:</span>
-              <span className="text-indigo-400 font-extrabold">{paper.status}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 pt-1">
-            <button
-              onClick={() => handleSaveDraft()}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
-              disabled={actionLoading}
-            >
-              <Save className="w-4 h-4 text-indigo-400" /> Save Draft
-            </button>
-
-            <button
-              onClick={handleRecalculateMarks}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-755 text-indigo-300 hover:text-white border border-indigo-500/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
-              disabled={actionLoading || calculatedTotalMarks === Number(editTotalMarks)}
-            >
-              <RefreshCw className="w-4 h-4 text-indigo-455 animate-pulse" /> Recalculate Marks
-            </button>
-
-            {paper.status !== 'APPROVED' && paper.status !== 'EXPORTED' && paper.status !== 'PUBLISHED' ? (
-              <button
-                onClick={handleApprove}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={actionLoading || !validation?.isValid}
-              >
-                <CheckCircle className="w-4.5 h-4.5" /> Approve & Authorize Print
-              </button>
-            ) : (
-              <div className="p-3 bg-emerald-500/5 border border-emerald-500/15 rounded-xl text-center text-xs text-emerald-450 font-bold">
-                Paper Approved & Ready for Export
-              </div>
-            )}
-
-            {paper.status !== 'APPROVED' && paper.status !== 'EXPORTED' && paper.status !== 'PUBLISHED' && (
-              <button
-                onClick={() => setShowRevisionModal(true)}
-                className="w-full py-2.5 bg-rose-600/15 border border-rose-600/20 hover:bg-rose-600/25 text-rose-455 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
-                disabled={actionLoading}
-              >
-                <XCircle className="w-4.5 h-4.5" /> Reject & Request Revision
-              </button>
-            )}
-
-            {/* Developer Audit Details Panel */}
-            <details className="group bg-slate-950 border border-slate-855 rounded-xl p-3 text-[11px] font-mono mt-4 no-print">
-              <summary className="cursor-pointer text-indigo-400 font-extrabold uppercase select-none list-none flex items-center gap-1.5 hover:text-indigo-300">
-                <Info className="w-4 h-4" />
-                Dev Audit Log (Question matrix)
-              </summary>
-              <div className="pt-3 overflow-x-auto">
-                <table className="w-full text-left border-collapse text-[10px]">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-500 uppercase text-[8px]">
-                      <th className="py-1 pr-2">questionId</th>
-                      <th className="py-1 pr-2">section</th>
-                      <th className="py-1 pr-2">marks</th>
-                      <th className="py-1 pr-2">questionType</th>
-                      <th className="py-1">text preview</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paper.questions.map((q) => (
-                      <tr key={q.id} className="border-b border-slate-900/60 hover:bg-slate-900/40">
-                        <td className="py-1 pr-2">{q.id}</td>
-                        <td className={`py-1 pr-2 font-bold ${q.section === 'SECTION_A' ? 'text-indigo-400' : q.section === 'SECTION_B' ? 'text-amber-400' : 'text-emerald-450'}`}>{q.section}</td>
-                        <td className="py-1 pr-2">{q.marks}</td>
-                        <td className="py-1 pr-2">{q.questionType}</td>
-                        <td className="py-1 truncate max-w-[120px] text-slate-350">{q.questionText}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          </div>
-        </div>
-
-        {/* Version History snapshot list */}
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm space-y-4">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <History className="w-4.5 h-4.5 text-indigo-400" />
-            Paper Version History
-          </h3>
-          <p className="text-[11px] text-slate-455 leading-normal">Track changes made by agents or direct edits.</p>
-
-          <div className="space-y-4 pt-2">
-            {versions.length === 0 ? (
-              <div className="text-[11px] text-slate-500 italic">No version snapshots recorded.</div>
-            ) : (
-              versions.map((ver) => (
-                <div key={ver.id} className="flex gap-3 relative before:absolute before:left-[17px] before:top-9 before:bottom-0 before:w-px before:bg-slate-800 last:before:hidden">
-                  <div className="w-9 h-9 bg-slate-900 border border-slate-800 text-indigo-400 rounded-lg flex items-center justify-center shrink-0 font-extrabold text-xs">
-                    v{ver.version}
-                  </div>
-                  <div className="min-w-0 space-y-1 text-left">
-                    <h4 className="text-[11px] font-bold text-white leading-normal truncate">{ver.changeReason}</h4>
-                    <p className="text-[9px] text-slate-500">By {ver.changedByName} • {new Date(ver.timestamp).toLocaleDateString()}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-      </div>
+      <SidebarControls
+        paper={paper}
+        calculatedTotalMarks={calculatedTotalMarks}
+        editTotalMarks={Number(editTotalMarks)}
+        validation={validation}
+        versions={versions}
+        actionLoading={actionLoading}
+        handleSaveDraft={() => handleSaveDraft()}
+        handleRecalculateMarks={handleRecalculateMarks}
+        handleApprove={handleApprove}
+        onOpenRevisionModal={() => setShowRevisionModal(true)}
+      />
 
       {/* Revision Modal */}
-      {showRevisionModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 text-left">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-500" />
-                Configure Revision Pipeline
-              </h3>
-              <button
-                onClick={() => setShowRevisionModal(false)}
-                className="text-slate-400 hover:text-white transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-455">Selected Questions for Revision:</label>
-              <div className="bg-slate-955 border border-slate-850 rounded-xl p-3 max-h-24 overflow-y-auto text-xs text-slate-350 leading-relaxed scrollbar-thin">
-                {selectedRejectedIds.length === 0 ? (
-                  <span className="text-slate-500 italic">No questions selected. Highlight questions in draft workspace first.</span>
-                ) : (
-                  <span>Regenerating question numbers: {
-                    selectedRejectedIds.map(id => {
-                      const idx = paper.questions.findIndex(q => q.id === id);
-                      return idx !== -1 ? idx + 1 : '';
-                    }).filter(Boolean).join(', ')
-                  }</span>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-455">Professor Feedback Instructions:</label>
-              <textarea
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                placeholder="Explain what needs to be changed (e.g. 'Question 3 is too complex, generate a simpler one on HCF. Question 5 has a formula typo, recreate it.')"
-                rows={4}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs sm:text-sm text-slate-100 placeholder-slate-650 focus:outline-none focus:border-indigo-500 transition-all leading-relaxed"
-                required
-              />
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setShowRevisionModal(false)}
-                className="flex-1 py-2.5 bg-slate-955 border border-slate-800 hover:border-slate-750 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRejectAndRegenerate}
-                className="flex-1 py-2.5 bg-rose-650 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-lg shadow-rose-600/10 cursor-pointer"
-                disabled={actionLoading || selectedRejectedIds.length === 0 || !comments.trim()}
-              >
-                Trigger Revision Loop
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RevisionModal
+        show={showRevisionModal}
+        onClose={() => setShowRevisionModal(false)}
+        selectedRejectedIds={selectedRejectedIds}
+        paper={paper}
+        comments={comments}
+        setComments={setComments}
+        handleRejectAndRegenerate={handleRejectAndRegenerate}
+        actionLoading={actionLoading}
+      />
 
     </div>
   );

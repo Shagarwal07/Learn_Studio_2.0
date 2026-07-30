@@ -29,71 +29,101 @@ public class DocxExportService {
             pageMar.setTop(BigInteger.valueOf(1440L));
             pageMar.setBottom(BigInteger.valueOf(1440L));
 
+            // Check if this is Categorized Practice / Worksheet Mode (from photo extraction or explicit testType)
+            boolean isWorksheet = (paper.getTotalMarks() == null || paper.getTotalMarks() == 0 
+                || "Categorized Practice".equalsIgnoreCase(paper.getTestType()) 
+                || (paper.getTitle() != null && paper.getTitle().toLowerCase().contains("worksheet")));
+
             // 2. Title Header (e.g. RK Coaching Classes / Institute Name)
-            String institute = paper.getTestType() != null ? paper.getTestType() : "R. K. COACHING CLASSES";
+            String institute = (isWorksheet && (paper.getTestType() == null || "Categorized Practice".equalsIgnoreCase(paper.getTestType()))) 
+                ? "R.K. COACHING CLASSES, BALOTRA" 
+                : (paper.getTestType() != null ? paper.getTestType() : "R. K. COACHING CLASSES");
+            
             XWPFParagraph instParagraph = document.createParagraph();
             instParagraph.setAlignment(ParagraphAlignment.CENTER);
             XWPFRun instRun = instParagraph.createRun();
             instRun.setText(institute.toUpperCase());
             instRun.setBold(true);
-            instRun.setFontSize(20);
+            instRun.setFontSize(isWorksheet ? 18 : 20);
             instRun.setFontFamily("Times New Roman");
 
-            // Divider Line
-            XWPFParagraph linePara = document.createParagraph();
-            linePara.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun lineRun = linePara.createRun();
-            lineRun.setText("_________________________________________________________________________________");
-            lineRun.setBold(true);
-            lineRun.setFontFamily("Times New Roman");
+            if (isWorksheet) {
+                // Worksheet Subtitle (e.g. Mathematics Worksheet - Categorized Practice)
+                XWPFParagraph subParagraph = document.createParagraph();
+                subParagraph.setAlignment(ParagraphAlignment.CENTER);
+                subParagraph.setSpacingAfter(40);
+                XWPFRun subRun = subParagraph.createRun();
+                String subject = paper.getSubject() != null && !paper.getSubject().isBlank() ? paper.getSubject() : "Mathematics";
+                subRun.setText(subject + " Worksheet - Categorized Practice");
+                subRun.setItalic(true);
+                subRun.setFontSize(12);
+                subRun.setFontFamily("Times New Roman");
 
-            // Subject / Class Details
-            XWPFParagraph subParagraph = document.createParagraph();
-            subParagraph.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun subRun = subParagraph.createRun();
-            String titleStr = paper.getTitle() != null ? paper.getTitle() : "Examination Paper";
-            String classLevel = paper.getCourse() != null ? paper.getCourse() : "Grade Level";
-            String subject = paper.getSubject() != null ? paper.getSubject() : "Subject";
-            subRun.setText(titleStr + "   |   Class: " + classLevel + " (" + subject + ")");
-            subRun.setBold(true);
-            subRun.setFontSize(12);
-            subRun.setFontFamily("Times New Roman");
+                // Single thick line divider
+                XWPFParagraph linePara = document.createParagraph();
+                linePara.setAlignment(ParagraphAlignment.CENTER);
+                linePara.setSpacingAfter(100);
+                XWPFRun lineRun = linePara.createRun();
+                lineRun.setText("_________________________________________________________________________________");
+                lineRun.setBold(true);
+                lineRun.setFontFamily("Times New Roman");
+            } else {
+                // Divider Line
+                XWPFParagraph linePara = document.createParagraph();
+                linePara.setAlignment(ParagraphAlignment.CENTER);
+                XWPFRun lineRun = linePara.createRun();
+                lineRun.setText("_________________________________________________________________________________");
+                lineRun.setBold(true);
+                lineRun.setFontFamily("Times New Roman");
 
-            // Metadata Table (Duration, Syllabus, Marks)
-            XWPFTable metaTable = document.createTable(1, 3);
-            metaTable.setWidth("100%");
-            XWPFTableRow row = metaTable.getRow(0);
+                // Subject / Class Details
+                XWPFParagraph subParagraph = document.createParagraph();
+                subParagraph.setAlignment(ParagraphAlignment.CENTER);
+                XWPFRun subRun = subParagraph.createRun();
+                String titleStr = paper.getTitle() != null ? paper.getTitle() : "Examination Paper";
+                String classLevel = paper.getCourse() != null ? paper.getCourse() : "Grade Level";
+                String subject = paper.getSubject() != null ? paper.getSubject() : "Subject";
+                subRun.setText(titleStr + "   |   Class: " + classLevel + " (" + subject + ")");
+                subRun.setBold(true);
+                subRun.setFontSize(12);
+                subRun.setFontFamily("Times New Roman");
 
-            // Col 1: Time
-            XWPFParagraph p1 = row.getCell(0).getParagraphs().get(0);
-            p1.setAlignment(ParagraphAlignment.LEFT);
-            XWPFRun r1 = p1.createRun();
-            r1.setText("Time: " + (paper.getDuration() != null ? paper.getDuration() : 100) + " min");
-            r1.setBold(true);
-            r1.setFontFamily("Times New Roman");
-            r1.setFontSize(10);
+                // Metadata Table (Duration, Syllabus, Marks)
+                XWPFTable metaTable = document.createTable(1, 3);
+                metaTable.setWidth("100%");
+                XWPFTableRow row = metaTable.getRow(0);
 
-            // Col 2: Syllabus
-            XWPFParagraph p2 = row.getCell(1).getParagraphs().get(0);
-            p2.setAlignment(ParagraphAlignment.CENTER);
-            XWPFRun r2 = p2.createRun();
-            String syllabus = paper.getChapters() != null && !paper.getChapters().isEmpty() ? paper.getChapters() : "Syllabus";
-            r2.setText(syllabus);
-            r2.setBold(true);
-            r2.setFontFamily("Times New Roman");
-            r2.setFontSize(10);
+                // Col 1: Time
+                XWPFParagraph p1 = row.getCell(0).getParagraphs().get(0);
+                p1.setAlignment(ParagraphAlignment.LEFT);
+                XWPFRun r1 = p1.createRun();
+                r1.setText("Time: " + (paper.getDuration() != null ? paper.getDuration() : 100) + " min");
+                r1.setBold(true);
+                r1.setFontFamily("Times New Roman");
+                r1.setFontSize(10);
 
-            // Col 3: Max Marks
-            XWPFParagraph p3 = row.getCell(2).getParagraphs().get(0);
-            p3.setAlignment(ParagraphAlignment.RIGHT);
-            XWPFRun r3 = p3.createRun();
-            r3.setText("Max Marks: " + paper.getTotalMarks());
-            r3.setBold(true);
-            r3.setFontFamily("Times New Roman");
-            r3.setFontSize(10);
+                // Col 2: Syllabus
+                XWPFParagraph p2 = row.getCell(1).getParagraphs().get(0);
+                p2.setAlignment(ParagraphAlignment.CENTER);
+                XWPFRun r2 = p2.createRun();
+                String syllabus = paper.getChapters() != null && !paper.getChapters().isEmpty() ? paper.getChapters() : "Syllabus";
+                r2.setText(syllabus);
+                r2.setBold(true);
+                r2.setFontFamily("Times New Roman");
+                r2.setFontSize(10);
 
-            // Add spacing after header
-            document.createParagraph();
+                // Col 3: Max Marks
+                XWPFParagraph p3 = row.getCell(2).getParagraphs().get(0);
+                p3.setAlignment(ParagraphAlignment.RIGHT);
+                XWPFRun r3 = p3.createRun();
+                r3.setText("Max Marks: " + paper.getTotalMarks());
+                r3.setBold(true);
+                r3.setFontFamily("Times New Roman");
+                r3.setFontSize(10);
+
+                // Add spacing after header
+                document.createParagraph();
+            }
 
             // 3. Render Section lists dynamically
             List<GeneratedQuestionDTO> questions = paper.getQuestions() != null ? paper.getQuestions() : new java.util.ArrayList<>();
@@ -104,8 +134,8 @@ public class DocxExportService {
                 allSections.add("SECTION_A");
             }
             for (String sec : allSections) {
-                String label = sec.replace("SECTION_", "Section ");
-                writeSection(document, questions, sec, label);
+                String label = sec.replace("SECTION_", "Section ").replaceAll("_", " ");
+                writeSection(document, questions, sec, label, isWorksheet);
             }
 
             // Footer
@@ -124,7 +154,7 @@ public class DocxExportService {
         }
     }
 
-    private void writeSection(XWPFDocument doc, List<GeneratedQuestionDTO> questions, String sectionCode, String sectionHeader) {
+    private void writeSection(XWPFDocument doc, List<GeneratedQuestionDTO> questions, String sectionCode, String sectionHeader, boolean isWorksheet) {
         List<GeneratedQuestionDTO> sectionQs = questions.stream()
                 .filter(q -> sectionCode.equalsIgnoreCase(q.getSection()))
                 .toList();
@@ -135,27 +165,33 @@ public class DocxExportService {
 
         // Section Title paragraph
         XWPFParagraph secTitle = doc.createParagraph();
-        secTitle.setAlignment(ParagraphAlignment.CENTER);
-        secTitle.setSpacingBefore(180);
-        secTitle.setSpacingAfter(120);
+        secTitle.setAlignment(isWorksheet ? ParagraphAlignment.LEFT : ParagraphAlignment.CENTER);
+        secTitle.setSpacingBefore(120);
+        secTitle.setSpacingAfter(60);
         XWPFRun secRun = secTitle.createRun();
-        int sectionMarks = sectionQs.stream().mapToInt(GeneratedQuestionDTO::getMarks).sum();
-        secRun.setText(sectionHeader.toUpperCase() + "  (" + sectionQs.size() + " Questions, Total: " + sectionMarks + " Marks)");
-        secRun.setBold(true);
-        secRun.setUnderline(UnderlinePatterns.SINGLE);
+        if (isWorksheet) {
+            secRun.setText("▌ " + sectionHeader);
+            secRun.setBold(true);
+            secRun.setFontSize(12);
+        } else {
+            int sectionMarks = sectionQs.stream().mapToInt(GeneratedQuestionDTO::getMarks).sum();
+            secRun.setText(sectionHeader.toUpperCase() + "  (" + sectionQs.size() + " Questions, Total: " + sectionMarks + " Marks)");
+            secRun.setBold(true);
+            secRun.setUnderline(UnderlinePatterns.SINGLE);
+            secRun.setFontSize(11);
+        }
         secRun.setFontFamily("Times New Roman");
-        secRun.setFontSize(11);
 
         // Questions list
         for (int i = 0; i < sectionQs.size(); i++) {
             GeneratedQuestionDTO q = sectionQs.get(i);
             XWPFParagraph qPara = doc.createParagraph();
             qPara.setAlignment(ParagraphAlignment.LEFT);
-            qPara.setSpacingAfter(60);
+            qPara.setSpacingAfter(isWorksheet ? 30 : 60);
 
             // Indentation/numbering run
             XWPFRun numRun = qPara.createRun();
-            numRun.setText((i + 1) + ")  ");
+            numRun.setText(isWorksheet ? (i + 1) + ".  " : (i + 1) + ")  ");
             numRun.setBold(true);
             numRun.setFontFamily("Times New Roman");
             numRun.setFontSize(11);
@@ -166,12 +202,14 @@ public class DocxExportService {
             qRun.setFontFamily("Times New Roman");
             qRun.setFontSize(11);
 
-            // Marks badge (Right aligned simulation by spaces or simple bracket)
-            XWPFRun marksRun = qPara.createRun();
-            marksRun.setText("  [" + q.getMarks() + "]");
-            marksRun.setBold(true);
-            marksRun.setFontFamily("Times New Roman");
-            marksRun.setFontSize(10);
+            // Marks badge (only for formal exam)
+            if (!isWorksheet) {
+                XWPFRun marksRun = qPara.createRun();
+                marksRun.setText("  [" + q.getMarks() + "]");
+                marksRun.setBold(true);
+                marksRun.setFontFamily("Times New Roman");
+                marksRun.setFontSize(10);
+            }
 
             // MCQ Options
             if ("MCQ".equalsIgnoreCase(q.getQuestionType()) && q.getOptions() != null) {

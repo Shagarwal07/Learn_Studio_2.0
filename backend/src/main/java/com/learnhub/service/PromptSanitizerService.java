@@ -50,17 +50,24 @@ public class PromptSanitizerService {
         boolean generateNewQuestions = containsKeywords(input, "new", "fresh", "numerical", "change values", "different numbers", "create new");
 
         if (hasUploadedImages) {
-            log.info("Processing UI Photo Upload mode: Applying ink cleaning, category grouping, and RK Coaching Brand Template without forced mark blueprints.");
+            log.info("Processing UI Photo Upload mode: Applying Antigravity Document Architect digitization prompt without forced mark blueprints.");
             StringBuilder visionPrompt = new StringBuilder();
-            visionPrompt.append(String.format("Subject: %s (Batch: %s). UI PHOTO EXTRACTION MODE (RK COACHING BRAND TEMPLATE):\n", 
+            visionPrompt.append(String.format("Subject: %s (Batch: %s). [SYSTEM: EXPERT DOCUMENT ARCHITECT]\n", 
                 subjectName != null ? subjectName : "Subject", batchName != null ? batchName : "General"));
+            visionPrompt.append("You are an elite educational material document architect specializing in high-fidelity worksheet digitization. Your primary directive is to transform images of printed worksheets into pristine, semantic, continuous-flow categorized JSON structures.\n\n");
             if (!input.isBlank()) {
-                visionPrompt.append("Instructor Note: ").append(input).append(".\n");
+                visionPrompt.append("Instructor Note: ").append(input).append(".\n\n");
             }
-            visionPrompt.append("1) PEN & INK CLEANING LOGIC (CRITICAL): Automatically analyze all uploaded images and completely erase any handwritten tick marks, circled options, student writing, red pen ink, rough notes, watermarks, or teacher annotations. Only extract the clean, original question text and options.\n");
-            visionPrompt.append("2) CONTENT EXTRACTION & GROUP BY CATEGORY: Do NOT enforce any predetermined mark totals or question count limits. Extract ALL questions found in the photos and group them cleanly by category/question type into sections (e.g., SECTION_A for MCQs, SECTION_B for Short Answers/Fill in Blanks, SECTION_C for Long/Numerical Answers).\n");
-            visionPrompt.append("3) BRANDING & OUTPUT FORMAT: Format all extracted content under the RK Coaching Brand Template. Each question object in the JSON array must reflect the extracted content cleanly without duplicate text or repeating entries.\n");
-            visionPrompt.append("4) CONCISE METADATA RULE: Keep 'solutionExplanation' and 'markingScheme' strictly under 30 words per question so the entire exam paper generates completely without token truncation.\n");
+            visionPrompt.append("[COGNITIVE FORCING: THE PRE-FLIGHT CHECK]\n");
+            visionPrompt.append("Before generating the output items, silently analyze the attached images and adhere to these structural checks:\n");
+            visionPrompt.append("1. Identify the main category instruction headings (e.g., '1. Write the number which comes just before:', '2. Fill in the blanks:', '3. Word Problems').\n");
+            visionPrompt.append("2. Determine the optimal grouping required to maintain a continuous, flowing practice layout (strictly avoiding repetitive single-column Q&A boilerplate formats).\n");
+            visionPrompt.append("3. Identify all handwritten text, red ink marks, tick marks, and student solutions that must be completely eradicated and replaced with standardized blank input spaces (e.g., '______').\n\n");
+            visionPrompt.append("[ARCHITECTURAL RULES FOR EXTRACTION]\n");
+            visionPrompt.append("1. **Zero-Inference Digitization:** Extract ONLY the original printed exercise text. Do not hallucinate questions or alter the phrasing.\n");
+            visionPrompt.append("2. **Structural Integrity & Grouping (CRITICAL):** Group all related practice exercises under their respective category headings by setting 'section' to the exact instruction title (e.g., '1. Write the number which comes just before:'). Do NOT repeat these instructions inside every individual item! For each sub-item, put ONLY the clean target exercise expression (e.g., '_____ 174', '400 _____ 402', or '98 × (24 × 56) = ____________') into 'questionText'. Do NOT split grouped exercises into verbose single-column questions.\n");
+            visionPrompt.append("3. **The Blank Canvas:** Replace all handwritten student answers and completed blanks with a uniform underline representation ('______') representing the physical space to write.\n");
+            visionPrompt.append("4. **Brand Header & Zero-Marks Rule:** Format under 'R.K. Coaching Classes' practice series. Set 'marks': 0 for all items since this is an ungraded categorized practice worksheet. Keep 'solutionExplanation' under 20 words per question so the entire paper generates completely without token truncation.\n");
 
             return SanitizedPromptResult.builder()
                     .sanitizedPrompt(visionPrompt.toString().trim())

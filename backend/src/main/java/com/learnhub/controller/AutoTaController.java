@@ -525,7 +525,7 @@ public class AutoTaController {
                     String qType = node.path("questionType").asText("MCQ");
                     String correct = node.path("correctOption").hasNonNull("value") ? node.path("correctOption").asText() : node.path("correctOption").asText(node.path("correctAnswer").asText("A"));
                     String explanation = node.path("solutionExplanation").asText(node.path("solutionSteps").asText(""));
-                    int qMarks = node.path("marks").asInt(1);
+                    int qMarks = hasUploadedImages ? 0 : node.path("marks").asInt(1);
 
                     String optionsStr = null;
                     com.fasterxml.jackson.databind.JsonNode optsNode = node.path("options");
@@ -541,12 +541,18 @@ public class AutoTaController {
 
                     String targetSection = node.path("section").asText("");
                     if (targetSection.isBlank()) {
-                        targetSection = "SECTION_B";
-                        if (qType.equalsIgnoreCase("MCQ") || qType.equalsIgnoreCase("FILL_IN_THE_BLANK") || qType.equalsIgnoreCase("TRUE_FALSE")) {
-                            targetSection = "SECTION_A";
-                        } else if (qType.equalsIgnoreCase("LONG_ANSWER") || qType.equalsIgnoreCase("LONG") || qType.equalsIgnoreCase("ESSAY") || qType.equalsIgnoreCase("NUMERICAL")) {
-                            targetSection = "SECTION_C";
+                        if (hasUploadedImages) {
+                            targetSection = "Section: General Practice";
+                        } else {
+                            targetSection = "SECTION_B";
+                            if (qType.equalsIgnoreCase("MCQ") || qType.equalsIgnoreCase("FILL_IN_THE_BLANK") || qType.equalsIgnoreCase("TRUE_FALSE")) {
+                                targetSection = "SECTION_A";
+                            } else if (qType.equalsIgnoreCase("LONG_ANSWER") || qType.equalsIgnoreCase("LONG") || qType.equalsIgnoreCase("ESSAY") || qType.equalsIgnoreCase("NUMERICAL")) {
+                                targetSection = "SECTION_C";
+                            }
                         }
+                    } else if (hasUploadedImages || targetSection.contains(":") || (targetSection.contains(" ") && !targetSection.trim().startsWith("SECTION_"))) {
+                        targetSection = targetSection.trim();
                     } else {
                         targetSection = targetSection.toUpperCase().trim().replace(" ", "_");
                         if (!targetSection.startsWith("SEC")) targetSection = "SECTION_" + targetSection;
@@ -571,6 +577,11 @@ public class AutoTaController {
             }
 
             GeneratedPaper savedPaper = editorService.compileExamPaper(savedRequest, questionDTOList);
+            if (hasUploadedImages) {
+                savedPaper.setTestType("Categorized Practice");
+                savedPaper.setTitle((subject != null && !subject.isBlank() ? subject : "Mathematics") + " Worksheet - Categorized Practice");
+                savedPaper.setTotalMarks(0);
+            }
             savedPaper.setStatus(GeneratedPaper.Status.APPROVED);
             savedPaper = paperRepository.save(savedPaper);
 
