@@ -77,7 +77,7 @@ export default function AiAssistantPage() {
   // Compute dynamic subjects and popular topics
   const batchSubjects = studentBatch?.subjects 
     ? Array.from(studentBatch.subjects) 
-    : ['Science', 'Mathematics', 'English', 'Hindi', 'Social Science'];
+    : ['Science', 'Mathematics', 'English', 'Hindi', 'Sanskrit', 'Sanskrit Grammar', 'Social Science'];
 
   const getDynamicQuizTopics = (): string[] => {
     if (studentNotes && studentNotes.length > 0) {

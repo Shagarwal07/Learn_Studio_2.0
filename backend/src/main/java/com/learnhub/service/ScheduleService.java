@@ -50,24 +50,24 @@ public class ScheduleService {
             String dayName = d.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
 
             for (ScheduleEvent e : allEvents) {
+                if (e.isCancelled()) continue;
                 if (e.isRecurring()) {
                     String eventRecDay = e.getRecurrenceDay();
                     if (eventRecDay == null || eventRecDay.isBlank()) {
                         eventRecDay = e.getEventDate().getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
                     }
 
-                    boolean isSameDayOfWeek = e.getEventDate().getDayOfWeek().equals(d.getDayOfWeek())
-                            || eventRecDay.equalsIgnoreCase(dayName)
-                            || eventRecDay.substring(0, Math.min(3, eventRecDay.length())).equalsIgnoreCase(dayName.substring(0, 3));
+                    // For recurring events, strictly match the intended recurrence day of the week
+                    boolean isSameDayOfWeek = eventRecDay.equalsIgnoreCase(dayName)
+                            || (eventRecDay.length() >= 3 && dayName.length() >= 3 && eventRecDay.substring(0, 3).equalsIgnoreCase(dayName.substring(0, 3)));
 
-                    // Check if recurring event start date is on or before d, matches the day, and is not cancelled
-                    if (!e.getEventDate().isAfter(d) && isSameDayOfWeek && !e.isCancelled()) {
+                    if (isSameDayOfWeek) {
                         ScheduleEventDTO dto = convertToDTO(e);
                         dto.setEventDate(d);
                         weeklyEvents.add(dto);
                     }
                 } else {
-                    // Check if non-recurring event date matches d
+                    // For non-recurring events, match exact event date
                     if (e.getEventDate().equals(d)) {
                         weeklyEvents.add(convertToDTO(e));
                     }

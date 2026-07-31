@@ -40,7 +40,7 @@ interface HomeworkDTO {
   createdAt: string;
 }
 
-const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Mathematics', 'Science', 'Social Science'];
+const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Sanskrit', 'Sanskrit Grammar', 'Mathematics', 'Science', 'Social Science'];
 
 export default function HomeworkCoursesPage() {
   const { user } = useAuth();

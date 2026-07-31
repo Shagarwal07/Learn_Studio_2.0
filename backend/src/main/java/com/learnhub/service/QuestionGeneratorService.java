@@ -92,10 +92,10 @@ public class QuestionGeneratorService {
         prompt.append("=== SUBJECT-SPECIFIC SOLVING DIRECTIVES ===\n");
         if (subject.toLowerCase().contains("math") || subject.toLowerCase().contains("calculus") || subject.toLowerCase().contains("algebra") || subject.toLowerCase().contains("geometry")) {
             prompt.append("- Focus heavily on solving equations, showing intermediate steps, geometric reasoning, and precise algebraic manipulation.\n");
-        } else if (subject.toLowerCase().contains("physic")) {
-            prompt.append("- Focus on deriving formulas, explicitly stating units, and showing clear intermediate calculation values.\n");
-        } else if (subject.toLowerCase().contains("chemist")) {
-            prompt.append("- Focus on balancing chemical equations, stoichiometry, and accurate reaction formulas.\n");
+        } else if (subject.toLowerCase().contains("sanskrit") || subject.toLowerCase().contains("hindi") || subject.toLowerCase().contains("grammar")) {
+            prompt.append("- Focus on flawless grammar (Vyakarana), correct word forms (Sandhi, Samas, Vibhakti, Shabda-Roop), clear translation accuracy, and vocabulary mastery.\n");
+        } else if (subject.toLowerCase().contains("science") || subject.toLowerCase().contains("biolog")) {
+            prompt.append("- Focus on foundational scientific explanations, accurate definitions, real-world examples, and conceptual clarity.\n");
         } else if (subject.toLowerCase().contains("comput") || subject.toLowerCase().contains("program")) {
             prompt.append("- Focus on executing the logic step-by-step, dry-running the code, and defining edge cases.\n");
         }

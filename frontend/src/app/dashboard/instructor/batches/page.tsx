@@ -138,8 +138,8 @@ interface ScheduleEvent {
 
 import UploadMarksModal from './UploadMarksModal';
 
-const BATCH_LEVELS = ['Class VIII', 'Class IX', 'Class X'];
-const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Mathematics', 'Science', 'Social Science', 'Physics', 'Chemistry', 'Biology', 'Computer Science'];
+const BATCH_LEVELS = ['Class V', 'Class VI', 'Class VII', 'Class VIII', 'Class IX', 'Class X', 'Foundation', 'Sanskrit Vedic'];
+const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Sanskrit', 'Sanskrit Grammar', 'Mathematics', 'Science', 'Social Science', 'Biology', 'Computer Science'];
 
 export default function InstructorBatchesPage() {
   const { user } = useAuth();
@@ -1456,8 +1456,17 @@ export default function InstructorBatchesPage() {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(dayName => {
-                            const dayEvents = batchSchedules.filter(e => e.recurrenceDay === dayName);
+                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(dayName => {
+                            const dayEvents = batchSchedules.filter(e => {
+                              if (e.recurrenceDay && e.recurrenceDay.trim().toLowerCase() === dayName.toLowerCase()) return true;
+                              if (!e.recurrenceDay && e.eventDate) {
+                                const parts = e.eventDate.split('-');
+                                const dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                                const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                return names[dt.getDay()] === dayName;
+                              }
+                              return false;
+                            });
                             if (dayEvents.length === 0) return null;
 
                             return (
@@ -2461,15 +2470,29 @@ export default function InstructorBatchesPage() {
               {/* Level */}
               <div className="space-y-1.5">
                 <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Batch Grade Level *</label>
-                <select
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Class IX, Class VII, Foundation, Sanskrit Vedic..."
                   value={newBatchLevel}
                   onChange={(e) => setNewBatchLevel(e.target.value)}
-                  className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                >
+                  className="w-full px-3.5 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-550 font-medium text-xs"
+                />
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-extrabold text-muted-foreground mr-1">Presets:</span>
                   {BATCH_LEVELS.map(level => (
-                    <option key={level} value={level}>{level}</option>
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setNewBatchLevel(level)}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-all border cursor-pointer ${
+                        newBatchLevel === level ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-muted/50 border-border-color text-muted-foreground hover:text-foreground hover:bg-slate-800/50'
+                      }`}
+                    >
+                      {level}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Assign Instructor */}

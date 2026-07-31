@@ -51,7 +51,37 @@ export function calculateSectionTotals(questions: QuestionDTO[]) {
     const avgMarks = count > 0 ? qs[0].marks : 0;
     const allSameMarks = qs.every(q => q.marks === avgMarks);
 
-    const displayLabel = key.replaceAll('_', ' ').replace(/SECTION\b/i, 'Section');
+    let displayLabel = key.replaceAll('_', ' ').replace(/SECTION\b/i, 'Section');
+    if (!displayLabel.includes('-') && !displayLabel.includes('–') && !displayLabel.includes('—') && qs.length > 0) {
+      const typeCounts: Record<string, number> = {};
+      qs.forEach(q => {
+        const qt = (q.questionType || '').toUpperCase();
+        if (qt) {
+          typeCounts[qt] = (typeCounts[qt] || 0) + 1;
+        }
+      });
+      const topType = Object.keys(typeCounts).sort((a, b) => typeCounts[b] - typeCounts[a])[0] || '';
+      
+      const typeHeadings: Record<string, string> = {
+        'MCQ': 'Multiple Choice Questions',
+        'FILL_IN_THE_BLANK': 'Fill in the Blanks',
+        'ASSERTION_REASON': 'Assertion & Reason Questions',
+        'VERY_SHORT_ANSWER': 'Very Short Answer Type Questions',
+        'SHORT_ANSWER': 'Short Answer Type Questions',
+        'SHORT': 'Short Answer Type Questions',
+        'LONG_ANSWER': 'Long Answer Type Questions',
+        'LONG': 'Long Answer Type Questions',
+        'CASE_STUDY': 'Case Study & Competency Questions',
+        'NUMERICAL': 'Numerical & Problem Solving',
+        'TRUE_FALSE': 'True / False Questions'
+      };
+
+      if (typeHeadings[topType]) {
+        displayLabel = `${displayLabel} — ${typeHeadings[topType]}`;
+      } else if (key === 'SECTION_B' && qs.some(q => q.questionText?.includes('___'))) {
+        displayLabel = `${displayLabel} — Fill in the Blanks`;
+      }
+    }
     return { key, displayLabel, questions: qs, totalMarks, count, avgMarks, allSameMarks };
   });
 

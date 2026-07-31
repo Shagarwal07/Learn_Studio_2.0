@@ -42,6 +42,8 @@ const ACADEMIC_SUBJECTS = [
   'English Grammar', 
   'Hindi', 
   'Hindi Grammar', 
+  'Sanskrit',
+  'Sanskrit Grammar',
   'Mathematics', 
   'Science', 
   'Social Science'

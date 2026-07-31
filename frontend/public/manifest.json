@@ -1,0 +1,41 @@
+{
+  "name": "R.K. Coaching Classes — LearnStudio",
+  "short_name": "LearnStudio",
+  "description": "Production AI-Powered Learning Management & Coaching Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Student Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open your academic learning dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/images/logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ask Charlie AI",
+      "short_name": "Charlie AI",
+      "description": "Get homework help and instant doubt solutions",
+      "url": "/dashboard/ai",
+      "icons": [{ "src": "/images/charlie-ai.png", "sizes": "192x192" }]
+    }
+  ]
+}
