@@ -193,12 +193,12 @@ const batchResultsData: Record<string, BatchData> = {
   }
 };
 
-const fadeUp = {
+const fadeUp: any = {
   hidden: { opacity: 0, y: 25 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } }
 };
 
-const staggerContainer = {
+const staggerContainer: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -528,7 +528,7 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
             className="relative w-full rounded-[28px] sm:rounded-[36px] bg-gradient-to-br from-slate-900/95 via-indigo-950/40 to-slate-900/90 border border-slate-800/80 px-5 py-8 sm:p-10 lg:p-14 shadow-2xl overflow-hidden backdrop-blur-xl group hover:border-slate-700/80 transition-all duration-300"
           >
             {/* Ambient Background Glows inside the unified banner */}
