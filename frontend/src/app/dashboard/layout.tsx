@@ -132,8 +132,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return 'LearnStudio';
   };
 
-  const activeGrad = 'bg-accent-grape/10 text-accent-grape border-l-[3px] border-accent-grape dark:bg-gradient-to-r dark:from-accent-grape/15 dark:to-primary-blue/5 dark:text-white shadow-[inset_0_0_8px_rgba(150,52,132,0.08)]';
-  const inactiveGrad = 'text-text-secondary hover:text-foreground hover:bg-card border-l-[3px] border-transparent';
+  const activeGrad = 'bg-gradient-to-r from-accent-grape/20 via-indigo-500/15 to-transparent text-white border-l-[3px] border-accent-grape shadow-[0_4px_15px_-3px_rgba(150,52,132,0.2),inset_0_0_12px_rgba(150,52,132,0.1)] font-extrabold scale-[1.01]';
+  const inactiveGrad = 'text-text-secondary hover:text-white hover:bg-slate-800/60 border-l-[3px] border-transparent transition-all hover:translate-x-0.5';
 
   return (
     <div className="min-h-screen flex bg-background text-foreground transition-colors duration-300">
@@ -291,17 +291,23 @@ isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-16 bg-bg-secondary/70 backdrop-blur-md border-b border-border-color flex items-center justify-between px-6 lg:px-8 z-30 transition-colors duration-200">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        <header className="h-16 bg-bg-secondary/80 backdrop-blur-xl border-b border-border-color flex items-center justify-between px-6 lg:px-8 z-30 transition-colors duration-200">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button 
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 hover:bg-black/5 dark:hover:bg-card rounded-xl text-text-secondary hover:text-foreground transition-colors cursor-pointer shrink-0"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="text-sm sm:text-base font-bold tracking-tight text-foreground uppercase truncate min-w-0">
-              {getPageTitle()}
-            </h1>
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-foreground uppercase truncate min-w-0 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                {getPageTitle()}
+              </h1>
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/30 rounded-full shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 neon-pulse-dot" />
+                Charlie AI Active
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <ProfileDropdown />

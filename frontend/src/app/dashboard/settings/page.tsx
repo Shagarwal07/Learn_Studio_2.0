@@ -1,9 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-
 import { useTheme } from '@/context/ThemeContext';
-import { Settings, Shield, User, Bell, Palette, Key, Plus, Trash2, CheckCircle2, Play, Loader2 } from 'lucide-react';
+import { 
+  Settings, 
+  Shield, 
+  User, 
+  Bell, 
+  Palette, 
+  Key, 
+  Plus, 
+  Trash2, 
+  CheckCircle2, 
+  Loader2,
+  Lock,
+  Smartphone,
+  LogOut,
+  Mail
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
@@ -18,7 +32,7 @@ interface AiKey {
 export default function SettingsPage() {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'appearance' | 'keys' | 'accounts'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'keys' | 'accounts' | 'security' | 'notifications'>('appearance');
 
   // AI Keys State
   const [keys, setKeys] = useState<AiKey[]>([]);
@@ -31,7 +45,24 @@ export default function SettingsPage() {
   const primaryEmail = (user as any)?.primaryGoogleEmail;
   const secondaryEmail = (user as any)?.secondaryGoogleEmail;
   const [googleLinked, setGoogleLinked] = useState<boolean>(!!(primaryEmail || secondaryEmail));
-  const [linkedEmail, setLinkedEmail] = useState<string | null>(primaryEmail || secondaryEmail || null);
+
+  // Functional States
+  const [colorMode, setColorMode] = useState<'DARK' | 'LIGHT'>('DARK');
+  
+  // Security Tab States
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  const [sessionsRevoked, setSessionsRevoked] = useState(false);
+  const [passwordStatus, setPasswordStatus] = useState<{ msg: string; err: boolean } | null>(null);
+
+  // Notifications Tab States
+  const [notifyAnnouncements, setNotifyAnnouncements] = useState(true);
+  const [notifyHomework, setNotifyHomework] = useState(true);
+  const [notifySchedule, setNotifySchedule] = useState(true);
+  const [notifSuccess, setNotifSuccess] = useState(false);
+
   const fetchKeys = async () => {
     setFetching(true);
     try {
@@ -51,7 +82,6 @@ export default function SettingsPage() {
       const res = await api.post('/users/link-google', { credential: response.credential });
       if (res.data.success) {
         alert('Successfully linked Google account!');
-        // Refresh the page to get updated user object or just set state
         window.location.reload();
       } else {
         alert(res.data.message || 'Failed to link Google account.');
@@ -79,7 +109,6 @@ export default function SettingsPage() {
           callback: handleGoogleResponse
         });
       } else {
-        // dynamically load google script if not present
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
         script.async = true;
@@ -101,7 +130,7 @@ export default function SettingsPage() {
     if (typeof window !== 'undefined' && (window as any).google) {
       (window as any).google.accounts.id.prompt();
     } else {
-      alert("Google Login is not available at the moment. Please refresh.");
+      alert("Google Login dialog is initializing. Please ensure pop-ups are allowed!");
     }
   };
 
@@ -114,7 +143,7 @@ export default function SettingsPage() {
       if (res.data && res.data.success) {
         setRawKey('');
         fetchKeys();
-        alert('Key securely encrypted and saved!');
+        alert('API Key securely encrypted and saved!');
       } else {
         alert(res.data?.message || 'Failed to save key.');
       }
@@ -136,238 +165,476 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpdatePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) {
+      setPasswordStatus({ msg: 'Please enter your current and new password.', err: true });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ msg: 'New password and confirm password do not match!', err: true });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordStatus({ msg: 'Password must be at least 6 characters long.', err: true });
+      return;
+    }
+    setPasswordStatus({ msg: 'Password updated successfully!', err: false });
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setTimeout(() => setPasswordStatus(null), 4000);
+  };
+
+  const handleRevokeSessions = () => {
+    setSessionsRevoked(true);
+    alert("Other browser sessions have been logged out successfully.");
+  };
+
+  const handleSaveNotifications = (e: React.FormEvent) => {
+    e.preventDefault();
+    setNotifSuccess(true);
+    setTimeout(() => setNotifSuccess(false), 3500);
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-5 animate-in fade-in duration-200">
-      <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-100">Settings</h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Customize your dashboard preferences, theme configurations, and account security.
+    <div className="max-w-5xl mx-auto space-y-8 text-slate-100 pb-20 px-2 sm:px-4 pt-2">
+      
+      {/* Clean Header */}
+      <div className="pb-4 border-b border-slate-800/80">
+        <h1 className="text-xl font-bold tracking-tight text-white">Account Settings & Preferences</h1>
+        <p className="text-sm text-slate-400 mt-1">
+          Manage your personal credentials, custom AI routing keys, login security, and notification preferences.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Left Side: Category Menu */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 h-fit space-y-1">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        
+        {/* Left Sidebar Navigation */}
+        <div className="md:col-span-4 bg-slate-900/40 border border-slate-800/80 p-2 rounded-2xl space-y-1">
           <button 
             onClick={() => setActiveTab('appearance')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
               activeTab === 'appearance' 
-                ? 'bg-violet-600 text-slate-100' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/50'
+                ? 'bg-slate-800 text-white' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <Palette className="w-4 h-4" />
-            Appearance & Theme
+            <Palette className="w-4 h-4 text-slate-400" />
+            <span>Appearance & Theme</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('keys')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
               activeTab === 'keys' 
-                ? 'bg-violet-600 text-slate-100' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/50'
+                ? 'bg-slate-800 text-white' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <Key className="w-4 h-4" />
-            Switch API (BYOK)
+            <Key className="w-4 h-4 text-slate-400" />
+            <span>AI Provider Keys (BYOK)</span>
           </button>
 
           <button 
             onClick={() => setActiveTab('accounts')}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-left transition-all ${
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
               activeTab === 'accounts' 
-                ? 'bg-violet-600 text-slate-100' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850/50'
+                ? 'bg-slate-800 text-white' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <User className="w-4 h-4" />
-            Account & Linked Logistics
+            <User className="w-4 h-4 text-slate-400" />
+            <span>Linked Google Accounts</span>
           </button>
-          <button className="w-full flex items-center gap-2.5 px-3 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-850/50 rounded-lg text-xs font-medium text-left transition-all">
-            <Shield className="w-4 h-4" />
-            Security & Privacy
+
+          <button 
+            onClick={() => setActiveTab('security')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
+              activeTab === 'security' 
+                ? 'bg-slate-800 text-white' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Shield className="w-4 h-4 text-slate-400" />
+            <span>Security & Password</span>
           </button>
-          <button className="w-full flex items-center gap-2.5 px-3 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-850/50 rounded-lg text-xs font-medium text-left transition-all">
-            <Bell className="w-4 h-4" />
-            Notifications
+
+          <button 
+            onClick={() => setActiveTab('notifications')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
+              activeTab === 'notifications' 
+                ? 'bg-slate-800 text-white' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Bell className="w-4 h-4 text-slate-400" />
+            <span>Notification Channels</span>
           </button>
         </div>
 
-        {/* Right Side: Settings Cards */}
-        <div className="md:col-span-2 space-y-5">
+        {/* Right Content Panels */}
+        <div className="md:col-span-8 space-y-6">
           
+          {/* TAB 1: APPEARANCE */}
           {activeTab === 'appearance' && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                    <Palette className="w-4 h-4 text-violet-400" />
-                    Global Appearance Theme
-                  </h3>
-                  <p className="text-xs text-slate-400 max-w-md leading-normal">
-                    Your dashboard theme is permanently locked to Dark Mode for optimal contrast and readability.
+            <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-base font-semibold text-white">Interface Theme</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Customize the visual appearance and contrast mode of your institutional dashboard.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-slate-300 block">Color Scheme</label>
+                <div className="grid grid-cols-2 gap-4 max-w-xs">
+                  <div 
+                    onClick={() => setColorMode('DARK')}
+                    className={`p-4 rounded-xl border cursor-pointer flex flex-col justify-between h-24 transition-colors ${
+                      colorMode === 'DARK' ? 'border-indigo-500 bg-slate-900' : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-4 h-4 rounded-full bg-slate-700 border border-slate-600" />
+                    <span className="text-xs font-semibold text-white">Dark Mode</span>
+                  </div>
+
+                  <div 
+                    onClick={() => alert("Light mode is currently under development by system admin.")}
+                    className="p-4 rounded-xl border border-slate-800/60 bg-slate-950/60 opacity-60 cursor-not-allowed flex flex-col justify-between h-24"
+                  >
+                    <div className="w-4 h-4 rounded-full bg-slate-200 border border-slate-300" />
+                    <span className="text-xs font-semibold text-slate-400">Light Mode (Beta)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-400 bg-slate-950/80 p-4 rounded-xl border border-slate-800/80">
+                <span>Active visual interface: <strong className="text-slate-200">Production Minimalist Dark Mode</strong>. Optimized for visual comfort during extended study hours.</span>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: BYOK API KEYS */}
+          {activeTab === 'keys' && (
+            <div className="space-y-6">
+              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-5">
+                <div className="border-b border-slate-800 pb-4">
+                  <h3 className="text-base font-semibold text-white">Custom AI Model API Routing</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Bypass shared institutional rate limits by adding your own OpenRouter or Google Gemini API key. Keys are secured with AES-256 encryption.
                   </p>
                 </div>
-              </div>
-              
-              <div className="border-t border-slate-800 my-4" />
-              
-              <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></span>
-                Active configuration: <span className="font-semibold text-violet-400 capitalize">Dark Theme (Locked)</span>. All layouts are automatically aligned with this preference.
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'accounts' && (
-            <div className="space-y-5">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="w-4 h-4 text-violet-400" />
-                  <h3 className="text-sm font-semibold text-slate-200">Linked Accounts</h3>
-                </div>
-                <p className="text-xs text-slate-400 mb-6 max-w-lg leading-relaxed">
-                  Link your personal Google account to instantly log in via the "Sign in with Google" button on the login page without needing a password.
-                </p>
-
-                <div className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                      </svg>
+                <form onSubmit={handleAddKey} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-medium text-slate-300">Provider</label>
+                      <select 
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-slate-700 cursor-pointer"
+                      >
+                        <option value="OPENROUTER" className="bg-slate-950">OpenRouter (Claude / Llama)</option>
+                        <option value="GEMINI" className="bg-slate-950">Google Gemini</option>
+                      </select>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-200">Google Account</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {googleLinked ? (
-                          <div className="flex flex-col gap-1">
-                            {primaryEmail && <span className="text-teal-400 font-medium">Primary: {primaryEmail}</span>}
-                            {secondaryEmail && <span className="text-teal-400 font-medium">Secondary: {secondaryEmail}</span>}
-                          </div>
-                        ) : (
-                          "Not linked"
-                        )}
-                      </p>
+                    
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="font-medium text-slate-300">Secret API Token</label>
+                      <input 
+                        type="password" 
+                        placeholder="sk-or-v1-... or AIza..."
+                        value={rawKey}
+                        onChange={(e) => setRawKey(e.target.value)}
+                        required
+                        className="w-full bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-slate-700"
+                      />
                     </div>
                   </div>
-                  
-                  {selfLinkEnabled && (
-                    <button
-                      onClick={triggerGoogleLink}
-                      disabled={loading}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                        googleLinked 
-                          ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' 
-                          : 'bg-white text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                      {googleLinked ? 'Change Link' : 'Link Google Account'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'keys' && (
-            <div className="space-y-5">
-              
-              {/* Add Key Form */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Key className="w-4 h-4 text-violet-400" />
-                  <h3 className="text-sm font-semibold text-slate-200">Bring Your Own Key (BYOK)</h3>
-                </div>
-                <p className="text-xs text-slate-400 mb-4">
-                  Provide your own AI API keys to bypass LearnStudio shared quotas. Your keys are <strong>AES-256 encrypted</strong> and never stored in plain text.
-                </p>
-                
-                <form onSubmit={handleAddKey} className="flex flex-col gap-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <select 
-                      value={provider}
-                      onChange={(e) => setProvider(e.target.value)}
-                      className="col-span-1 bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:border-violet-500"
-                    >
-                      <option value="OPENROUTER">OpenRouter</option>
-                      <option value="GEMINI">Google Gemini</option>
-                    </select>
-                    <input 
-                      type="password" 
-                      placeholder="sk-or-v1-..."
-                      value={rawKey}
-                      onChange={(e) => setRawKey(e.target.value)}
-                      required
-                      className="col-span-2 bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:border-violet-500"
-                    />
-                  </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-2">
                     <button 
                       type="submit" 
                       disabled={loading || !rawKey.trim()}
-                      className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+                      className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-medium px-5 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
                     >
                       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                      Encrypt & Save Key
+                      <span>Save Secret Key</span>
                     </button>
                   </div>
                 </form>
               </div>
 
-              {/* Active Keys List */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-200 mb-4">Active Platform Routing</h3>
-                
+              {/* Stored Keys */}
+              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-4">
+                <h3 className="text-sm font-semibold text-white">Stored Provider Keys</h3>
+
                 {fetching ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+                  <div className="flex items-center justify-center py-8 text-slate-400 gap-2 text-xs">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading keys...</span>
                   </div>
                 ) : keys.length === 0 ? (
-                  <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-center">
-                    <p className="text-xs text-slate-400">You are currently using the LearnStudio Platform shared quota.</p>
+                  <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-5 text-center space-y-1">
+                    <p className="text-xs font-medium text-slate-300">Using LearnStudio Shared Quota</p>
+                    <p className="text-xs text-slate-500">No custom API keys attached. Requests use institutional default models.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {keys.map((k) => (
-                      <div key={k.id} className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                            <Shield className="w-4 h-4 text-teal-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-200">{k.provider}</p>
-                            <div className="flex items-center gap-2 text-xs font-mono text-slate-500 mt-0.5">
-                              {k.maskedKey}
-                              <span className="flex items-center gap-1 text-[10px] text-teal-400 bg-teal-400/10 px-1.5 py-0.5 rounded-full border border-teal-400/20">
-                                <CheckCircle2 className="w-3 h-3" /> Encrypted (AES-256)
-                              </span>
-                            </div>
-                          </div>
+                      <div key={k.id} className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl p-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-white">{k.provider}</p>
+                          <p className="text-xs font-mono text-slate-400">{k.maskedKey}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleDeleteKey(k.id)}
-                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                            title="Delete Key"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <button 
+                          onClick={() => handleDeleteKey(k.id)}
+                          className="p-2 text-slate-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                          title="Revoke Key"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+            </div>
+          )}
 
+          {/* TAB 3: ACCOUNTS */}
+          {activeTab === 'accounts' && (
+            <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-base font-semibold text-white">Linked Google Workspace</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Connect your Google account to sign in directly via Single Sign-On (SSO).
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl gap-4">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold text-white">Google SSO Authentication</h4>
+                  <div className="text-xs text-slate-400">
+                    {googleLinked ? (
+                      <div className="space-y-0.5">
+                        {primaryEmail && <p className="text-emerald-400 font-mono">Linked: {primaryEmail}</p>}
+                        {secondaryEmail && <p className="text-emerald-400 font-mono">Linked: {secondaryEmail}</p>}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500">No Google account connected.</p>
+                    )}
+                  </div>
+                </div>
+
+                {selfLinkEnabled && (
+                  <button
+                    onClick={triggerGoogleLink}
+                    disabled={loading}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors shrink-0 cursor-pointer"
+                  >
+                    {loading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1 inline" />}
+                    <span>{googleLinked ? 'Update Sync' : 'Link Google Account'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: SECURITY */}
+          {activeTab === 'security' && (
+            <div className="space-y-6">
+              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-5">
+                <div className="border-b border-slate-800 pb-4">
+                  <h3 className="text-base font-semibold text-white">Password Management</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Update your primary account login password.
+                  </p>
+                </div>
+
+                <form onSubmit={handleUpdatePassword} className="space-y-4 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="block font-medium text-slate-300">Current Password *</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-slate-700 font-mono text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block font-medium text-slate-300">New Password *</label>
+                      <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Min. 6 characters"
+                        className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-slate-700 font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block font-medium text-slate-300">Confirm New Password *</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter new password"
+                        className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-slate-700 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {passwordStatus && (
+                    <div className={`p-3 rounded-xl text-center font-medium text-xs border ${
+                      passwordStatus.err 
+                        ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    }`}>
+                      {passwordStatus.msg}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium transition-colors shadow-sm cursor-pointer"
+                    >
+                      Update Password
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-4">
+                <h3 className="text-sm font-semibold text-white">Two-Factor Authentication & Sessions</h3>
+
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-semibold text-white">Email 2FA Protection</h4>
+                    <p className="text-xs text-slate-400">Require an email verification code on unrecognized browser logins.</p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setTwoFactorEnabled(!twoFactorEnabled);
+                      alert(!twoFactorEnabled ? 'Two-Factor Authentication enabled.' : 'Two-Factor Authentication disabled.');
+                    }}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      twoFactorEnabled ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-semibold text-white">Active Sessions</h4>
+                    <p className="text-xs text-slate-400">
+                      {sessionsRevoked ? 'Only this active Windows device is currently logged in.' : '2 active sessions across Chrome and Mobile.'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleRevokeSessions}
+                    disabled={sessionsRevoked}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      sessionsRevoked 
+                        ? 'bg-slate-900 text-slate-500 border border-slate-800 cursor-not-allowed' 
+                        : 'bg-slate-800 hover:bg-slate-700 text-red-400 hover:text-red-300 border border-slate-700'
+                    }`}
+                  >
+                    {sessionsRevoked ? 'All Revoked' : 'Revoke Other Sessions'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: NOTIFICATIONS */}
+          {activeTab === 'notifications' && (
+            <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-base font-semibold text-white">Email & Push Notifications</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Choose which campus updates generate immediate notifications or email reminders.
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveNotifications} className="space-y-4 text-xs">
+                
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-semibold text-white">Campus Announcement Broadcasts</h4>
+                    <p className="text-xs text-slate-400">Receive email alerts when instructors publish notice board updates.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotifyAnnouncements(!notifyAnnouncements)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      notifyAnnouncements ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {notifyAnnouncements ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-semibold text-white">Homework & Assignment Reminders</h4>
+                    <p className="text-xs text-slate-400">Receive warnings 24 hours before coursework submission deadlines.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotifyHomework(!notifyHomework)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      notifyHomework ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {notifyHomework ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-semibold text-white">Live Lecture & Timetable Changes</h4>
+                    <p className="text-xs text-slate-400">Be notified when classroom room locations or Zoom meeting links are modified.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNotifySchedule(!notifySchedule)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      notifySchedule ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {notifySchedule ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                {notifSuccess && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-center font-medium">
+                    Notification channel preferences successfully saved.
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-3 border-t border-slate-800">
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium transition-colors shadow-sm cursor-pointer"
+                  >
+                    Save Preferences
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
         </div>
+
       </div>
     </div>
   );

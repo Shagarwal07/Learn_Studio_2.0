@@ -12,13 +12,12 @@ import {
   ClipboardCheck, 
   Plus, 
   FileText, 
-  ArrowRight, 
   ChevronLeft,
   Calendar,
-  Eye,
   CheckCircle2,
-  XCircle,
-  Trash2
+  Trash2,
+  Check,
+  ArrowUpRight
 } from 'lucide-react';
 
 interface CourseWithHomework {
@@ -50,8 +49,16 @@ export default function HomeworkCoursesPage() {
   const [activeTab, setActiveTab] = useState<'BATCH' | 'COURSES'>('BATCH');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
 
+  // Completed status state
+  const [completedIds, setCompletedIds] = useState<number[]>([]);
   const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+
+  const toggleComplete = (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCompletedIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (homeworkId: number) => {
@@ -97,7 +104,7 @@ export default function HomeworkCoursesPage() {
     }
   }, [batches, isInstructorOrAdmin, selectedBatchId]);
 
-  // 2. Fetch batch homework (offline) - dynamically based on user role
+  // 2. Fetch batch homework (offline)
   const { data: batchHomeworks = [], isLoading: isBatchHomeworksLoading } = useQuery<HomeworkDTO[]>({
     queryKey: ['batch-homeworks', isInstructorOrAdmin, selectedBatchId],
     queryFn: async () => {
@@ -114,180 +121,201 @@ export default function HomeworkCoursesPage() {
 
   const isLoading = isCoursesLoading || isBatchHomeworksLoading;
 
-  // Filter courses
   const filteredCourses = courses.filter(c => 
     c.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Count batch homework per subject
   const getSubjectHomeworkCount = (subject: string) => {
     return batchHomeworks.filter(hw => hw.subjectName.toLowerCase() === subject.toLowerCase()).length;
   };
 
-  // Filter batch homework by selected subject and search
-  const filteredBatchHomeworks = batchHomeworks.filter(hw => {
-    const matchesSubject = selectedSubject ? hw.subjectName.toLowerCase() === selectedSubject.toLowerCase() : true;
-    const matchesSearch = hw.title.toLowerCase().includes(search.toLowerCase()) || 
-                          hw.description.toLowerCase().includes(search.toLowerCase());
-    return matchesSubject && matchesSearch;
-  });
+  const filteredBatchHomeworks = batchHomeworks
+    .filter(hw => {
+      const matchesSubject = selectedSubject ? hw.subjectName.toLowerCase() === selectedSubject.toLowerCase() : true;
+      const matchesSearch = hw.title.toLowerCase().includes(search.toLowerCase()) || 
+                            hw.description.toLowerCase().includes(search.toLowerCase());
+      return matchesSubject && matchesSearch;
+    })
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
-        <p className="mt-3 text-sm text-slate-400 font-medium">Opening homework lockbox...</p>
+      <div className="h-[60vh] flex flex-col items-center justify-center text-slate-400 gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+        <p className="text-sm font-medium text-slate-500">Loading coursework...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto text-foreground">
+    <div className="max-w-6xl mx-auto space-y-8 text-slate-100 pb-16 px-2 sm:px-4 pt-2">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Clean Header & Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Homework Assignments</h2>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1 leading-relaxed">
-            Submit course assignments, view marks, and check instructor feedback.
+          <h1 className="text-xl font-bold tracking-tight text-white">Academic Assignments & Homework</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Track coursework deadlines, review task instructions, and manage assignment completion.
           </p>
         </div>
-        {isInstructorOrAdmin && (
-          <Link 
-            href="/dashboard/instructor/batches?tab=homework"
-            className="btn-premium flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-all shadow-md cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            Manage Batches & Homework
-          </Link>
-        )}
+
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search assignments..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors"
+            />
+          </div>
+
+          {isInstructorOrAdmin && (
+            <Link 
+              href="/dashboard/instructor/batches?tab=homework"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Assign New</span>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* Tabs Switcher (Only show if student belongs to a batch or is instructor) */}
+      {/* Navigation Tabs */}
       {(isInstructorOrAdmin || batchHomeworks.length > 0) && (
-        <div className="flex items-center gap-2 border-b border-border-color pb-px">
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
           <button
-            onClick={() => {
-              setActiveTab('BATCH');
-              setSelectedSubject(null);
-            }}
-            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
+            onClick={() => { setActiveTab('BATCH'); setSelectedSubject(null); }}
+            className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'BATCH'
-                ? 'border-accent-grape text-accent-grape'
-                : 'border-transparent text-text-secondary hover:text-foreground'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
             Offline Batch Tasks
           </button>
           <button
-            onClick={() => {
-              setActiveTab('COURSES');
-              setSelectedSubject(null);
-            }}
-            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
+            onClick={() => { setActiveTab('COURSES'); setSelectedSubject(null); }}
+            className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'COURSES'
-                ? 'border-accent-grape text-accent-grape'
-                : 'border-transparent text-text-secondary hover:text-foreground'
+                ? 'bg-slate-800 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            Explore Courses
+            Course Assignments
           </button>
         </div>
       )}
 
-      {/* Search and Back button */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        {selectedSubject ? (
-          <button
-            onClick={() => setSelectedSubject(null)}
-            className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-accent-grape hover:text-accent-blue transition-colors cursor-pointer self-start"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to Academic Tasks
-          </button>
-        ) : (
-          <div className="relative max-w-md w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-text-muted" />
-            <input
-              type="text"
-              placeholder={activeTab === 'BATCH' && !isInstructorOrAdmin ? "Search batch tasks..." : "Search course folders..."}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-premium w-full pl-11 pr-4 py-2.5 rounded-2xl text-sm text-foreground placeholder-text-muted focus:outline-none transition-all"
-            />
-          </div>
-        )}
-      </div>
-
       {/* WORKSPACE VIEW */}
-      
-      {/* CASE A: Drill-down Subject Homework List */}
       {selectedSubject ? (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <h3 className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-            {selectedSubject} Homework Archive
-          </h3>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setSelectedSubject(null)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs font-medium transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Back to Subjects</span>
+            </button>
+
+            <span className="text-sm font-semibold text-slate-300">
+              {selectedSubject} ({filteredBatchHomeworks.length} task{filteredBatchHomeworks.length !== 1 ? 's' : ''})
+            </span>
+          </div>
 
           {filteredBatchHomeworks.length === 0 ? (
-            <div className="py-16 text-center glass-card rounded-3xl text-xs text-text-secondary border border-border-color bg-card">
-              No homework tasks assigned under this subject.
+            <div className="py-16 text-center bg-slate-900/40 border border-slate-800/60 rounded-2xl text-slate-400 space-y-2">
+              <ClipboardCheck className="w-8 h-8 text-slate-600 mx-auto stroke-1" />
+              <p className="text-sm font-medium text-slate-300">No active assignments for {selectedSubject}.</p>
+              <p className="text-xs text-slate-500">You are completely up to date with your coursework in this subject.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredBatchHomeworks.map((hw) => {
                 const isOverdue = new Date(hw.dueDate) < new Date();
+                const isCompleted = completedIds.includes(hw.id);
+
                 return (
                   <div
                     key={hw.id}
-                    className="glass-card hover-lift rounded-3xl p-6 flex flex-col justify-between gap-6 bg-card border border-border-color shadow-sm"
+                    className={`p-5 rounded-2xl border transition-all duration-150 flex flex-col justify-between gap-4 ${
+                      isCompleted 
+                        ? 'bg-slate-900/30 border-emerald-500/20 opacity-80' 
+                        : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 hover:border-slate-700'
+                    }`}
                   >
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 bg-accent-grape/15 text-accent-grape rounded-xl flex items-center justify-center shrink-0 border border-accent-grape/25">
-                            <FileText className="w-4.5 h-4.5" />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                            isCompleted ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30' : 'bg-slate-800/80 text-slate-300 border-slate-700/60'
+                          }`}>
+                            {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <FileText className="w-5 h-5 stroke-[1.5]" />}
                           </div>
-                          <h4 className="text-sm font-black text-foreground truncate">
-                            {hw.title}
-                          </h4>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-semibold text-slate-200 truncate">{hw.title}</h4>
+                            <p className="text-xs text-slate-500 mt-0.5">By {hw.createdByName}</p>
+                          </div>
                         </div>
-                        <span className={`px-2.5 py-1 text-[9px] font-extrabold rounded-full uppercase tracking-wider shrink-0 border ${
-                          isOverdue 
-                            ? 'bg-error/10 text-error border-error/20' 
-                            : 'bg-success/10 text-success border-success/20'
+
+                        <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-md border shrink-0 ${
+                          isCompleted
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : isOverdue
+                              ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                              : 'bg-slate-800 text-slate-300 border-slate-700/50'
                         }`}>
-                          {isOverdue ? 'Overdue' : 'Active'}
+                          {isCompleted ? 'Completed' : isOverdue ? 'Overdue' : 'Active'}
                         </span>
                       </div>
-                      <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
-                        {hw.description}
+
+                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                        {hw.description || 'No specific task instructions provided.'}
                       </p>
+
+                      <div className="flex items-center justify-between text-xs pt-1 text-slate-400">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Due Date:</span>
+                        </span>
+                        <span className="font-mono text-slate-200 font-medium">
+                          {new Date(hw.dueDate).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4 pt-4 border-t border-border-color mt-2">
-                      <div className="flex flex-col text-[10px] text-text-muted font-bold uppercase tracking-wider gap-0.5">
-                        <span>Assigned by {hw.createdByName}</span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-accent-grape" />
-                          Due: {new Date(hw.dueDate).toLocaleString()}
-                        </span>
-                      </div>
+                    {/* Clean Essential Action Bar */}
+                    <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+                      <button
+                        onClick={(e) => toggleComplete(hw.id, e)}
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          isCompleted
+                            ? 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                            : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200'
+                        }`}
+                      >
+                        <Check className={`w-3.5 h-3.5 ${isCompleted ? 'text-emerald-400' : 'text-slate-400'}`} />
+                        <span>{isCompleted ? 'Marked Done' : 'Mark Complete'}</span>
+                      </button>
 
                       <div className="flex items-center gap-2">
                         {user?.role === 'ADMIN' && (
                           <button
                             onClick={() => handleDeleteHomework(hw.id)}
-                            className="flex items-center justify-center p-2 text-error hover:text-error bg-error/10 hover:bg-error/20 border border-error/20 rounded-xl transition-all cursor-pointer shadow-sm"
-                            title="Delete Homework"
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Assignment"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
+
                         <Link
                           href={`/dashboard/homework/${hw.id}`}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-muted/50 hover:bg-gradient-to-r hover:from-accent-grape hover:to-primary-blue border border-border-color hover:border-accent-grape text-text-secondary hover:text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition-colors shadow-sm"
                         >
-                          <Eye className="w-3.5 h-3.5" />
                           Open Task
                         </Link>
                       </div>
@@ -300,22 +328,22 @@ export default function HomeworkCoursesPage() {
         </div>
       ) : activeTab === 'BATCH' ? (
         
-        /* CASE B: Batch Academic Subjects folders grid */
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h3 className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-              Academic Subject Task Folders
-            </h3>
+        /* BATCH SUBJECTS FOLDER GRID */
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Subject Folders ({ACADEMIC_SUBJECTS.length})
+            </h2>
             {isInstructorOrAdmin && batches.length > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-text-secondary font-medium">Select Batch:</span>
+                <span className="text-xs text-slate-400">Target Batch:</span>
                 <select
                   value={selectedBatchId}
                   onChange={(e) => setSelectedBatchId(e.target.value)}
-                  className="input-premium rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none transition-all cursor-pointer"
+                  className="px-3 py-1 bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg focus:outline-none focus:border-slate-700 cursor-pointer"
                 >
                   {batches.map(b => (
-                    <option key={b.id} value={b.id} className="bg-card text-foreground">
+                    <option key={b.id} value={b.id} className="bg-slate-950">
                       {b.name}
                     </option>
                   ))}
@@ -324,78 +352,81 @@ export default function HomeworkCoursesPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {ACADEMIC_SUBJECTS.map((subject) => {
               const hwCount = getSubjectHomeworkCount(subject);
+              const overdueCount = batchHomeworks.filter(h => h.subjectName.toLowerCase() === subject.toLowerCase() && new Date(h.dueDate) < new Date() && !completedIds.includes(h.id)).length;
+
               return (
-                <button
+                <div
                   key={subject}
                   onClick={() => setSelectedSubject(subject)}
-                  className="group text-left flex items-start gap-4 p-5 glass-card hover-lift rounded-3xl border border-border-color hover:border-accent-grape/50 transition-all cursor-pointer select-none bg-card shadow-sm"
+                  className="p-5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded-2xl cursor-pointer transition-all duration-150 flex items-center justify-between group select-none"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-accent-grape/10 to-primary-blue/10 text-accent-grape border border-accent-grape/20 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Folder className="w-5 h-5 fill-current opacity-70" />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="text-sm font-bold text-foreground group-hover:text-accent-grape transition-colors truncate">
-                      {subject}
-                    </h3>
-                    <p className="text-xs text-text-muted font-bold uppercase tracking-wider">
-                      {hwCount} Active Tasks
-                    </p>
-                    
-                    <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-accent-grape pt-3 opacity-0 group-hover:opacity-100 transition-all">
-                      Open Folder
-                      <ArrowRight className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-slate-300 shrink-0 group-hover:text-white transition-colors">
+                      <Folder className="w-5 h-5 stroke-[1.5]" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
+                        {subject}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5 font-mono flex items-center gap-2">
+                        <span>{hwCount} assignment{hwCount !== 1 ? 's' : ''}</span>
+                        {overdueCount > 0 && (
+                          <span className="text-red-400 font-medium">• {overdueCount} overdue</span>
+                        )}
+                      </p>
                     </div>
                   </div>
-                </button>
+
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 group-hover:text-slate-300 group-hover:bg-slate-800 transition-all">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </div>
+                </div>
               );
             })}
           </div>
         </div>
       ) : (
-        
-        /* CASE C: Explore Course folders grid (Default online view) */
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <h3 className="text-[10px] font-extrabold text-text-muted uppercase tracking-wider">
-            Explore Course Homework
-          </h3>
+
+        /* COURSES FOLDER GRID */
+        <div className="space-y-4">
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Online Course Assignments
+          </h2>
 
           {filteredCourses.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCourses.map((course) => (
                 <Link
                   key={course.id}
                   href={`/dashboard/homework/course/${course.id}`}
-                  className="group flex items-start gap-4 p-5 glass-card hover-lift rounded-3xl border border-border-color hover:border-accent-grape/50 transition-all cursor-pointer select-none bg-card shadow-sm"
+                  className="p-5 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded-2xl transition-all duration-150 flex items-center justify-between group select-none"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-accent-grape/10 to-primary-blue/10 text-accent-grape border border-accent-grape/20 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Folder className="w-5 h-5 fill-current opacity-70" />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="text-sm font-bold text-foreground group-hover:text-accent-grape transition-colors truncate">
-                      {course.title}
-                    </h3>
-                    <p className="text-xs text-text-muted font-bold uppercase tracking-wider">
-                      {course.homeworkCount} Active Tasks
-                    </p>
-                    
-                    <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-accent-grape pt-3 opacity-0 group-hover:opacity-100 transition-all">
-                      Open Folder
-                      <ArrowRight className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700/50 flex items-center justify-center text-indigo-400 shrink-0">
+                      <Folder className="w-5 h-5 stroke-[1.5]" />
                     </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
+                        {course.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5 font-mono">
+                        {course.homeworkCount} task{course.homeworkCount !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 group-hover:text-slate-300 group-hover:bg-slate-800 transition-all">
+                    <ArrowUpRight className="w-4 h-4" />
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 glass-card rounded-3xl text-center border border-border-color bg-card">
-              <ClipboardCheck className="w-12 h-12 text-text-muted mb-3 opacity-70" />
-              <h4 className="text-sm font-bold text-foreground">No course homework found</h4>
-              <p className="text-xs text-text-secondary max-w-xs mt-1.5 font-medium leading-relaxed">
-                {search ? 'No folders match your search query.' : 'Once course homework is assigned, it will appear here.'}
-              </p>
+            <div className="py-12 text-center bg-slate-900/40 border border-slate-800/60 rounded-2xl text-slate-400 text-xs">
+              {search ? 'No folders match your search query.' : 'No course coursework assigned at the moment.'}
             </div>
           )}
         </div>

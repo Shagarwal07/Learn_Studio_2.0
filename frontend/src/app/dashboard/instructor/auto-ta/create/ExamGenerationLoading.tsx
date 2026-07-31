@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Sparkles, CheckCircle2, Cpu, Layers, Brain, FileText, 
+  ShieldCheck, Terminal, Loader2, Zap, Search, RefreshCw, 
+  BookOpen, Check, AlertCircle, Award
+} from 'lucide-react';
 
 interface ExamGenerationLoadingProps {
   subject?: string;
@@ -11,33 +17,18 @@ interface ExamGenerationLoadingProps {
   customPrompt?: string;
 }
 
-const ICONS: Record<string, string> = {
-  understanding: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
-  blueprint: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>',
-  curriculum: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
-  topics: '<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',
-  difficulty: '<path d="M12 3v18M5 8l-3 6h6l-3-6zM19 8l-3 6h6l-3-6z"/><path d="M5 8h14"/>',
-  bloom: '<path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>',
-  questions: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
-  duplicates: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="m3 3 15 15"/>',
-  validation: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
-  formatting: '<path d="M4 2h11l5 5v15H4z"/><path d="M15 2v5h5"/>',
-  finalizing: '<path d="M12 3l1.9 4.9L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 3z"/>',
-  check: '<path d="M20 6L9 17l-5-5"/>'
-};
-
 const STAGES = [
-  { id: 'understanding', label: 'Understanding Request', desc: 'Parsing exam instructions and constraints' },
-  { id: 'blueprint', label: 'Reading Blueprint', desc: 'Evaluating paper structure and rules' },
-  { id: 'curriculum', label: 'Retrieving Material', desc: 'Indexing selected notes or photo content' },
-  { id: 'topics', label: 'Selecting Topics', desc: 'Mapping concepts to exam weightage' },
-  { id: 'difficulty', label: 'Balancing Difficulty', desc: 'Distributing easy, medium and hard items' },
-  { id: 'bloom', label: "Applying Bloom's Taxonomy", desc: 'Aligning cognitive depth to subject criteria' },
-  { id: 'questions', label: 'Generating Questions', desc: 'Drafting authentic stems and solutions' },
-  { id: 'duplicates', label: 'Eliminating Duplicates', desc: 'Scanning for redundant or repetitive items' },
-  { id: 'validation', label: 'Validating Distribution', desc: 'Cross-checking targets and mark allocation' },
-  { id: 'formatting', label: 'Formatting Layout', desc: 'Typesetting structure, headers and answers' },
-  { id: 'finalizing', label: 'Finalizing Examination', desc: 'Running last quality pass before display' },
+  { id: 'understanding', label: 'Understanding Request', desc: 'Parsing exam instructions and constraints', icon: Search },
+  { id: 'blueprint', label: 'Reading Blueprint', desc: 'Evaluating paper structure and rules', icon: FileText },
+  { id: 'curriculum', label: 'Curriculum OCR & Index', desc: 'Indexing selected notes and photo content', icon: BookOpen },
+  { id: 'topics', label: 'Selecting Core Topics', desc: 'Mapping concepts to exam weightage', icon: Layers },
+  { id: 'difficulty', label: 'Balancing Difficulty', desc: 'Distributing easy, medium and hard items', icon: Zap },
+  { id: 'bloom', label: "Bloom's Taxonomy Calibration", desc: 'Aligning cognitive depth to criteria', icon: Brain },
+  { id: 'questions', label: 'Generating Questions', desc: 'Drafting authentic stems and solutions', icon: Cpu },
+  { id: 'duplicates', label: 'Semantic Deduplication', desc: 'Scanning for redundant or repetitive items', icon: RefreshCw },
+  { id: 'validation', label: 'Validation Pass', desc: 'Cross-checking targets and mark allocation', icon: ShieldCheck },
+  { id: 'formatting', label: 'Formatting Layout', desc: 'Typesetting structure, headers and answers', icon: Sparkles },
+  { id: 'finalizing', label: 'Finalizing Examination', desc: 'Running quality certification pass', icon: Award },
 ];
 
 export default function ExamGenerationLoading({
@@ -48,7 +39,6 @@ export default function ExamGenerationLoading({
   uploadedPhotosCount = 0,
   customPrompt = ''
 }: ExamGenerationLoadingProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const logBodyRef = useRef<HTMLDivElement | null>(null);
   const logIdxRef = useRef<Record<string, number>>({});
 
@@ -57,171 +47,99 @@ export default function ExamGenerationLoading({
   const [pageIndex, setPageIndex] = useState(0);
   const [visibleLinesCount, setVisibleLinesCount] = useState(1);
   const [logs, setLogs] = useState<Array<{ ts: string; msg: string }>>([
-    { ts: new Date().toTimeString().slice(0, 8), msg: `Initiating Vertex AI Engine for ${subject}...` }
+    { ts: new Date().toTimeString().slice(0, 8), msg: `🚀 Stitch AI & Vertex Engine initiated for ${subject}...` }
   ]);
 
-  // Dynamic content generated strictly from actual user selections
+  // Dynamic content generated strictly from user selections
   const dynamicPages = isPhotoUpload ? [
-    [`UI Photo OCR Mode (${subject})`, `Extracting text from ${uploadedPhotosCount || 1} uploaded textbook photo(s)…`, 'Cleaning handwritten ink & background noise…', 'Grouping questions by concept & category…'],
-    [`RK Coaching Brand Template`, `Formatting institutional header & branding…`, `Aligning diagrams, symbols & equations…`, `Structuring balanced question layouts & spacing…`],
-    [`Quality & OCR Verification`, `Verifying character accuracy in ${subject}…`, `Removing unwanted ticks & rough work marks…`, '[Ready for interactive layout preview] →']
+    [`[OCR Vision Engine] — ${subject}`, `Extracting semantic content from ${uploadedPhotosCount || 1} uploaded photo(s)…`, 'Filtering handwritten pen ink & background textbook noise…', 'Structuring diagnostic topic clusters…'],
+    [`[RK Coaching Institutional Schema]`, `Applying standardized Academic Lumina branding template…`, `Formulating balanced diagrammatic equations & symbol matrices…`, `Calibrating difficulty pacing across Section A and B…`],
+    [`[Quality Assurance Protocol]`, `Verifying syntactic fidelity for ${subject} evaluation…`, `Running real-time deduplication scan against repository…`, '[Ready for interactive layout rendering] →']
   ] : [
-    [`Section A — MCQ / Short (${subject})`, `Analyzing conceptual definitions in ${subject}…`, `Generating items from selected note material…`, `Drafting appropriate distractors & solutions…`],
-    [`Section B — Medium Weightage (${subject})`, `Structuring analytical questions & conceptual proofs…`, `Evaluating marking scheme criteria & steps…`, `Cross-referencing against ${selectedNotesCount || 1} selected note(s)…`],
-    [`Section C / Higher Order Sections`, `Formulating comprehensive long-form questions…`, `Applying balanced Bloom's taxonomy levels…`, '[Model Answer Key Generated] →']
+    [`Section A: MCQ & Short Items (${subject})`, `Analyzing core definitions & conceptual axioms in ${subject}…`, `Synthesizing question stems from ${selectedNotesCount || 1} reference material(s)…`, `Formulating balanced high-discrimination distractors…`],
+    [`Section B: Analytical & Proofs (${subject})`, `Structuring multi-step analytical deductions…`, `Generating precise model answer criteria & marking steps…`, `Cross-referencing cognitive depth against curriculum…`],
+    [`Section C: Advanced Evaluation`, `Formulating comprehensive Bloom's taxonomy evaluation questions…`, `Ensuring rigorous academic challenge balance…`, '[Model Answer Key & Solutions Compiled] →']
   ];
 
-  // Dynamic log generator ensuring zero fake names or unrelated topics
   const getDynamicLogLines = (stageId: string): string[] => {
     switch (stageId) {
       case 'understanding':
         return [
           `Parsing target specifications for subject: ${subject}…`,
-          `Selected Batch: ${batchName}`,
-          customPrompt ? `Applying instruction: "${customPrompt.length > 35 ? customPrompt.slice(0, 35) + '...' : customPrompt}"` : 'Applying automated exam standards & rules'
+          `Selected Academic Batch: ${batchName}`,
+          customPrompt ? `Custom directive detected: "${customPrompt.length > 35 ? customPrompt.slice(0, 35) + '...' : customPrompt}"` : 'Applying institutional automated exam standards & rules'
         ];
       case 'blueprint':
         return isPhotoUpload ? [
-          'Mode: UI Photo OCR & Category Grouping active',
+          'Mode: Vision OCR & Category Grouping active',
           'Bypassing forced mark caps for direct image conversion',
           'Applying RK Coaching institutional layout template'
         ] : [
           'Loading multi-section blueprint schema…',
           'Evaluating section targets & mark allocation rules',
-          'Aligning exam sections dynamically (A through G)'
+          'Aligning exam sections dynamically (Sections A through E)'
         ];
       case 'curriculum':
         return isPhotoUpload ? [
-          `Processing ${uploadedPhotosCount || 1} textbook image(s) through Vertex AI…`,
-          'Executing vision OCR & layout detection…',
-          'Filtering out handwriting, ticks & pen ink marks…'
+          `Processing ${uploadedPhotosCount || 1} textbook image(s) through Vertex AI Vision…`,
+          'Executing high-resolution OCR & spatial layout detection…',
+          'Filtering out handwriting, ticks & rough ink marks…'
         ] : [
           `Connecting to material index for ${subject}…`,
-          `Retrieving content from ${selectedNotesCount || 1} selected reference note(s)…`,
-          'Extracting semantic vectors & topic themes'
+          `Retrieving vector embeddings from ${selectedNotesCount || 1} reference note(s)…`,
+          'Extracting conceptual themes and learning outcomes'
         ];
       case 'topics':
         return [
           `Scanning core subject modules in ${subject}…`,
-          'Ranking conceptual topics by examination relevance',
-          'Mapping curriculum coverage across sections'
+          'Ranking conceptual topics by examination relevance & weight',
+          'Mapping curriculum coverage evenly across Sections'
         ];
       case 'difficulty':
         return [
-          'Computing difficulty level histogram…',
-          'Balancing easy, medium, and challenging question items',
-          'Target difficulty distribution criteria achieved'
+          'Computing difficulty distribution histogram…',
+          'Balancing easy (30%), medium (50%), and challenging (20%) items',
+          'Target academic rigor criteria calibrated'
         ];
       case 'bloom':
         return [
-          "Mapping Bloom's cognitive taxonomy levels…",
-          'Balancing memory recall, analytical, and evaluation spans',
-          'Higher-order reasoning items calibrated'
+          "Mapping Bloom's cognitive taxonomy pyramid…",
+          'Balancing memory recall, conceptual synthesis, and evaluation spans',
+          'Higher-order reasoning item stems generated'
         ];
       case 'questions':
         return [
           `Drafting authentic ${subject} question stems & solutions…`,
-          'Generating precise marking guidelines & options',
+          'Generating precise step-by-step marking guidelines',
           'Structuring comprehensive model answer keys…'
         ];
       case 'duplicates':
         return [
           'Running semantic similarity & deduplication scan…',
-          'Comparing generated items against reference repository…',
-          'No overlapping or conflicting duplicates found'
+          'Comparing generated items against global question repository…',
+          'No overlapping or repetitive items detected (100% unique)'
         ];
       case 'validation':
         return [
-          'Verifying section distributions and target totals',
-          'Cross-checking topic diversity & academic rigor…',
-          'Live validation checks passing cleanly'
+          'Verifying section distributions and target mark totals',
+          'Cross-checking topic diversity & institutional rigor…',
+          'Live academic validation checks passing cleanly'
         ];
       case 'formatting':
         return [
           `Typesetting structured sections for ${subject}…`,
-          isPhotoUpload ? 'Applying RK Coaching branding & clean styling' : 'Applying institutional header & clean typography',
-          'Rendering printable document layouts'
+          isPhotoUpload ? 'Applying RK Coaching branding & clean styling' : 'Applying Academic Lumina header & typography',
+          'Rendering print-ready PDF and online examination layouts'
         ];
       case 'finalizing':
       default:
         return [
-          'Running final Vertex AI quality evaluation…',
-          'Preparing interactive verification dashboard…',
-          'Examination generated and ready for display!'
+          'Running final Vertex AI quality certification pass…',
+          'Preparing interactive verification and preview dashboard…',
+          '✨ Examination paper generated and ready for deployment!'
         ];
     }
   };
-
-  // Particle Canvas Background
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animId: number;
-    let w: number, h: number;
-    let pts: Array<{ x: number; y: number; vx: number; vy: number; r: number; hue: string; a: number }> = [];
-
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const resize = () => {
-      w = canvas.width = window.innerWidth * Math.min(window.devicePixelRatio || 1, 2);
-      h = canvas.height = window.innerHeight * Math.min(window.devicePixelRatio || 1, 2);
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-    };
-
-    const seed = () => {
-      const n = reducedMotion ? 25 : 70;
-      pts = Array.from({ length: n }, () => ({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        r: (Math.random() * 1.6 + 0.4) * Math.min(window.devicePixelRatio || 1, 2),
-        hue: Math.random() > 0.55 ? 'p' : 'b',
-        a: Math.random() * 0.5 + 0.15
-      }));
-    };
-
-    const draw = () => {
-      ctx.clearRect(0, 0, w, h);
-      for (const p of pts) {
-        if (!reducedMotion) {
-          p.x += p.vx;
-          p.y += p.vy;
-          if (p.x < 0) p.x = w;
-          if (p.x > w) p.x = 0;
-          if (p.y < 0) p.y = h;
-          if (p.y > h) p.y = 0;
-        }
-        ctx.beginPath();
-        ctx.fillStyle = (p.hue === 'b' ? 'rgba(96,165,250,' : 'rgba(167,139,250,') + p.a + ')';
-        ctx.shadowColor = p.hue === 'b' ? 'rgba(96,165,250,0.8)' : 'rgba(167,139,250,0.8)';
-        ctx.shadowBlur = 4;
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (!reducedMotion) animId = requestAnimationFrame(draw);
-    };
-
-    resize();
-    seed();
-    draw();
-
-    const handleResize = () => {
-      resize();
-      seed();
-      if (reducedMotion) draw();
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animId) cancelAnimationFrame(animId);
-    };
-  }, []);
 
   // Progress Orchestration
   useEffect(() => {
@@ -283,7 +201,6 @@ export default function ExamGenerationLoading({
     return () => clearInterval(logInterval);
   }, [activeStageIdx, subject, batchName, isPhotoUpload, selectedNotesCount, uploadedPhotosCount, customPrompt]);
 
-  // Compute live authentic metrics from real selections & progress
   const ease = (t: number) => 1 - Math.pow(1 - t, 2);
   const tNorm = Math.min(1, progress / 100);
 
@@ -297,322 +214,303 @@ export default function ExamGenerationLoading({
     questions: estQuestions,
     sources: indexedSourceCount,
     tokens: estTokens,
-    confidence: Math.round(Math.min(99, 45 + ease(tNorm) * 54)),
+    confidence: Math.round(Math.min(99, 52 + ease(tNorm) * 47)),
     balance: Math.round(Math.min(100, ease(Math.max(0, (tNorm - 0.25) / 0.6)) * 100)),
     valid: Math.round(Math.min(100, ease(Math.max(0, (tNorm - 0.55) / 0.45)) * 100)),
   };
 
   return (
-    <div className="exam-anim-app fixed inset-0 z-50 overflow-y-auto bg-[#05060c] text-[#e2e8f0] flex items-center justify-center p-4 sm:p-8 font-sans">
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          .exam-anim-app * { box-sizing: border-box; }
-          .grid-layer {
-            position: absolute; inset: -10%; opacity: .35;
-            background-image: linear-gradient(rgba(96,165,250,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,.16) 1px, transparent 1px);
-            background-size: 48px 48px;
-            -webkit-mask-image: radial-gradient(ellipse 65% 60% at 50% 45%, black 40%, transparent 80%);
-            mask-image: radial-gradient(ellipse 65% 60% at 50% 45%, black 40%, transparent 80%);
-            animation: gridMove 6s linear infinite;
-          }
-          @keyframes gridMove { from { background-position: 0 0; } to { background-position: 48px 48px; } }
-          .glow-blob { position: absolute; border-radius: 999px; filter: blur(120px); pointer-events: none; }
-          .glow-blue { left: -15%; top: 0; width: 60%; height: 60%; background: rgba(59,130,246,.10); }
-          .glow-purple { right: -15%; bottom: 0; width: 60%; height: 60%; background: rgba(139,92,246,.10); }
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0A0F1D] text-slate-100 flex items-center justify-center p-3 sm:p-6 lg:p-8 font-sans selection:bg-indigo-500/30">
+      {/* Subtle background atmospheric radial glows & grid */}
+      <div className="fixed inset-0 bg-[radial-gradient(#1E293B_1px,transparent_1px)] [background-size:32px_32px] opacity-30 pointer-events-none" />
+      <div className="fixed top-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="fixed bottom-0 right-1/4 w-[600px] h-[600px] bg-purple-600/15 rounded-full blur-[140px] pointer-events-none" />
 
-          .wrap { position: relative; z-index: 2; max-width: 1200px; width: 100%; margin: 0 auto; }
-          .header-anim { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; margin-bottom: 32px; animation: fadeDown .6s ease forwards; }
-          @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-          @keyframes fadeIn { to { opacity: 1; } }
-          
-          .badge-anim { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); padding: 4px 12px; border-radius: 999px; font-size: 11px; color: rgba(191,219,254,.85); backdrop-filter: blur(6px); }
-          .badge-anim svg { width: 12px; height: 12px; color: rgb(196,181,253); }
-          .header-anim h1 { font-size: 26px; font-weight: 600; margin: 4px 0 0; background: linear-gradient(to bottom, #fff, #94a3b8); -webkit-background-clip: text; background-clip: text; color: transparent; }
-          .subline { font-size: 13px; color: #94a3b8; max-width: 420px; }
-          .subline b { color: rgb(196,181,253); font-weight: 600; }
-
-          .grid3 { display: grid; grid-template-columns: 1fr; gap: 20px; }
-          @media(min-width: 1024px) { .grid3 { grid-template-columns: 270px 1fr 320px; } }
-          .panel-anim { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); border-radius: 16px; padding: 16px; backdrop-filter: blur(20px); opacity: 0; animation: fadeIn .5s ease forwards; }
-          .panel-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin: 0 0 14px; }
-
-          .timeline-anim { list-style: none; margin: 0; padding: 0; max-height: 400px; overflow-y: auto; }
-          .stage-item { position: relative; display: flex; gap: 12px; padding-bottom: 20px; }
-          .stage-item:last-child { padding-bottom: 0; }
-          .stage-item .connector-vertical { position: absolute; left: 13px; top: 28px; width: 1px; height: calc(100% - 14px); background: linear-gradient(to bottom, rgba(255,255,255,.15), transparent); }
-          .stage-item .connector-vertical .fill { position: absolute; inset: 0 0 auto 0; width: 1px; height: 0; background: linear-gradient(to bottom, rgb(96,165,250), rgb(167,139,250)); transition: height .5s ease; }
-          .stage-item.complete .connector-vertical .fill { height: 100%; }
-          .node { position: relative; flex: 0 0 auto; width: 28px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); transition: all .3s ease; }
-          .stage-item.complete .node { border-color: rgba(96,165,250,.6); background: rgba(59,130,246,.2); }
-          .stage-item.active .node { border-color: rgba(167,139,250,.7); background: rgba(139,92,246,.15); animation: pulseGlow 1.6s ease-in-out infinite; }
-          @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 0 rgba(167,139,250,0); } 50% { box-shadow: 0 0 14px rgba(167,139,250,.65); } }
-          .node svg { width: 14px; height: 14px; color: #64748b; }
-          .stage-item.active .node svg { color: rgb(196,181,253); }
-          .stage-item.complete .node svg { color: rgb(147,197,253); }
-          .stage-text { padding-top: 2px; min-width: 0; }
-          .stage-label { font-size: 13px; font-weight: 500; color: #64748b; transition: color .3s ease; }
-          .stage-item.active .stage-label { color: #fff; }
-          .stage-item.complete .stage-label { color: #cbd5e1; }
-          .stage-desc { font-size: 11px; color: rgba(196,181,253,.6); margin-top: 2px; display: none; }
-          .stage-item.active .stage-desc { display: block; animation: fadeIn .3s ease; }
-
-          .doc-stage { display: flex; flex-direction: column; align-items: center; gap: 24px; opacity: 0; animation: fadeIn .5s ease forwards; }
-          .doc-ring-wrap { position: relative; width: 280px; height: 280px; perspective: 1200px; }
-          @media(min-width: 640px) { .doc-ring-wrap { width: 340px; height: 340px; } }
-          .ring { position: absolute; inset: 0; border-radius: 999px; border: 1px solid rgba(96,165,250,.25); box-shadow: inset 0 0 30px rgba(96,165,250,.15); animation: spin 18s linear infinite; }
-          .ring .dot { position: absolute; left: 50%; top: 0; width: 8px; height: 8px; margin-left: -4px; margin-top: -4px; border-radius: 999px; background: rgb(96,165,250); box-shadow: 0 0 10px 3px rgba(96,165,250,.8); }
-          .ring2 { position: absolute; inset: 9%; border-radius: 999px; border: 1px dashed rgba(167,139,250,.3); animation: spinRev 13s linear infinite; }
-          .ring2 .dot { position: absolute; right: 8px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 999px; background: rgb(167,139,250); box-shadow: 0 0 8px 2px rgba(167,139,250,.8); }
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes spinRev { to { transform: rotate(-360deg); } }
-          .doc-float { position: absolute; left: 15%; top: 19%; width: 70%; height: 62%; animation: float 7s ease-in-out infinite; transform-style: preserve-3d; }
-          @keyframes float { 0%, 100% { transform: rotateY(-8deg) rotateX(4deg) translateY(0); } 50% { transform: rotateY(8deg) rotateX(-4deg) translateY(-10px); } }
-          .doc-card { position: relative; height: 100%; width: 100%; border-radius: 14px; border: 1px solid rgba(147,197,253,.3); background: linear-gradient(to bottom, rgba(255,255,255,.06), rgba(59,130,246,.04)); backdrop-filter: blur(6px); padding: 14px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 40px rgba(59,130,246,.25), 0 0 80px rgba(139,92,246,.12), inset 0 0 30px rgba(96,165,250,.06); }
-          .scanline { position: absolute; left: 0; right: 0; height: 32px; background: linear-gradient(to bottom, transparent, rgba(147,197,253,.2), transparent); animation: scan 2.6s linear infinite; }
-          @keyframes scan { from { top: -10%; } to { top: 110%; } }
-          .doc-head { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,.1); padding-bottom: 8px; margin-bottom: 8px; }
-          .doc-head svg { width: 14px; height: 14px; color: rgb(147,197,253); flex: 0 0 auto; }
-          .doc-head .t1 { font-size: 11px; font-weight: 500; color: rgba(219,234,254,.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .doc-head .t2 { font-size: 9px; color: rgba(191,219,254,.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .doc-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-          .doc-line { font-size: 9px; line-height: 1.3; color: rgba(219,234,254,.7); opacity: 0; transform: translateX(-6px); transition: all .3s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .doc-line.first { color: rgb(147,197,253); font-weight: 600; }
-          .doc-line.show { opacity: .7; transform: translateX(0); }
-          .doc-line.first.show { opacity: .9; }
-          .doc-foot { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,.1); padding-top: 8px; margin-top: 8px; font-size: 8px; color: rgba(191,219,254,.4); }
-          .doc-base-glow { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 75%; height: 24px; border-radius: 999px; background: rgba(59,130,246,.25); filter: blur(24px); }
-
-          .connector-line { position: relative; height: 1px; width: 10%; background: linear-gradient(90deg, transparent, rgba(96,165,250,.25), transparent); display: none; }
-          @media(min-width: 1024px) { .connector-line { display: block; } }
-          .connector-line .packet { position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 999px; background: rgb(147,197,253); box-shadow: 0 0 8px 2px rgba(96,165,250,.9); animation: travel 2.2s linear infinite; opacity: 0; }
-          @keyframes travel { 0% { left: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
-
-          .doc-row { display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
-
-          .progress-card { width: 100%; max-width: 420px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); border-radius: 16px; padding: 16px; backdrop-filter: blur(20px); }
-          .progress-top { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; }
-          .progress-top .lbl { color: rgba(203,213,225,.8); font-weight: 500; }
-          .progress-top .val { color: rgb(147,197,253); }
-          .progress-track { position: relative; height: 8px; width: 100%; border-radius: 999px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); overflow: hidden; }
-          .progress-fill { position: relative; height: 100%; border-radius: 999px; background: linear-gradient(90deg, rgb(59,130,246), rgb(129,140,248), rgb(168,85,247)); box-shadow: 0 0 12px rgba(129,140,248,.65); transition: width .3s linear; }
-          .progress-fill::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 32px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.6)); filter: blur(2px); animation: shimmer 1.4s ease-in-out infinite; }
-          @keyframes shimmer { 0%, 100% { opacity: .4; } 50% { opacity: .9; } }
-
-          .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-          .metric-card { border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); border-radius: 10px; padding: 10px 12px; }
-          .metric-card .m-label { display: flex; align-items: center; gap: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; margin-bottom: 6px; }
-          .metric-card .m-label svg { width: 12px; height: 12px; }
-          .metric-card .m-val { font-size: 18px; font-weight: 600; color: #f1f5f9; }
-          .metric-card .m-val .max { font-size: 13px; font-weight: 400; color: #64748b; }
-
-          .log-card { border: 1px solid rgba(255,255,255,.1); background: rgba(0,0,0,.3); border-radius: 10px; backdrop-filter: blur(6px); display: flex; flex-direction: column; height: 210px; }
-          .log-head { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid rgba(255,255,255,.1); padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; }
-          .log-head svg { width: 12px; height: 12px; color: rgb(147,197,253); }
-          .log-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 6px 2px rgba(52,211,153,.7); }
-          .log-body { flex: 1; overflow-y: auto; padding: 8px 12px; font-size: 11px; line-height: 1.6; }
-          .log-line { display: flex; gap: 8px; color: rgba(203,213,225,.85); opacity: 0; transform: translateY(6px); animation: logIn .25s ease forwards; }
-          @keyframes logIn { to { opacity: 1; transform: translateY(0); } }
-          .log-line .ts { color: #475569; flex: 0 0 auto; }
-          .log-line .dollar { color: rgba(96,165,250,.7); }
-          .log-line .msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-          ::-webkit-scrollbar { width: 6px; }
-          ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 999px; }
-
-          @media (prefers-reduced-motion: reduce) {
-            .grid-layer, .ring, .ring2, .doc-float, .scanline, .progress-fill::after, .connector-line .packet, .node { animation: none !important; }
-          }
-        `
-      }} />
-
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-      <div className="grid-layer" />
-      <div className="glow-blob glow-blue" />
-      <div className="glow-blob glow-purple" />
-
-      <div className="wrap my-auto">
-        <div className="header-anim">
-          <span className="badge-anim">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <path d="M12 3l1.9 4.9L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 3z" />
-            </svg>
-            LearnStudio AI Engine
-          </span>
-          <h1>Generating your examination paper</h1>
-          <p className="subline">
-            Currently: <b>{STAGES[activeStageIdx]?.label || 'Initializing AI'}</b>
+      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col gap-6 my-auto">
+        
+        {/* TOP HERO HEADER */}
+        <div className="flex flex-col items-center justify-center text-center gap-2">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold shadow-lg shadow-indigo-500/10 backdrop-blur-xl"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+            <span>Stitch AI Examination Engine (Auto TA)</span>
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-indigo-200"
+          >
+            Synthesizing & Formatting Your Exam Paper
+          </motion.h1>
+          <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-md mx-auto">
+            Current Phase: <span className="text-indigo-400 font-bold underline decoration-indigo-500/50 underline-offset-4">{STAGES[activeStageIdx]?.label || 'Initializing AI Engine'}</span>
           </p>
         </div>
 
-        <div className="grid3">
-          {/* Left Column: Pipeline Timeline */}
-          <section className="panel-anim" style={{ animationDelay: '.1s' }}>
-            <p className="panel-title">Generation pipeline</p>
-            <ol className="timeline-anim">
-              {STAGES.map((s, i) => {
-                const isComplete = i < activeStageIdx;
-                const isActive = i === activeStageIdx;
+        {/* THREE COLUMN ARCHITECTURE (Academic Lumina + Onyx Bento) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          
+          {/* LEFT COLUMN (4 cols): LIVE GENERATION STAGE TIMELINE */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="lg:col-span-4 rounded-[28px] bg-slate-900/70 border border-slate-800/80 p-5 backdrop-blur-2xl shadow-[0_10px_40px_rgba(15,23,42,0.8)] shadow-inner flex flex-col h-[520px] max-h-[520px]"
+          >
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-3 shrink-0">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-indigo-400" />
+                <span>AI Generation Pipeline</span>
+              </span>
+              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                Stage {activeStageIdx + 1}/{STAGES.length}
+              </span>
+            </div>
+
+            <div className="overflow-y-auto pr-1 space-y-4 flex-1 scrollbar-thin scrollbar-thumb-slate-700">
+              {STAGES.map((stage, idx) => {
+                const isComplete = idx < activeStageIdx;
+                const isActive = idx === activeStageIdx;
+                const Icon = stage.icon || Cpu;
+
                 return (
-                  <li key={s.id} className={`stage-item ${isComplete ? 'complete' : ''} ${isActive ? 'active' : ''}`}>
-                    {i < STAGES.length - 1 && (
-                      <span className="connector-vertical">
-                        <span className="fill" />
-                      </span>
+                  <div key={stage.id} className="flex gap-3 relative group">
+                    {/* Connecting line between stages */}
+                    {idx < STAGES.length - 1 && (
+                      <div className={`absolute left-3.5 top-8 w-0.5 h-full transition-colors duration-500 ${
+                        isComplete ? 'bg-indigo-500' : 'bg-slate-800'
+                      }`} />
                     )}
-                    <div
-                      className="node"
-                      dangerouslySetInnerHTML={{
-                        __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS[s.id] || ICONS.understanding}</svg>`
-                      }}
-                    />
-                    <div className="stage-text">
-                      <div className="stage-label">{s.label}</div>
-                      <div className="stage-desc">{s.desc}</div>
+
+                    {/* Stage Node Button/Badge */}
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 transition-all duration-300 ${
+                      isComplete 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-sm shadow-emerald-500/20' 
+                        : isActive 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 ring-4 ring-indigo-500/20 animate-bounce' 
+                        : 'bg-slate-800 text-slate-500 border border-slate-700/50'
+                    }`}>
+                      {isComplete ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Icon className="w-3.5 h-3.5" />}
                     </div>
-                  </li>
+
+                    {/* Stage Details */}
+                    <div className="flex flex-col pb-1">
+                      <span className={`text-xs font-bold transition-colors ${
+                        isActive ? 'text-white scale-[1.02]' : isComplete ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                        {stage.label}
+                      </span>
+                      <span className={`text-[11px] leading-tight mt-0.5 ${
+                        isActive ? 'text-indigo-300 font-medium' : 'text-slate-500'
+                      }`}>
+                        {stage.desc}
+                      </span>
+                    </div>
+                  </div>
                 );
               })}
-            </ol>
-          </section>
+            </div>
+          </motion.div>
 
-          {/* Center Column: Interactive 3D Document & Progress Track */}
-          <section className="doc-stage">
-            <div className="doc-row">
-              <div className="connector-line">
-                <span className="packet" style={{ animationDelay: '0s' }} />
-                <span className="packet" style={{ animationDelay: '.75s' }} />
-                <span className="packet" style={{ animationDelay: '1.5s' }} />
-              </div>
-              <div className="doc-ring-wrap">
-                <div className="ring">
-                  <span className="dot" />
-                </div>
-                <div className="ring2">
-                  <span className="dot" />
-                </div>
-                <div className="doc-float">
-                  <div className="doc-card">
-                    <div className="scanline" />
-                    <div className="doc-head">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <path d="M14 2v6h6" />
-                      </svg>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div className="t1">Exam — {subject}</div>
-                        <div className="t2">{batchName} · {isPhotoUpload ? 'Photo OCR Mode' : 'AI Blueprint'}</div>
-                      </div>
-                    </div>
-                    <div className="doc-lines">
-                      {(dynamicPages[pageIndex] || dynamicPages[0]).map((line, idx) => (
-                        <p
-                          key={idx}
-                          className={`doc-line ${idx === 0 ? 'first' : ''} ${idx < visibleLinesCount ? 'show' : ''}`}
-                        >
-                          {line}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="doc-foot">
-                      <span>Page {pageIndex + 1} of {dynamicPages.length}</span>
-                      <span>{Math.round(progress)}% generated</span>
-                    </div>
+          {/* CENTER COLUMN (4 cols): HOLOGRAPHIC DOCUMENT SCANNER & GRADIENT PROGRESS BAR */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-4 flex flex-col gap-4"
+          >
+            {/* Holographic 3D Document Container */}
+            <div className="relative rounded-[28px] bg-gradient-to-b from-indigo-950/50 via-slate-900/85 to-slate-950 border border-indigo-500/35 p-6 shadow-2xl shadow-indigo-500/15 backdrop-blur-2xl h-[410px] flex flex-col justify-between overflow-hidden group">
+              
+              {/* Animated Glowing Laser Scanline */}
+              <motion.div 
+                animate={{ top: ['0%', '100%', '0%'] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-400 to-transparent shadow-[0_0_15px_3px_rgba(99,102,241,0.6)] z-20 pointer-events-none opacity-80"
+              />
+
+              {/* Top Header of Document */}
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 z-10">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex flex-col text-left">
+                    <span className="text-xs font-extrabold text-white truncate">Paper — {subject}</span>
+                    <span className="text-[10px] text-slate-400 font-medium truncate">{batchName} · {isPhotoUpload ? 'Photo OCR' : 'AI Schema'}</span>
                   </div>
                 </div>
-                <div className="doc-base-glow" />
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold shrink-0 animate-pulse">
+                  Active OCR
+                </span>
               </div>
-              <div className="connector-line">
-                <span className="packet" style={{ animationDelay: '.3s' }} />
-                <span className="packet" style={{ animationDelay: '1.05s' }} />
-                <span className="packet" style={{ animationDelay: '1.8s' }} />
+
+              {/* Document Live Content Rows */}
+              <div className="flex-1 my-4 flex flex-col justify-center gap-3 z-10 font-mono text-left">
+                {(dynamicPages[pageIndex] || dynamicPages[0]).map((line, idx) => (
+                  <motion.div 
+                    key={`${pageIndex}-${idx}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: idx < visibleLinesCount ? 1 : 0.2, x: idx < visibleLinesCount ? 0 : -5 }}
+                    transition={{ duration: 0.3 }}
+                    className={`text-xs px-3 py-2 rounded-xl transition-all ${
+                      idx === 0 
+                        ? 'bg-indigo-500/15 border border-indigo-500/30 font-bold text-indigo-200' 
+                        : idx < visibleLinesCount 
+                        ? 'bg-slate-800/60 border border-slate-700/50 text-slate-300' 
+                        : 'text-slate-600 bg-slate-900/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                      <span className="truncate">{line}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Bottom Holographic Watermark & Stats */}
+              <div className="flex items-center justify-between border-t border-slate-800/80 pt-3 text-[11px] text-slate-400 z-10 font-sans font-medium">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                  <span>Page {pageIndex + 1} of {dynamicPages.length}</span>
+                </span>
+                <span className="text-indigo-300 font-bold">{Math.round(progress)}% Synthesized</span>
               </div>
             </div>
 
-            <div className="progress-card">
-              <div className="progress-top">
-                <span className="lbl">Generation progress</span>
-                <span className="val">{Math.round(progress)}%</span>
+            {/* Glowing Gradient Progress Bar Card */}
+            <div className="rounded-[24px] bg-slate-900/80 border border-slate-800/90 p-5 backdrop-blur-2xl shadow-xl">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                  <span>Generation Progress</span>
+                </span>
+                <span className="font-extrabold font-mono text-sm text-indigo-300">{Math.round(progress)}%</span>
               </div>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${progress}%` }} />
+
+              {/* Smooth Gradient Bar */}
+              <div className="h-3 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5 shadow-inner">
+                <motion.div 
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/50"
+                  style={{ width: `${progress}%` }}
+                  transition={{ ease: "linear", duration: 0.3 }}
+                />
               </div>
-            </div>
-          </section>
-
-          {/* Right Column: Live Metrics & AI Status Log */}
-          <section className="flex flex-col gap-4 opacity-0" style={{ animation: 'fadeIn .5s ease .1s forwards' }}>
-            <div className="panel-anim">
-              <p className="panel-title">Live metrics</p>
-              <div className="metrics-grid">
-                <div className="metric-card">
-                  <div className="m-label" dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS.topics}</svg><span>Est. Questions</span>` }} />
-                  <div className="m-val">
-                    <span>{metrics.questions}</span>
-                    <span className="max"> items</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="m-label" dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS.curriculum}</svg><span>Sources Indexed</span>` }} />
-                  <div className="m-val">
-                    <span>{metrics.sources}</span>
-                    <span className="max"> / {actualSourceCount} {isPhotoUpload ? 'Photos' : 'Notes'}</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="m-label" dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS.bloom}</svg><span>Est. tokens</span>` }} />
-                  <div className="m-val">
-                    <span>{metrics.tokens.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="m-label" dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS.validation}</svg><span>Confidence</span>` }} />
-                  <div className="m-val">
-                    <span>{metrics.confidence}</span>
-                    <span className="max">%</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="m-label" dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS.difficulty}</svg><span>Balance</span>` }} />
-                  <div className="m-val">
-                    <span>{metrics.balance}</span>
-                    <span className="max">%</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="m-label" dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">${ICONS.validation}</svg><span>Validation</span>` }} />
-                  <div className="m-val">
-                    <span>{metrics.valid}</span>
-                    <span className="max">%</span>
-                  </div>
-                </div>
-              </div>
+              <p className="text-[11px] text-center text-slate-400 font-medium mt-2.5 truncate">
+                ⚡ {STAGES[activeStageIdx]?.desc || 'Applying academic constraints...'}
+              </p>
             </div>
 
-            <div className="log-card">
-              <div className="log-head">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-                  <path d="M4 17l6-6-6-6M12 19h8" />
-                </svg>
-                AI status log
-                <span className="log-dot" />
+          </motion.div>
+
+          {/* RIGHT COLUMN (4 cols): BENTO METRICS GRID & LIVE STATUS TERMINAL */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-4 flex flex-col gap-4"
+          >
+            {/* Bento Grid of 6 Real-time Metrics */}
+            <div className="rounded-[28px] bg-slate-900/70 border border-slate-800/80 p-4 backdrop-blur-2xl shadow-xl flex flex-col">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2 px-1">
+                <Cpu className="w-4 h-4 text-purple-400" />
+                <span>Real-Time AI Metrics (Bento)</span>
+              </span>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 hover:border-indigo-500/40 transition-all shadow-inner">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <FileText className="w-3 h-3 text-indigo-400" />
+                    <span>Questions</span>
+                  </span>
+                  <div className="text-lg font-extrabold text-white mt-1">
+                    {metrics.questions} <span className="text-xs text-slate-500 font-normal">items</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 hover:border-indigo-500/40 transition-all shadow-inner">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <BookOpen className="w-3 h-3 text-purple-400" />
+                    <span>Sources</span>
+                  </span>
+                  <div className="text-lg font-extrabold text-white mt-1">
+                    {metrics.sources} <span className="text-xs text-slate-500 font-normal">/ {actualSourceCount}</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 hover:border-indigo-500/40 transition-all shadow-inner">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-400" />
+                    <span>Est. Tokens</span>
+                  </span>
+                  <div className="text-lg font-extrabold text-white mt-1">
+                    {metrics.tokens.toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 hover:border-indigo-500/40 transition-all shadow-inner">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <Brain className="w-3 h-3 text-emerald-400" />
+                    <span>Confidence</span>
+                  </span>
+                  <div className="text-lg font-extrabold text-white mt-1">
+                    {metrics.confidence}<span className="text-xs text-slate-500 font-normal">%</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 hover:border-indigo-500/40 transition-all shadow-inner">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-pink-400" />
+                    <span>Bloom Balance</span>
+                  </span>
+                  <div className="text-lg font-extrabold text-white mt-1">
+                    {metrics.balance}<span className="text-xs text-slate-500 font-normal">%</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-3 hover:border-indigo-500/40 transition-all shadow-inner">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-cyan-400" />
+                    <span>Validation</span>
+                  </span>
+                  <div className="text-lg font-extrabold text-white mt-1">
+                    {metrics.valid}<span className="text-xs text-slate-500 font-normal">%</span>
+                  </div>
+                </div>
+
               </div>
-              <div className="log-body font-mono" ref={logBodyRef}>
+            </div>
+
+            {/* High-End Terminal Log Card */}
+            <div className="rounded-[28px] bg-[#070B14]/95 border border-slate-800 p-4 shadow-xl flex flex-col h-[232px]">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5 px-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-indigo-400" />
+                  <span>AI Engine Status Log</span>
+                </span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              </div>
+
+              <div className="flex-1 overflow-y-auto font-mono text-[11px] leading-relaxed p-1 space-y-2 mt-2 scrollbar-thin scrollbar-thumb-slate-800" ref={logBodyRef}>
                 {logs.map((item, idx) => (
-                  <div key={idx} className="log-line">
-                    <span className="ts">{item.ts}</span>
-                    <span className="dollar">$</span>
-                    <span className="msg">{item.msg}</span>
+                  <div key={idx} className="flex gap-2 items-start opacity-90 animate-fadeIn text-left">
+                    <span className="text-slate-600 shrink-0">{item.ts}</span>
+                    <span className="text-indigo-400 shrink-0">$</span>
+                    <span className="text-slate-300 break-words">{item.msg}</span>
                   </div>
                 ))}
               </div>
             </div>
-          </section>
+
+          </motion.div>
+
         </div>
+
       </div>
     </div>
   );
