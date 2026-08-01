@@ -8,14 +8,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    // 7 days expiration for refresh tokens
-    private final long refreshTokenDurationMs = 604800000;
+    // 90 days expiration for mobile PWA session persistence
+    private final long refreshTokenDurationMs = 7776000000L;
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
@@ -25,9 +26,14 @@ public class RefreshTokenService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Remove any existing tokens for this user first (ensure 1-to-1)
-        refreshTokenRepository.deleteByUser(user);
-        refreshTokenRepository.flush();
+        // Preserve session across multiple devices (e.g. installed phone PWA + laptop)
+        // by reusing and extending existing valid refresh token instead of deleting it
+        Optional<RefreshToken> existingOpt = refreshTokenRepository.findByUser(user);
+        if (existingOpt.isPresent()) {
+            RefreshToken existingToken = existingOpt.get();
+            existingToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
+            return refreshTokenRepository.save(existingToken);
+        }
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)

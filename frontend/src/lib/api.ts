@@ -95,10 +95,13 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         processQueue(refreshError, null);
         isRefreshing = false;
-        if (typeof window !== 'undefined') {
+        // Only wipe tokens if the server explicitly rejects the refresh token (401 / 403).
+        // If it's a network drop or offline mobile app, do NOT clear tokens or force redirect.
+        const status = refreshError?.response?.status;
+        if ((status === 401 || status === 403) && typeof window !== 'undefined') {
           localStorage.clear();
           window.location.href = '/login?expired=true';
         }
