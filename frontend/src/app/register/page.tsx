@@ -33,7 +33,7 @@ export default function RegisterPage() {
 
       if (success && data) {
         const { token, refreshToken, userId, name: userName, email: userEmail, role: userRole } = data;
-        login(token, refreshToken, { id: userId, name: userName, email: userEmail, role: userRole });
+        login({ id: userId, name: userName, email: userEmail, role: userRole });
       } else {
         setError(message || 'Registration failed.');
       }
