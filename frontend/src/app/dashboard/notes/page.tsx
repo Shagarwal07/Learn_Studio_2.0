@@ -14,7 +14,8 @@ import {
   ExternalLink,
   ChevronLeft,
   BookOpen,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -28,6 +29,8 @@ interface BatchNoteDTO {
   fileType?: string;
   uploadedByName: string;
   createdAt: string;
+  batchId?: number;
+  batchName?: string;
 }
 
 interface CourseDTO {
@@ -52,7 +55,27 @@ const ACADEMIC_SUBJECTS = [
 export default function NotesPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'BATCH' | 'COURSES'>('BATCH');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  
+  const isInstructorOrAdmin = user?.role === 'INSTRUCTOR' || user?.role === 'ADMIN';
+
+  // Fetch all batches if instructor/admin
+  const { data: batches = [] } = useQuery<any[]>({
+    queryKey: ['admin-notes-batches-list'],
+    enabled: isInstructorOrAdmin,
+    queryFn: async () => {
+      const response = await api.get('/instructor/batches');
+      return response.data.success ? response.data.data : [];
+    }
+  });
+
+  React.useEffect(() => {
+    if (isInstructorOrAdmin && batches.length > 0 && !selectedBatchId) {
+      setSelectedBatchId(String(batches[0].id));
+    }
+  }, [batches, isInstructorOrAdmin, selectedBatchId]);
 
   // 1. Fetch academic batch notes
   const { data: batchNotes = [], isLoading: isBatchNotesLoading } = useQuery<BatchNoteDTO[]>({
@@ -68,7 +91,7 @@ export default function NotesPage() {
   const { data: courses = [], isLoading: isCoursesLoading } = useQuery<CourseDTO[]>({
     queryKey: ['courses-with-notes'],
     queryFn: async () => {
-      const response = await api.get('/courses/my/notes');
+      const response = await api.get('/student/notes/courses');
       return response.data.success ? response.data.data : [];
     },
     staleTime: 1000 * 60 * 5
@@ -83,7 +106,13 @@ export default function NotesPage() {
       : true;
     const matchesSearch = note.title.toLowerCase().includes(search.toLowerCase()) || 
                           (note.description && note.description.toLowerCase().includes(search.toLowerCase()));
-    return matchesSubject && matchesSearch;
+    
+    // Admin/Instructors see all notes, so filter by selected batch
+    const matchesBatch = isInstructorOrAdmin && selectedBatchId
+      ? note.batchId === Number(selectedBatchId)
+      : true;
+      
+    return matchesSubject && matchesSearch && matchesBatch;
   });
 
   // Filter courses by search query
@@ -92,7 +121,10 @@ export default function NotesPage() {
   );
 
   const getSubjectNoteCount = (subject: string) => {
-    return batchNotes.filter(n => n.subjectName.toLowerCase() === subject.toLowerCase()).length;
+    return batchNotes.filter(n => 
+      n.subjectName.toLowerCase() === subject.toLowerCase() &&
+      (!isInstructorOrAdmin || !selectedBatchId || n.batchId === Number(selectedBatchId))
+    ).length;
   };
 
   const formatDate = (dateString: string) => {
@@ -129,16 +161,44 @@ export default function NotesPage() {
           </p>
         </div>
 
-        {/* Clean Search Input */}
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search notes or topics..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors"
-          />
+        {/* Actions Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {isInstructorOrAdmin && batches.length > 0 && (
+            <select
+              value={selectedBatchId}
+              onChange={(e) => {
+                setSelectedBatchId(e.target.value);
+                setSelectedSubject(null);
+              }}
+              className="w-full sm:w-48 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+            >
+              <option value="" disabled>Select Batch</option>
+              {batches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          )}
+
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search notes or topics..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-slate-600 transition-colors"
+            />
+          </div>
+
+          {isInstructorOrAdmin && (
+            <Link 
+              href="/dashboard/instructor/batches?tab=notes"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 shadow-sm"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Upload Note</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -220,13 +280,38 @@ export default function NotesPage() {
       ) : (
 
         /* VIEW 2: FOLDER GRID OVERVIEW */
-        <div className="space-y-10">
+        <div className="space-y-6">
+
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <button
+              onClick={() => setActiveTab('BATCH')}
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                activeTab === 'BATCH'
+                  ? 'bg-slate-800 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              }`}
+            >
+              Offline Batch Notes
+            </button>
+            <button
+              onClick={() => setActiveTab('COURSES')}
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                activeTab === 'COURSES'
+                  ? 'bg-slate-800 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              }`}
+            >
+              Course Notes
+            </button>
+          </div>
           
           {/* Section A: Academic Subjects */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Academic Subjects ({ACADEMIC_SUBJECTS.length})
-            </h2>
+          {activeTab === 'BATCH' && (
+            <div className="space-y-4 pt-2">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Academic Subjects ({ACADEMIC_SUBJECTS.length})
+              </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {ACADEMIC_SUBJECTS.map((subject) => {
@@ -258,14 +343,16 @@ export default function NotesPage() {
                   </div>
                 );
               })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Section B: Enrolled Course Notes */}
-          <div className="space-y-4 pt-4 border-t border-slate-800/80">
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Course Study Vaults ({filteredCourses.length})
-            </h2>
+          {activeTab === 'COURSES' && (
+            <div className="space-y-4 pt-2">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Course Study Vaults ({filteredCourses.length})
+              </h2>
 
             {filteredCourses.length === 0 ? (
               <div className="py-12 text-center bg-slate-900/40 border border-slate-800/60 rounded-2xl text-slate-400 text-xs">
@@ -300,7 +387,8 @@ export default function NotesPage() {
                 ))}
               </div>
             )}
-          </div>
+            </div>
+          )}
 
         </div>
       )}

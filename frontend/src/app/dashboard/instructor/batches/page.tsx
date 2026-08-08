@@ -31,15 +31,17 @@ import {
   UploadCloud,
   ExternalLink,
   ChevronRight,
-  Mail
+  Mail,
+  Check,
+  Info
 } from 'lucide-react';
 
 interface BatchDTO {
   id: number;
   name: string;
   level: string;
-  instructorId: number | null;
-  instructorName: string | null;
+  instructorIds: number[];
+  instructors: { id: number; name: string }[];
   subjects: string[];
   studentCount: number;
 }
@@ -137,6 +139,7 @@ interface ScheduleEvent {
 }
 
 import UploadMarksModal from './UploadMarksModal';
+import AssignmentsPanel from './AssignmentsPanel';
 
 const BATCH_LEVELS = ['Class V', 'Class VI', 'Class VII', 'Class VIII', 'Class IX', 'Class X', 'Foundation', 'Sanskrit Vedic'];
 const ACADEMIC_SUBJECTS = ['English', 'English Grammar', 'Hindi', 'Hindi Grammar', 'Sanskrit', 'Sanskrit Grammar', 'Mathematics', 'Science', 'Social Science', 'Biology', 'Computer Science'];
@@ -188,7 +191,7 @@ export default function InstructorBatchesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBatchName, setNewBatchName] = useState('');
   const [newBatchLevel, setNewBatchLevel] = useState('Class X');
-  const [newBatchInstructorId, setNewBatchInstructorId] = useState('');
+  const [newBatchInstructorIds, setNewBatchInstructorIds] = useState<number[]>([]);
   const [createBatchError, setCreateBatchError] = useState('');
 
   // Tab Form states
@@ -425,7 +428,7 @@ export default function InstructorBatchesPage() {
       queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
       setShowCreateModal(false);
       setNewBatchName('');
-      setNewBatchInstructorId('');
+      setNewBatchInstructorIds([]);
       setCreateBatchError('');
     },
     onError: (err: any) => {
@@ -445,30 +448,17 @@ export default function InstructorBatchesPage() {
     }
   });
 
-  // Assign Instructor (Admin only)
-  const assignInstructorMutation = useMutation({
-    mutationFn: async (payload: { batchId: number; instructorId: number | null }) => {
-      const currentBatch = batches.find(b => b.id === payload.batchId);
-      if (!currentBatch) throw new Error('Batch not found');
-
-      const updatePayload = {
-        name: currentBatch.name,
-        level: currentBatch.level,
-        instructorId: payload.instructorId,
-        subjects: currentBatch.subjects,
-        studentCount: currentBatch.studentCount
-      };
-
-      const response = await api.put(`/instructor/batches/${payload.batchId}`, updatePayload);
-      return response.data;
+  // Assign Instructors & Subjects (Admin only)
+  const updateAssignmentsMutation = useMutation({
+    mutationFn: async (payload: { batchId: number; instructorIds: number[]; subjects: string[] }) => {
+      await api.put(`/instructor/batches/${payload.batchId}/assignments`, {
+        instructorIds: payload.instructorIds,
+        subjects: payload.subjects
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
       queryClient.invalidateQueries({ queryKey: ['batch-details-workspace', selectedBatchId] });
-      alert('Instructor assigned successfully.');
-    },
-    onError: (err: any) => {
-      alert(err.response?.data?.message || 'Failed to assign instructor.');
+      queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
     }
   });
 
@@ -481,18 +471,6 @@ export default function InstructorBatchesPage() {
       queryClient.invalidateQueries({ queryKey: ['batch-details-workspace', selectedBatchId] });
       queryClient.invalidateQueries({ queryKey: ['instructor-batches-workspace'] });
       setSelectedStudentToAdd('');
-      alert('Roster updated successfully.');
-    }
-  });
-
-  // Assign Subjects (Admin only)
-  const assignSubjectsMutation = useMutation({
-    mutationFn: async (payload: { batchId: number; subjects: string[] }) => {
-      await api.post(`/instructor/batches/${payload.batchId}/assign-subjects`, payload.subjects);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['batch-details-workspace', selectedBatchId] });
-      alert('Subjects list updated successfully.');
     }
   });
 
@@ -675,12 +653,12 @@ export default function InstructorBatchesPage() {
     createBatchMutation.mutate({
       name: newBatchName,
       level: newBatchLevel,
-      instructorId: newBatchInstructorId ? parseInt(newBatchInstructorId) : null
+      instructorIds: newBatchInstructorIds
     });
   };
 
-  const handleAssignInstructor = (batchId: number, instructorId: number | null) => {
-    assignInstructorMutation.mutate({ batchId, instructorId });
+  const handleAssignInstructors = (batchId: number, instructorIds: number[]) => {
+    updateAssignmentsMutation.mutate({ batchId, instructorIds: instructorIds, subjects: batchDetails.subjects || [] });
   };
 
   const handleDeleteBatch = (id: number) => {
@@ -748,9 +726,10 @@ export default function InstructorBatchesPage() {
     } else {
       updatedSubjects = [...currentSubjects, subject];
     }
-    assignSubjectsMutation.mutate({
-      batchId: batchDetails.id,
-      subjects: updatedSubjects
+    updateAssignmentsMutation.mutate({ 
+      batchId: batchDetails.id, 
+      instructorIds: batchDetails.instructors?.map((i: any) => i.id) || [],
+      subjects: [subject] 
     });
   };
 
@@ -1053,7 +1032,7 @@ export default function InstructorBatchesPage() {
                       <div className="text-[10px] text-muted-foreground font-medium flex flex-wrap justify-between items-center gap-2">
                         <span>{b.studentCount} Students</span>
                         <span>
-                          Teacher: <span className="text-foreground font-bold">{b.instructorName || 'Unassigned'}</span>
+                          Teacher: <span className="text-foreground font-bold">{b.instructors?.map(i => i.name).join(', ') || 'Unassigned'}</span>
                         </span>
                       </div>
                     </div>
@@ -1083,13 +1062,31 @@ export default function InstructorBatchesPage() {
           {!selectedBatchId ? (
             <div className="glass-card border border-border-color rounded-3xl p-8 text-center shadow-sm space-y-4 py-24 bg-card dark:bg-card">
               <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl flex items-center justify-center mx-auto shadow-inner">
-                <BookOpen className="w-6 h-6" />
+                {activeTab === 'notes' ? <FileText className="w-6 h-6" /> : activeTab === 'homework' ? <BookOpen className="w-6 h-6" /> : <Layers className="w-6 h-6" />}
               </div>
-              <div className="space-y-1.5 max-w-sm mx-auto">
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wide">Batch Console Inactive</h3>
+              <div className="space-y-4 max-w-sm mx-auto">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
+                  {activeTab === 'notes' ? 'Publish Notes' : activeTab === 'homework' ? 'Assign Homework' : 'Batch Console Inactive'}
+                </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Select an offline academic batch from the left sidebar panel to load student rosters, class timetables, attendance registers, and assignments.
+                  {activeTab === 'notes' 
+                    ? 'Please select a batch to upload notes and study materials.' 
+                    : activeTab === 'homework' 
+                    ? 'Please select a batch to assign homework.' 
+                    : 'Select an offline academic batch to load student rosters, class timetables, attendance registers, and assignments.'}
                 </p>
+                <div className="pt-4 max-w-xs mx-auto">
+                  <select 
+                    className="w-full px-4 py-3 bg-card border border-border-color text-foreground font-medium rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
+                    onChange={(e) => handleBatchSelect(Number(e.target.value))}
+                    value=""
+                  >
+                    <option value="" disabled>-- Choose a batch --</option>
+                    {batches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} ({b.level})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           ) : isDetailsLoading || !batchDetails ? (
@@ -1112,24 +1109,8 @@ export default function InstructorBatchesPage() {
                     </h3>
                   </div>
                   <p className="text-xs text-muted-foreground font-medium flex items-center gap-2">
-                    <span>Instructor (Class Teacher):</span>
-                    {user?.role === 'ADMIN' ? (
-                      <select
-                        value={batchDetails.instructor?.id || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          handleAssignInstructor(batchDetails.id, val ? parseInt(val) : null);
-                        }}
-                        className="bg-card border border-border-color text-indigo-400 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
-                      >
-                        <option value="">Unassigned</option>
-                        {allInstructors.map(inst => (
-                          <option key={inst.id} value={inst.id}>{inst.name} ({inst.role})</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="font-bold text-indigo-400">{batchDetails.instructor?.name || 'Unassigned'}</span>
-                    )}
+                    <span>Instructors (Class Teachers):</span>
+                    <span className="font-bold text-indigo-400">{batchDetails.instructors?.map((i: any) => i.name).join(', ') || 'Unassigned'}</span>
                   </p>
                 </div>
 
@@ -1151,7 +1132,7 @@ export default function InstructorBatchesPage() {
               <div className="flex items-center gap-1 px-4 border-b border-border-color bg-card overflow-x-auto scrollbar-none">
                 {([
                   { id: 'students', label: 'Students' },
-                  { id: 'subjects', label: 'Subjects' },
+                  { id: 'subjects', label: 'Assignments' },
                   { id: 'schedule', label: 'Schedule' },
                   { id: 'attendance', label: 'Attendance' },
                   { id: 'notes', label: 'Notes / PDF Upload' },
@@ -1284,50 +1265,29 @@ export default function InstructorBatchesPage() {
                   </div>
                 )}
 
-                {/* 2. SUBJECTS TAB */}
+                {/* 2. ASSIGNMENTS TAB */}
                 {activeTab === 'subjects' && (
-                  <div className="space-y-5 animate-in fade-in duration-200">
-                    <div>
-                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">Active Curriculum Subjects</h4>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        Identify which academic subjects are mapped to this offline batch.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      {Array.from(new Set([...ACADEMIC_SUBJECTS, ...(batchDetails?.subjects || [])])).map((subject) => {
-                        const isAssigned = batchDetails.subjects.includes(subject);
-                        return (
-                          <button
-                            key={subject}
-                            onClick={() => handleToggleSubject(subject)}
-                            disabled={assignSubjectsMutation.isPending}
-                            className={`p-4 rounded-xl border text-left flex items-center justify-between gap-3 cursor-pointer transition-all ${isAssigned
-                              ? 'bg-indigo-950/20 border-indigo-500/80 shadow-md shadow-indigo-500/5 ring-1 ring-indigo-500/25'
-                              : 'bg-background hover:bg-muted border-border-color hover:border-border-color hover:bg-card'
-                              }`}
-                          >
-                            <div className="space-y-0.5">
-                              <span className={`text-xs font-black block ${isAssigned ? 'text-indigo-400' : 'text-foreground'
-                                }`}>
-                                {subject}
-                              </span>
-                              <span className="text-[9px] text-muted-foreground block font-bold uppercase tracking-wider">
-                                {isAssigned ? 'Active Syllabus' : 'Inactive'}
-                              </span>
-                            </div>
-
-                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isAssigned
-                              ? 'bg-indigo-600 border-indigo-600 text-white'
-                              : 'border-border-color bg-card'
-                              }`}>
-                              {isAssigned && <CheckCircle2 className="w-3.5 h-3.5 fill-white text-indigo-600" />}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <AssignmentsPanel
+                    batchId={batchDetails.id}
+                    batchName={batchDetails.name}
+                    initialInstructors={batchDetails.instructors || []}
+                    initialSubjects={batchDetails.subjects || []}
+                    allInstructors={allInstructors}
+                    allSubjects={Array.from(new Set([...ACADEMIC_SUBJECTS, ...(batchDetails.subjects || [])]))}
+                    onSave={(instructorIds, subjects) => {
+                      Promise.all([
+                        assignInstructorMutation.mutateAsync({ batchId: batchDetails.id, instructorIds }),
+                        assignSubjectsMutation.mutateAsync({ batchId: batchDetails.id, subjects })
+                      ]).then(() => {
+                        alert('Assignments saved successfully!');
+                        queryClient.invalidateQueries({ queryKey: ['batch', batchDetails.id] });
+                      }).catch(err => {
+                        console.error("Failed to save assignments", err);
+                        alert("Failed to save assignments");
+                      });
+                    }}
+                    isSaving={assignInstructorMutation.isPending || assignSubjectsMutation.isPending}
+                  />
                 )}
 
                 {/* 3. SCHEDULE TAB */}
@@ -2439,54 +2399,67 @@ export default function InstructorBatchesPage() {
 
       {/* CREATE BATCH DIALOG MODAL (ADMIN ONLY) */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-card backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div
-            className="fixed inset-0"
+            className="absolute inset-0 bg-[#060e20]/80 backdrop-blur-sm"
             onClick={() => setShowCreateModal(false)}
           />
 
-          <div className="relative bg-card border border-border-color rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 space-y-5">
+          <div className="relative bg-[#0b1326] border border-white/10 rounded-2xl p-8 w-full max-w-lg shadow-[0_10px_40px_rgba(0,0,0,0.5),0_0_20px_rgba(99,102,241,0.1)] animate-in zoom-in-95 duration-300 space-y-6">
+            
+            {/* Header */}
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Create Offline Academic Batch</h3>
-              <p className="text-xs text-muted-foreground">
-                Setup a new offline batch level.
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                  <Plus className="w-4 h-4 text-indigo-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white tracking-tight">Create Academic Batch</h3>
+              </div>
+              <p className="text-[#c7c4d7] text-sm ml-11">
+                Configure a new offline cohort and assign primary instructors.
               </p>
             </div>
 
-            <form onSubmit={handleCreateBatch} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateBatch} className="space-y-6">
               {/* Batch Name */}
-              <div className="space-y-1.5">
-                <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Batch Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Class IX Evening Cohort"
-                  value={newBatchName}
-                  onChange={(e) => setNewBatchName(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-550"
-                />
+              <div className="space-y-2">
+                <label className="block text-[#c7c4d7] font-medium text-[11px] uppercase tracking-wider ml-1">Batch Name <span className="text-rose-400">*</span></label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Class IX Evening Cohort"
+                    value={newBatchName}
+                    onChange={(e) => setNewBatchName(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#131b2e]/50 border border-white/10 text-white placeholder-slate-500 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:bg-[#131b2e] transition-all focus:ring-4 focus:ring-indigo-500/10"
+                  />
+                </div>
               </div>
 
               {/* Level */}
-              <div className="space-y-1.5">
-                <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Batch Grade Level *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Class IX, Class VII, Foundation, Sanskrit Vedic..."
-                  value={newBatchLevel}
-                  onChange={(e) => setNewBatchLevel(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-card border border-border-color text-foreground placeholder-slate-650 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-550 font-medium text-xs"
-                />
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] font-extrabold text-muted-foreground mr-1">Presets:</span>
+              <div className="space-y-2">
+                <label className="block text-[#c7c4d7] font-medium text-[11px] uppercase tracking-wider ml-1">Grade Level <span className="text-rose-400">*</span></label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Class X"
+                    value={newBatchLevel}
+                    onChange={(e) => setNewBatchLevel(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#131b2e]/50 border border-white/10 text-white placeholder-slate-500 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:bg-[#131b2e] transition-all focus:ring-4 focus:ring-indigo-500/10 font-medium"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mr-1">Presets:</span>
                   {BATCH_LEVELS.map(level => (
                     <button
                       key={level}
                       type="button"
                       onClick={() => setNewBatchLevel(level)}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-all border cursor-pointer ${
-                        newBatchLevel === level ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-muted/50 border-border-color text-muted-foreground hover:text-foreground hover:bg-slate-800/50'
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all border cursor-pointer uppercase tracking-wider ${
+                        newBatchLevel === level 
+                          ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)]' 
+                          : 'bg-[#131b2e]/30 border-white/5 text-[#c7c4d7] hover:text-white hover:bg-[#131b2e] hover:border-white/10'
                       }`}
                     >
                       {level}
@@ -2496,42 +2469,77 @@ export default function InstructorBatchesPage() {
               </div>
 
               {/* Assign Instructor */}
-              <div className="space-y-1.5">
-                <label className="block text-muted-foreground font-bold text-[10px] uppercase tracking-wider">Assign Instructor (Class Teacher)</label>
-                <select
-                  value={newBatchInstructorId}
-                  onChange={(e) => setNewBatchInstructorId(e.target.value)}
-                  className="w-full px-3 py-2 bg-card border border-border-color text-slate-202 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="">Unassigned</option>
-                  {allInstructors.map(inst => (
-                    <option key={inst.id} value={inst.id}>{inst.name} ({inst.role})</option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <label className="block text-[#c7c4d7] font-medium text-[11px] uppercase tracking-wider ml-1 flex justify-between">
+                  <span>Assign Instructors</span>
+                  <span className="text-indigo-400 font-bold">{newBatchInstructorIds.length} Selected</span>
+                </label>
+                
+                <div className="bg-[#131b2e]/30 border border-white/10 rounded-xl overflow-hidden max-h-56 overflow-y-auto custom-scrollbar shadow-inner">
+                  {allInstructors.map(inst => {
+                    const isSelected = newBatchInstructorIds.includes(inst.id);
+                    return (
+                      <div 
+                        key={inst.id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setNewBatchInstructorIds(prev => prev.filter(id => id !== inst.id));
+                          } else {
+                            setNewBatchInstructorIds(prev => [...prev, inst.id]);
+                          }
+                        }}
+                        className={`flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-white/5 last:border-b-0 transition-all ${isSelected ? 'bg-indigo-500/10' : 'hover:bg-white/5'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-600 bg-transparent'}`}>
+                          {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                        </div>
+                        
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0">
+                          {inst.name.charAt(0).toUpperCase()}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold truncate transition-colors ${isSelected ? 'text-indigo-300' : 'text-white'}`}>{inst.name}</p>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-widest">{inst.role}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {allInstructors.length === 0 && (
+                    <div className="px-4 py-8 flex flex-col items-center justify-center text-slate-500">
+                      <Users className="w-6 h-6 mb-2 opacity-20" />
+                      <p className="text-xs">No instructors available.</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {createBatchError && (
-                <p className="text-[10px] text-rose-400 font-bold flex items-center gap-1 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                  {createBatchError}
-                </p>
+                <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <p className="text-xs font-medium">{createBatchError}</p>
+                </div>
               )}
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-card hover:bg-card text-foreground border border-border-color rounded-xl font-bold transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-transparent hover:bg-white/5 text-[#c7c4d7] hover:text-white rounded-xl text-sm font-semibold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createBatchMutation.isPending}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all cursor-pointer shadow-md shadow-indigo-650/15 flex items-center gap-1.5 disabled:opacity-50 active:scale-95"
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all cursor-pointer shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] flex items-center gap-2 disabled:opacity-50 active:scale-95"
                 >
-                  {createBatchMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {createBatchMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
                   Create Batch
                 </button>
               </div>
@@ -2539,6 +2547,7 @@ export default function InstructorBatchesPage() {
           </div>
         </div>
       )}
+
 
       {selectedTestForMarks && (
         <UploadMarksModal

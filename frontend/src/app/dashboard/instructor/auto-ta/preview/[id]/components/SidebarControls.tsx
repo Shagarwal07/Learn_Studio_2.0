@@ -53,7 +53,7 @@ export function SidebarControls({
             validation.sections.map((sec) => (
               <div key={sec.sectionName} className="border-t border-slate-855 pt-2 space-y-1">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-slate-455 font-semibold">{sec.sectionName.replace('SECTION_', 'Section ')} (Target: {sec.target}):</span>
+                  <span className="text-slate-455 font-semibold">{sec.sectionName.replace(/SECTION_/i, 'Section ').replaceAll('_', ' ')} (Target: {sec.target}):</span>
                   <span className={`font-bold ${sec.actual === sec.target ? 'text-emerald-450' : 'text-amber-455'}`}>
                     {sec.actual} Marks
                   </span>

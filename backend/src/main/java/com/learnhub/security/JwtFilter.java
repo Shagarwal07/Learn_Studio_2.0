@@ -23,21 +23,32 @@ public class JwtFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String token = null;
 
+        String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (jwtUtil.isValid(token)) {
-                try {
-                    String email = jwtUtil.extractEmail(token);
-                    var userDetails = userDetailsService.loadUserByUsername(email);
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                } catch (Exception e) {
-                    // Gracefully ignore user-not-found or invalid token exceptions, leaving the request unauthenticated
+            token = authHeader.substring(7);
+        } else {
+            if (request.getCookies() != null) {
+                for (Cookie cookie : request.getCookies()) {
+                    if ("access_token".equals(cookie.getName())) {
+                        token = cookie.getValue();
+                        break;
+                    }
                 }
+            }
+        }
+
+        if (token != null && jwtUtil.isValid(token)) {
+            try {
+                String email = jwtUtil.extractEmail(token);
+                var userDetails = userDetailsService.loadUserByUsername(email);
+                var auth = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (Exception e) {
+                // Gracefully ignore user-not-found or invalid token exceptions, leaving the request unauthenticated
             }
         }
         chain.doFilter(request, response);

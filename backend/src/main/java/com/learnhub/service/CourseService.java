@@ -12,6 +12,8 @@ import com.learnhub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ public class CourseService {
         return coursePage.map(courseMapper::toDTO);
     }
 
+    @Cacheable(value = "courses", key = "#id")
     public CourseDTO getCourseById(Long id) {
         return courseRepository.findById(id)
                 .map(courseMapper::toDTO)
@@ -68,6 +71,7 @@ public class CourseService {
         return courseMapper.toDTO(courseRepository.save(course));
     }
 
+    @CacheEvict(value = "courses", key = "#id")
     public CourseDTO updateCourse(Long id, CourseDTO dto) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
@@ -78,6 +82,7 @@ public class CourseService {
         return courseMapper.toDTO(courseRepository.save(course));
     }
 
+    @CacheEvict(value = "courses", key = "#id")
     public void deleteCourse(Long id) {
         courseRepository.deleteById(id);
     }

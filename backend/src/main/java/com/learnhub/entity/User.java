@@ -44,15 +44,21 @@ public class User extends BaseEntity {
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private List<Enrollment> enrollments;
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private List<UserIdentityProfile> identityProfiles;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")
     @JsonIgnore
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private Batch batch;
 
     public enum Role { STUDENT, INSTRUCTOR, ADMIN }

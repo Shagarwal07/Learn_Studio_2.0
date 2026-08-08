@@ -6,6 +6,7 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import com.lowagie.text.pdf.draw.LineSeparator;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import java.io.ByteArrayOutputStream;
 import java.awt.Color;
 import java.util.List;
@@ -20,7 +21,43 @@ public class PdfExportService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public byte[] generatePdf(GeneratedPaperDTO paper) {
+    @Value("${gcp.pdf.generator.url:http://localhost:8081/generatePdf}")
+    private String gcpPdfGeneratorUrl;
+
+    @Value("${frontend.base.url:http://localhost:3000}")
+    private String frontendBaseUrl;
+
+    public byte[] generatePdfWithHeadlessBrowser(GeneratedPaperDTO paper, String token, String layoutMode) throws Exception {
+        String targetUrl = frontendBaseUrl + "/dashboard/instructor/auto-ta/preview/" + paper.getId();
+        
+        java.util.Map<String, String> requestBody = new java.util.HashMap<>();
+        requestBody.put("url", targetUrl);
+        if (token != null) {
+            requestBody.put("token", token);
+        }
+        if (layoutMode != null) {
+            requestBody.put("layoutMode", layoutMode);
+        }
+
+        String jsonBody = objectMapper.writeValueAsString(requestBody);
+
+        java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(gcpPdfGeneratorUrl))
+                .header("Content-Type", "application/json")
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        java.net.http.HttpResponse<byte[]> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("GCP Function returned error: " + new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+
+        return response.body();
+    }
+
+    public byte[] generatePdf(GeneratedPaperDTO paper, Integer customFontSize) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             // A4 page with comfortable studio margins (36pt = 12.7mm)
             Document document = new Document(PageSize.A4, 36, 36, 36, 36);
@@ -50,15 +87,16 @@ public class PdfExportService {
             document.open();
 
             // Typography fonts (Times-Roman studio series)
-            Font titleFont = FontFactory.getFont(FontFactory.TIMES_BOLD, isWorksheet ? 18 : 22);
-            Font subtitleFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 12);
-            Font metaFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 11);
-            Font secHeaderFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 12);
-            Font qNumFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 11);
-            Font qTextFont = FontFactory.getFont(FontFactory.TIMES_ROMAN, 11);
-            Font marksFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 11);
-            Font optionFont = FontFactory.getFont(FontFactory.TIMES_ROMAN, 10.5f);
-            Font optionLabelFont = FontFactory.getFont(FontFactory.TIMES_BOLD, 10.5f);
+            int base = (customFontSize != null && customFontSize > 0) ? customFontSize : 11;
+            Font titleFont = FontFactory.getFont(FontFactory.TIMES_BOLD, isWorksheet ? base + 7 : base + 11);
+            Font subtitleFont = FontFactory.getFont(FontFactory.TIMES_BOLD, base + 1);
+            Font metaFont = FontFactory.getFont(FontFactory.TIMES_BOLD, base);
+            Font secHeaderFont = FontFactory.getFont(FontFactory.TIMES_BOLD, base + 1);
+            Font qNumFont = FontFactory.getFont(FontFactory.TIMES_BOLD, base);
+            Font qTextFont = FontFactory.getFont(FontFactory.TIMES_ROMAN, base);
+            Font marksFont = FontFactory.getFont(FontFactory.TIMES_BOLD, base);
+            Font optionFont = FontFactory.getFont(FontFactory.TIMES_ROMAN, base - 0.5f);
+            Font optionLabelFont = FontFactory.getFont(FontFactory.TIMES_BOLD, base - 0.5f);
 
             // 1. Header & Title
             String institute = (isWorksheet && (paper.getTestType() == null || "Categorized Practice".equalsIgnoreCase(paper.getTestType()))) 

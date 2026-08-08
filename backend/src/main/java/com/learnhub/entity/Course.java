@@ -5,9 +5,16 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.util.List;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "courses")
+@Table(name = "courses", indexes = {
+    @Index(name = "idx_course_instructor", columnList = "instructor_id"),
+    @Index(name = "idx_course_level", columnList = "level")
+})
+@SQLDelete(sql = "UPDATE courses SET deleted_at = CURRENT_TIMESTAMP WHERE id=?")
+@SQLRestriction("deleted_at IS NULL")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class Course extends BaseEntity {
 

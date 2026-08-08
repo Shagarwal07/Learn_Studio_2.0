@@ -665,7 +665,8 @@ export default function PaperPreviewPage() {
 
     try {
       setActionLoading(true);
-      const response = await api.get(`/autota/papers/${paperId}/export/pdf`, {
+      const dynamicFontSize = printLayoutMode === 'formal' ? 14 : 16;
+      const response = await api.get(`/autota/papers/${paperId}/export/pdf?fontSize=${dynamicFontSize}`, {
         responseType: 'blob'
       });
       

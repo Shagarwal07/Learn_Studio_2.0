@@ -70,8 +70,8 @@ export default function LoginPage() {
       const { success, data, message } = response.data;
 
       if (success && data) {
-        const { token, refreshToken, userId, name, email: userEmail, role } = data;
-        login(token, refreshToken, { id: userId, name, email: userEmail, role });
+        const { userId, name, email: userEmail, role } = data;
+        login({ id: userId, name, email: userEmail, role });
       } else {
         setError(message || 'Login failed. Please check your credentials.');
       }

@@ -335,7 +335,7 @@ public class AutoTaController {
     }
 
     @GetMapping("/papers/{id}/export/pdf")
-    public ResponseEntity<?> exportPdf(@PathVariable Long id) {
+    public ResponseEntity<?> exportPdf(@PathVariable Long id, @RequestParam(required = false, defaultValue = "11") Integer fontSize, @CookieValue(name = "access_token", required = false) String accessToken, @RequestParam(required = false, defaultValue = "worksheet") String layoutMode) {
         GeneratedPaper paper = paperRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Paper not found"));
 
@@ -353,7 +353,12 @@ public class AutoTaController {
             return ResponseEntity.badRequest().body(ApiResponse.error("PDF Export Blocked: Exam paper must be APPROVED or REVIEWED before exporting."));
         }
 
-        byte[] pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper));
+        byte[] pdfBytes;
+        try {
+            pdfBytes = pdfExportService.generatePdfWithHeadlessBrowser(editorService.toDTO(paper), accessToken, layoutMode);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Headless PDF Generation failed: " + e.getMessage()));
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"studio-exam-paper-" + id + ".pdf\"")
@@ -573,7 +578,10 @@ public class AutoTaController {
                 for (com.fasterxml.jackson.databind.JsonNode node : rootNode) {
                     String qText = node.path("questionText").asText("");
                     String qType = node.path("questionType").asText("MCQ");
-                    String correct = node.path("correctOption").hasNonNull("value") ? node.path("correctOption").asText() : node.path("correctOption").asText(node.path("correctAnswer").asText("A"));
+                    String correct = node.path("correctOption").hasNonNull("value") ? node.path("correctOption").asText() : node.path("correctAnswer").asText("");
+                    if (correct.isBlank()) {
+                        correct = hasUploadedImages ? "Answer provided in practice session." : "A";
+                    }
                     String explanation = node.path("solutionExplanation").asText(node.path("solutionSteps").asText(""));
                     int qMarks = hasUploadedImages ? 0 : node.path("marks").asInt(1);
 
@@ -587,12 +595,14 @@ public class AutoTaController {
 
                     String diff = node.path("difficulty").asText("MEDIUM");
                     String bloom = node.path("bloomLevel").asText("Understanding");
-                    String chapter = node.path("chapter").asText(batch.getName());
+                    String chapter = hasUploadedImages ? node.path("chapter").asText("General Practice") : node.path("chapter").asText(batch.getName());
+                    String topic = node.path("topic").asText("");
+                    String confidence = node.path("confidence").asText("high");
 
                     String targetSection = node.path("section").asText("");
                     if (targetSection.isBlank()) {
                         if (hasUploadedImages) {
-                            targetSection = "Section: General Practice";
+                            targetSection = "General Practice";
                         } else {
                             targetSection = "SECTION_B";
                             if (qType.equalsIgnoreCase("MCQ") || qType.equalsIgnoreCase("FILL_IN_THE_BLANK") || qType.equalsIgnoreCase("TRUE_FALSE")) {
@@ -618,6 +628,8 @@ public class AutoTaController {
                             .difficulty(diff)
                             .bloomLevel(bloom)
                             .chapter(chapter)
+                            .topic(topic)
+                            .confidence(confidence)
                             .agentType("VERTEX_AI")
                             .subject(subject != null && !subject.trim().isEmpty() ? subject : "General")
                             .section(targetSection)

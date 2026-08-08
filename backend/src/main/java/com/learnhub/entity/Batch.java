@@ -4,9 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
 import java.util.Set;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "batches")
+@SQLDelete(sql = "UPDATE batches SET deleted_at = CURRENT_TIMESTAMP WHERE id=?")
+@SQLRestriction("deleted_at IS NULL")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
@@ -24,11 +28,19 @@ public class Batch extends BaseEntity {
     @Column(nullable = false)
     private String level;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "instructor_id")
-    private User instructor;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "batch_instructors",
+        joinColumns = @JoinColumn(name = "batch_id"),
+        inverseJoinColumns = @JoinColumn(name = "instructor_id")
+    )
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
+    private Set<User> instructors;
 
     @OneToMany(mappedBy = "batch", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private List<User> students;
 
     @ElementCollection(fetch = FetchType.EAGER)

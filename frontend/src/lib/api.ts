@@ -3,21 +3,17 @@ import axios from 'axios';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to attach JWT token
 api.interceptors.request.use(
   (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
+    // We no longer attach the token from localStorage here.
+    // The browser will automatically send the HttpOnly 'access_token' cookie because of withCredentials: true.
     return config;
   },
   (error) => Promise.reject(error)
@@ -58,7 +54,6 @@ api.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
           })
           .catch((err) => Promise.reject(err));
@@ -67,32 +62,13 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) {
-        // No refresh token, trigger logout
-        if (typeof window !== 'undefined') {
-          localStorage.clear();
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
-
       try {
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
+        const response = await api.post(`/auth/refresh`, {});
 
-        const { success, data } = response.data;
-        if (success && data) {
-          const { accessToken, refreshToken: newRefreshToken } = data;
-          localStorage.setItem('token', accessToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-
-          api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-          processQueue(null, accessToken);
+        const { success } = response.data;
+        if (success) {
+          processQueue(null, null);
           isRefreshing = false;
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         }
       } catch (refreshError: any) {

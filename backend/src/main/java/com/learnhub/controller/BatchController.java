@@ -25,8 +25,8 @@ public class BatchController {
 
     @GetMapping("/instructor/batches")
     @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN')")
-    public ResponseEntity<ApiResponse<List<BatchDTO>>> getAllBatches() {
-        List<BatchDTO> batches = batchService.getAllBatches();
+    public ResponseEntity<ApiResponse<List<BatchDTO>>> getAllBatches(Principal principal) {
+        List<BatchDTO> batches = batchService.getAllBatches(principal.getName());
         return ResponseEntity.ok(ApiResponse.success(batches, "Batches list retrieved successfully"));
     }
 
@@ -70,12 +70,12 @@ public class BatchController {
         return ResponseEntity.ok(ApiResponse.success(null, "Students assigned to batch successfully"));
     }
 
-    @PostMapping("/instructor/batches/{id}/assign-subjects")
+    @PutMapping("/instructor/batches/{id}/assignments")
     @PreAuthorize("hasAnyRole('INSTRUCTOR','ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> assignSubjects(
-            @PathVariable Long id, @RequestBody Set<String> subjects) {
-        batchService.assignSubjects(id, subjects);
-        return ResponseEntity.ok(ApiResponse.success(null, "Subjects assigned to batch successfully"));
+    public ResponseEntity<ApiResponse<Void>> updateAssignments(
+            @PathVariable Long id, @RequestBody com.learnhub.dto.BatchAssignmentsRequest request) {
+        batchService.updateAssignments(id, request.getInstructorIds(), request.getSubjects());
+        return ResponseEntity.ok(ApiResponse.success(null, "Batch assignments updated successfully"));
     }
 
     // ────────────────────────────────────────────────────────────────────────

@@ -33,6 +33,14 @@ public class GoogleCloudStorageService {
 
     private Storage storage;
 
+    public Storage getStorage() {
+        return storage;
+    }
+
+    public String getBucketName() {
+        return bucketName;
+    }
+
     @PostConstruct
     public void init() {
         try {

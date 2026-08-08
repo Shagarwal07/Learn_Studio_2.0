@@ -16,7 +16,8 @@ public class GeneratedQuestionDTO {
     private String solutionSteps; // step-wise math solutions
     private Integer marks;
     private String difficulty;
-    private String questionType; // MCQ, SHORT, LONG, NUMERICAL
+    private String questionType; // MCQ, SHORT, LONG, NUMERICAL, fill_blank, true_false, matching
+    private String confidence; // high, low
     private String agentType; // THEORY, MATHEMATICS, QUESTION_BANK
     private String subject;
     private Integer version;

@@ -148,7 +148,7 @@ public class AdminService {
             if (!homeworkRepository.findByCreatedById(id).isEmpty()) {
                 throw new RuntimeException("This user has created homework tasks and cannot be deleted. Deactivate them instead.");
             }
-            if (!batchRepository.findByInstructorId(id).isEmpty()) {
+            if (!batchRepository.findByInstructorsId(id).isEmpty()) {
                 throw new RuntimeException("This user is assigned to teach batches and cannot be deleted. Deactivate them instead.");
             }
             if (!courseRepository.findByInstructorId(id).isEmpty()) {
@@ -216,8 +216,8 @@ public class AdminService {
                 course.setInstructor(null);
                 courseRepository.save(course);
             }
-            for (Batch batch : batchRepository.findByInstructorId(id)) {
-                batch.setInstructor(null);
+            for (Batch batch : batchRepository.findByInstructorsId(id)) {
+                batch.getInstructors().removeIf(u -> u.getId().equals(id));
                 batchRepository.save(batch);
             }
             for (ScheduleEvent event : scheduleEventRepository.findByInstructorIdOrderByEventDateAscStartTimeAsc(id)) {

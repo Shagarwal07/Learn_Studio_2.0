@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Printer, Save, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -40,6 +40,10 @@ export function PrintLayoutView({
   editChapters,
   editTotalMarks,
 }: PrintLayoutViewProps) {
+  const [lineMultiplier, setLineMultiplier] = useState(1);
+  const printSizeMain = printLayoutMode === 'worksheet' ? 'print:!text-[16pt]' : 'print:!text-[14pt]';
+  const printSizeSub = printLayoutMode === 'worksheet' ? 'print:!text-[14pt]' : 'print:!text-[12pt]';
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Toolbar */}
@@ -58,7 +62,7 @@ export function PrintLayoutView({
                   : 'bg-slate-955 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              📑 Formal Exam (With Marks & Table)
+              📑 Compact Branded Extract (Formal Structure)
             </button>
             <button
               onClick={() => setPrintLayoutMode('worksheet')}
@@ -68,8 +72,15 @@ export function PrintLayoutView({
                   : 'bg-slate-955 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              📝 Categorized Worksheet (Compact Grid, Zero-Marks)
+              📝 Practice Worksheet (Dynamic Spacing, Zero-Marks)
             </button>
+            {printLayoutMode === 'worksheet' && (
+              <div className="flex items-center gap-1 ml-2 xl:ml-4 border border-slate-700 bg-slate-900 rounded-lg overflow-hidden h-[30px]">
+                <button onClick={() => setLineMultiplier(Math.max(1, lineMultiplier - 1))} className="px-2.5 text-slate-400 hover:text-white hover:bg-slate-800 font-bold transition-all">-</button>
+                <span className="text-[11px] font-mono text-slate-300 min-w-[44px] text-center border-x border-slate-700/50 leading-[30px]">{lineMultiplier}x Lines</span>
+                <button onClick={() => setLineMultiplier(Math.min(5, lineMultiplier + 1))} className="px-2.5 text-slate-400 hover:text-white hover:bg-slate-800 font-bold transition-all">+</button>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2.5 self-start xl:self-auto">
@@ -101,7 +112,7 @@ export function PrintLayoutView({
 
       {/* A4 Container */}
       <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner print-container">
-        <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-[210mm] min-h-[297mm] block overflow-visible space-y-6 text-left relative select-text ${
+        <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-full max-w-[210mm] print:max-w-none print:w-[210mm] min-h-[297mm] block overflow-visible space-y-6 text-left relative select-text ${
           printLayoutMode === 'worksheet' ? 'p-8 sm:p-10 border-none' : 'p-9 sm:p-12 border-[5px] border-double border-black'
         }`}>
           
@@ -122,7 +133,6 @@ export function PrintLayoutView({
                 color: black !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                font-size: 12pt !important;
               }
               aside, nav, header, button, .no-print, .tab-selector, .print-toolbar, .lg\\:col-span-3, .review-decision-panel {
                 display: none !important;
@@ -139,6 +149,11 @@ export function PrintLayoutView({
                 background: transparent !important;
                 border: none !important;
                 box-shadow: none !important;
+              }
+              /* Override Tailwind Prose locking font sizes to 1rem (12pt) */
+              .prose, .prose p, .prose span, .prose strong, .prose em, .prose ul, .prose li {
+                font-size: inherit !important;
+                line-height: inherit !important;
               }
               #printable-exam-paper {
                 position: static !important;
@@ -307,18 +322,15 @@ export function PrintLayoutView({
 
               return dynamicSections.map((sec) => {
                 const avgLen = sec.questions.reduce((sum, q) => sum + (q.questionText?.length || 0), 0) / (sec.questions.length || 1);
-                const isMcqPresent = sec.questions.some(q => q.questionType === 'MCQ' || (q.options && q.options !== 'null' && q.options !== '{}'));
+                const isMcqPresent = sec.questions.some(q => q.questionType === 'MCQ' || (q.options && q.options !== 'null' && q.options !== '{}' && q.options !== '[]' && q.options.length > 2));
                 
                 // Antigravity Continuous Flow Grid calculation for worksheets
                 let isCompactGrid = false;
                 let gridClass = "space-y-3.5 pt-1.5";
-                if (printLayoutMode === 'worksheet' && !isMcqPresent && sec.questions.length >= 3) {
-                  if (avgLen <= 26) {
+                if (!isMcqPresent && sec.questions.length >= 3) {
+                  if (avgLen <= 35) {
                     isCompactGrid = true;
-                    gridClass = "grid grid-cols-4 gap-x-6 gap-y-3.5 pt-2.5 space-y-0";
-                  } else if (avgLen <= 48) {
-                    isCompactGrid = true;
-                    gridClass = "grid grid-cols-2 gap-x-10 gap-y-3.5 pt-2.5 space-y-0";
+                    gridClass = "grid grid-cols-2 gap-x-10 gap-y-4 pt-2.5 space-y-0";
                   } else if (avgLen <= 70) {
                     gridClass = "space-y-2.5 pt-2";
                   } else {
@@ -331,34 +343,36 @@ export function PrintLayoutView({
                 return (
                   <div key={sec.key} className="space-y-2 print-section-container">
                     {printLayoutMode === 'worksheet' ? (
-                      <div className="text-left font-extrabold font-serif text-[16px] tracking-wide pt-2.5 pb-0.5 text-black flex items-center gap-2 print-section-header">
-                        {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-4.5 inline-block my-auto shrink-0" />}
+                      <div className={`text-left font-extrabold font-serif text-[18px] tracking-wide pt-2.5 pb-0.5 text-black flex items-center gap-2 print-section-header ${printSizeMain}`}>
+                        {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-5 inline-block my-auto shrink-0" />}
                         <span>{sec.displayLabel}</span>
                       </div>
                     ) : (
-                      <div className="text-center font-bold font-serif text-[14px] tracking-wide pt-1.5 print-section-header">
+                      <div className={`text-center font-bold font-serif text-[16px] tracking-wide pt-1.5 print-section-header ${printSizeMain}`}>
                         <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
-                        <span className="font-extrabold ml-1.5">
-                          {sec.allSameMarks
-                            ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
-                            : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
-                          }
-                        </span>
+                        {Number(sec.totalMarks) > 0 && (
+                          <span className="font-extrabold ml-1.5">
+                            {sec.allSameMarks
+                              ? `(${sec.count} × ${sec.avgMarks} = ${sec.totalMarks} Marks)`
+                              : `(${sec.count} Questions, Total: ${sec.totalMarks} Marks)`
+                            }
+                          </span>
+                        )}
                       </div>
                     )}
 
                     <div className={gridClass}>
                       {sec.questions.slice().sort((a, b) => (a.questionOrder || 999) - (b.questionOrder || 999)).map((q, qIdx) => (
-                        <div key={q.id} className={`text-[15px] sm:text-[15.5px] relative leading-relaxed text-black print-question-item block overflow-visible ${isCompactGrid ? '' : 'space-y-2 mb-4'}`}>
+                        <div key={q.id} className={`text-[18px] sm:text-[19px] relative leading-relaxed text-black print-question-item block overflow-visible ${printSizeMain} ${isCompactGrid ? '' : 'space-y-3 mb-6'}`}>
                           <div className="block w-full overflow-visible relative">
                             {printLayoutMode !== 'worksheet' && Number(q.marks) > 0 && (
-                              <span className="float-right font-extrabold text-[13.5px] sm:text-[14px] pl-4 text-right select-none min-w-[40px] print-mark-badge">
+                              <span className={`float-right font-extrabold text-[15px] sm:text-[16px] pl-4 text-right select-none min-w-[40px] print-mark-badge ${printSizeSub}`}>
                                 [{q.marks}]
                               </span>
                             )}
-                            <div className="font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[15px] sm:text-[15.5px] block overflow-visible">
-                              {!isCompactGrid && (
-                                <span className="font-extrabold mr-2 float-left select-none inline-block text-[15px]">
+                            <div className={`font-medium text-black text-left prose prose-slate max-w-none print-math-container text-[18px] sm:text-[19px] block overflow-visible ${printSizeMain}`}>
+                              {!(/^\s*\d+[\)\.]\s*/.test(q.questionText || '')) && (
+                                <span className={`font-extrabold mr-2 float-left select-none inline-block text-[18px] ${printSizeMain}`}>
                                   {qIdx + 1}{printLayoutMode === 'worksheet' ? '.' : ')'}
                                 </span>
                               )}
@@ -372,14 +386,15 @@ export function PrintLayoutView({
                           {q.options && (() => {
                             try {
                               const parsed = JSON.parse(q.options);
+                              if (Array.isArray(parsed) && parsed.length === 0) return null;
                               return (
                                 <div className="grid grid-cols-2 w-full gap-x-12 gap-y-2 pl-8 pt-1 text-black print-mcq-options">
                                   {Object.entries(parsed).map(([key, val], optIdx) => {
                                     const stdLabel = ['a', 'b', 'c', 'd', 'e', 'f'][optIdx] || key.toLowerCase();
                                     return (
-                                      <div key={key} className="text-[13.5px] sm:text-[14px] text-black flex items-baseline gap-1.5">
-                                        <span className="font-extrabold mr-1 text-black shrink-0 select-none">({stdLabel})</span>
-                                        <div className="inline-block flex-1 prose prose-slate max-w-none text-black text-[13.5px] sm:text-[14px]">
+                                        <div key={key} className={`text-[16px] sm:text-[17px] text-black flex items-baseline gap-2 ${printSizeSub}`}>
+                                          <span className="font-extrabold mr-1 text-black shrink-0 select-none">({stdLabel})</span>
+                                          <div className={`inline-block flex-1 prose prose-slate max-w-none text-black text-[16px] sm:text-[17px] ${printSizeSub}`}>
                                           <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                                             {val as string}
                                           </ReactMarkdown>
@@ -392,6 +407,29 @@ export function PrintLayoutView({
                             } catch (e) {
                               return null;
                             }
+                          })()}
+                          
+                          {/* Dynamic Spacing for Worksheet Mode */}
+                          {printLayoutMode === 'worksheet' && (() => {
+                            const qt = (q.questionType || '').toUpperCase();
+                            if (qt === 'LONG_ANSWER' || qt === 'LONG' || qt === 'ESSAY') {
+                              return (
+                                <div className="w-full mt-5 space-y-6">
+                                  {Array.from({ length: 4 * lineMultiplier }).map((_, i) => (
+                                    <div key={i} className="border-b border-black/30 border-dashed w-full h-1"></div>
+                                  ))}
+                                </div>
+                              );
+                            } else if (qt === 'SHORT_ANSWER' || qt === 'SHORT' || qt === 'VERY_SHORT_ANSWER') {
+                              return (
+                                <div className="w-full mt-5 space-y-6">
+                                  {Array.from({ length: 2 * lineMultiplier }).map((_, i) => (
+                                    <div key={i} className="border-b border-black/30 border-dashed w-full h-1"></div>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
                           })()}
                         </div>
                       ))}

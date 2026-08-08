@@ -37,9 +37,25 @@ public class BatchService {
     // BATCH CRUD OPERATIONS
     // ────────────────────────────────────────────────────────────────────────
 
-    public List<BatchDTO> getAllBatches() {
-        return batchRepository.findAll().stream()
-                .map(batchMapper::toDTO)
+    public List<BatchDTO> getAllBatches(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        List<Batch> batches;
+        if (user.getRole().name().equals("ADMIN")) {
+            batches = batchRepository.findAll();
+        } else {
+            batches = batchRepository.findByInstructorsId(user.getId());
+        }
+
+        Map<Long, Long> counts = batchRepository.countStudentsPerBatch().stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        return batches.stream()
+                .map(b -> batchMapper.toDTOWithCount(b, counts.getOrDefault(b.getId(), 0L).intValue()))
                 .toList();
     }
 
@@ -50,17 +66,18 @@ public class BatchService {
     }
 
     public BatchDTO createBatch(BatchDTO dto) {
-        User instructor = null;
-        if (dto.instructorId() != null) {
-            instructor = userRepository.findById(dto.instructorId())
-                    .orElseThrow(() -> new RuntimeException("Instructor not found"));
+        Set<User> instructors = new java.util.HashSet<>();
+        if (dto.instructorIds() != null && !dto.instructorIds().isEmpty()) {
+            for (Long instId : dto.instructorIds()) {
+                userRepository.findById(instId).ifPresent(instructors::add);
+            }
         }
 
         Batch batch = Batch.builder()
                 .name(dto.name())
                 .level(dto.level())
-                .instructor(instructor)
-                .subjects(dto.subjects() != null ? dto.subjects() : new HashSet<>())
+                .instructors(instructors)
+                .subjects(dto.subjects() != null ? dto.subjects() : new java.util.HashSet<>())
                 .build();
 
         return batchMapper.toDTO(batchRepository.save(batch));
@@ -70,17 +87,24 @@ public class BatchService {
         Batch batch = batchRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
 
-        User instructor = null;
-        if (dto.instructorId() != null) {
-            instructor = userRepository.findById(dto.instructorId())
-                    .orElseThrow(() -> new RuntimeException("Instructor not found"));
+        Set<User> instructors = new java.util.HashSet<>();
+        if (dto.instructorIds() != null && !dto.instructorIds().isEmpty()) {
+            for (Long instId : dto.instructorIds()) {
+                userRepository.findById(instId).ifPresent(instructors::add);
+            }
         }
 
         batch.setName(dto.name());
         batch.setLevel(dto.level());
-        batch.setInstructor(instructor);
+        batch.setInstructors(instructors);
         if (dto.subjects() != null) {
-            batch.setSubjects(dto.subjects());
+            if (batch.getSubjects() == null) {
+                batch.setSubjects(new java.util.HashSet<>(dto.subjects()));
+            } else {
+                batch.getSubjects().clear();
+                batchRepository.saveAndFlush(batch);
+                batch.getSubjects().addAll(dto.subjects());
+            }
         }
 
         return batchMapper.toDTO(batchRepository.save(batch));
@@ -134,7 +158,42 @@ public class BatchService {
     public void assignSubjects(Long batchId, Set<String> subjects) {
         Batch batch = batchRepository.findById(batchId)
                 .orElseThrow(() -> new RuntimeException("Batch not found"));
-        batch.setSubjects(subjects);
+        if (subjects != null) {
+            if (batch.getSubjects() == null) {
+                batch.setSubjects(new java.util.HashSet<>(subjects));
+            } else {
+                batch.getSubjects().clear();
+                batchRepository.saveAndFlush(batch);
+                batch.getSubjects().addAll(subjects);
+            }
+        }
+        batchRepository.save(batch);
+    }
+
+    public void updateAssignments(Long batchId, List<Long> instructorIds, Set<String> subjects) {
+        Batch batch = batchRepository.findById(batchId)
+                .orElseThrow(() -> new RuntimeException("Batch not found"));
+        
+        // 1. Update Instructors
+        Set<User> instructors = new java.util.HashSet<>();
+        if (instructorIds != null) {
+            for (Long instId : instructorIds) {
+                userRepository.findById(instId).ifPresent(instructors::add);
+            }
+        }
+        batch.setInstructors(instructors);
+
+        // 2. Update Subjects
+        if (subjects != null) {
+            if (batch.getSubjects() == null) {
+                batch.setSubjects(new java.util.HashSet<>(subjects));
+            } else {
+                batch.getSubjects().clear();
+                // Flush is no longer necessary here because we are doing everything in one save
+                batch.getSubjects().addAll(subjects);
+            }
+        }
+        
         batchRepository.save(batch);
     }
 
@@ -361,12 +420,19 @@ public class BatchService {
     }
 
     public List<NoteDTO> getStudentBatchNotes(String email) {
-        User student = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
-        if (student.getBatch() == null) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+                
+        if (user.getRole().name().equals("ADMIN") || user.getRole().name().equals("INSTRUCTOR")) {
+            return noteRepository.findAll().stream()
+                    .map(this::convertNoteToDTO)
+                    .toList();
+        }
+
+        if (user.getBatch() == null) {
             return Collections.emptyList();
         }
-        return noteRepository.findByBatchId(student.getBatch().getId()).stream()
+        return noteRepository.findByBatchId(user.getBatch().getId()).stream()
                 .map(this::convertNoteToDTO)
                 .toList();
     }
@@ -424,12 +490,19 @@ public class BatchService {
 
     public List<HomeworkDTO> getStudentBatchHomeworks(String email) {
         triggerBackgroundSync();
-        User student = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Student not found"));
-        if (student.getBatch() == null) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+                
+        if (user.getRole().name().equals("ADMIN") || user.getRole().name().equals("INSTRUCTOR")) {
+            return homeworkRepository.findAll().stream()
+                    .map(this::convertHomeworkToDTO)
+                    .toList();
+        }
+
+        if (user.getBatch() == null) {
             return Collections.emptyList();
         }
-        return homeworkRepository.findByBatchId(student.getBatch().getId()).stream()
+        return homeworkRepository.findByBatchId(user.getBatch().getId()).stream()
                 .map(this::convertHomeworkToDTO)
                 .toList();
     }

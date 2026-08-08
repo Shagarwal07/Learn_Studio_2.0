@@ -149,7 +149,7 @@ public class GoogleDriveSyncService {
                 batch = Batch.builder()
                         .name(batchName)
                         .level(level)
-                        .instructor(defaultUploader)
+                        .instructors(new java.util.HashSet<>(defaultUploader != null ? java.util.List.of(defaultUploader) : java.util.List.of()))
                         .subjects(subjects)
                         .build();
                 
@@ -173,7 +173,7 @@ public class GoogleDriveSyncService {
                 }
             }
 
-            User uploader = batch.getInstructor() != null ? batch.getInstructor() : defaultUploader;
+            User uploader = (batch.getInstructors() != null && !batch.getInstructors().isEmpty()) ? batch.getInstructors().iterator().next() : defaultUploader;
             if (uploader == null) {
                 System.err.println("No instructor or admin found to assign files for batch: " + batchName);
                 continue;
@@ -203,13 +203,14 @@ public class GoogleDriveSyncService {
             }
         }
 
-        // Deletion Cleanup: Remove notes and homeworks that no longer exist in Google Drive
+        // Deletion Cleanup: Disabled to prevent locally created resources from being wiped out.
+        // Google Drive is a sync destination, not the sole source of truth for deletions.
+        /*
         List<Note> allDbNotes = noteRepository.findAll();
         for (Note note : allDbNotes) {
             if (note.getPublicId() != null && note.getFileUrl() != null && note.getFileUrl().contains("drive.google.com")) {
                 if (!activeFileIds.contains(note.getPublicId())) {
                     System.out.println("Cleaning up deleted Note from DB: " + note.getTitle());
-                    // Delete child view logs first to avoid constraint violation
                     noteViewLogRepository.deleteAll(noteViewLogRepository.findByNoteId(note.getId()));
                     noteRepository.delete(note);
                 }
@@ -221,14 +222,12 @@ public class GoogleDriveSyncService {
             if (hw.getPublicId() != null && hw.getFileUrl() != null && hw.getFileUrl().contains("drive.google.com")) {
                 if (!activeFileIds.contains(hw.getPublicId())) {
                     System.out.println("Cleaning up deleted Homework from DB: " + hw.getTitle());
-                    // Delete student submissions first to avoid constraint violation
                     homeworkSubmissionRepository.deleteAll(homeworkSubmissionRepository.findByHomeworkId(hw.getId()));
                     homeworkRepository.delete(hw);
                 }
             }
         }
 
-        // Deletion Cleanup: Remove batches that no longer exist in Google Drive
         List<Batch> allDbBatches = batchRepository.findAll();
         for (Batch batch : allDbBatches) {
             if (!activeBatchNames.contains(batch.getName())) {
@@ -236,6 +235,7 @@ public class GoogleDriveSyncService {
                 deleteBatchSafely(batch);
             }
         }
+        */
     }
 
     private void syncNotes(String parentId, Batch batch, String subjectName, User uploader, Set<String> activeFileIds) throws Exception {
@@ -452,8 +452,11 @@ public class GoogleDriveSyncService {
 
                 byte[] fileBytes = null;
                 if (note.getFileUrl() != null && !note.getFileUrl().isEmpty()) {
-                    try (java.io.InputStream in = new java.net.URL(note.getFileUrl()).openStream()) {
-                        fileBytes = in.readAllBytes();
+                    try {
+                        String encodedUrl = note.getFileUrl().replace(" ", "%20");
+                        try (java.io.InputStream in = new java.net.URL(encodedUrl).openStream()) {
+                            fileBytes = in.readAllBytes();
+                        }
                     } catch (Exception ex) {
                         System.err.println("Failed to read note file stream for: " + note.getTitle() + ": " + ex.getMessage());
                     }

@@ -7,7 +7,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "enrollments",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "course_id"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "course_id"}),
+       indexes = {
+           @Index(name = "idx_enrollment_course", columnList = "course_id")
+       })
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class Enrollment extends BaseEntity {
 

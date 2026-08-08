@@ -7,6 +7,8 @@ import com.learnhub.service.RefreshTokenService;
 import com.learnhub.security.JwtUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
@@ -25,16 +27,48 @@ public class AuthController {
         return ResponseEntity.badRequest().body(ApiResponse.error("Registration is currently locked by the administrator."));
     }
 
+    private ResponseCookie createCookie(String name, String value, int maxAgeDays) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(false) // Set to true if using HTTPS in production
+                .path("/")
+                .maxAge(value == null || value.isEmpty() ? 0 : maxAgeDays * 24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+    }
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
+        
+        ResponseCookie accessCookie = createCookie("access_token", response.getToken(), 1);
+        ResponseCookie refreshCookie = createCookie("refresh_token", response.getRefreshToken(), 7);
+        
+        // Clear tokens from JSON payload for security
+        response.setToken(null);
+        response.setRefreshToken(null);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.success(response, "Login successful"));
     }
 
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> googleLogin(@RequestBody Map<String, String> body) {
         AuthResponse response = authService.loginWithGoogle(body.get("credential"));
-        return ResponseEntity.ok(ApiResponse.success(response, "Google login successful"));
+        
+        ResponseCookie accessCookie = createCookie("access_token", response.getToken(), 1);
+        ResponseCookie refreshCookie = createCookie("refresh_token", response.getRefreshToken(), 7);
+        
+        // Clear tokens from JSON payload for security
+        response.setToken(null);
+        response.setRefreshToken(null);
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(ApiResponse.success(response, "Google login successful"));
     }
 
     @PostMapping("/google/register")
@@ -43,21 +77,36 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-        String requestRefreshToken = request.getRefreshToken();
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshToken(
+            @CookieValue(value = "refresh_token", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) TokenRefreshRequest request) {
+        
+        String requestRefreshToken = cookieRefreshToken != null ? cookieRefreshToken : (request != null ? request.getRefreshToken() : null);
+        if (requestRefreshToken == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Refresh token is missing"));
+        }
         
         RefreshToken token = refreshTokenService.findByToken(requestRefreshToken);
         refreshTokenService.verifyExpiration(token);
         
         String accessToken = jwtUtil.generateToken(token.getUser().getEmail());
-        TokenRefreshResponse response = new TokenRefreshResponse(accessToken, token.getToken());
+        TokenRefreshResponse response = new TokenRefreshResponse(null, null); // Return null in payload
         
-        return ResponseEntity.ok(ApiResponse.success(response, "Token refreshed successfully"));
+        ResponseCookie accessCookie = createCookie("access_token", accessToken, 1);
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .body(ApiResponse.success(response, "Token refreshed successfully"));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logoutUser(@RequestBody Map<String, String> body) {
-        String refreshToken = body.get("refreshToken");
+    public ResponseEntity<ApiResponse<Void>> logoutUser(
+            @CookieValue(value = "refresh_token", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) Map<String, String> body) {
+            
+        String refreshToken = cookieRefreshToken != null ? cookieRefreshToken : (body != null ? body.get("refreshToken") : null);
+        
         if (refreshToken != null) {
             try {
                 RefreshToken token = refreshTokenService.findByToken(refreshToken);
@@ -66,6 +115,13 @@ public class AuthController {
                 // Ignore if token already not found
             }
         }
-        return ResponseEntity.ok(ApiResponse.success(null, "Logged out successfully"));
+        
+        ResponseCookie clearAccess = createCookie("access_token", "", 0);
+        ResponseCookie clearRefresh = createCookie("refresh_token", "", 0);
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearAccess.toString())
+                .header(HttpHeaders.SET_COOKIE, clearRefresh.toString())
+                .body(ApiResponse.success(null, "Logged out successfully"));
     }
 }

@@ -72,7 +72,7 @@ public class GoogleDriveConfig {
         }
 
         GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream)
-                .createScoped(Collections.singleton(DriveScopes.DRIVE_READONLY));
+                .createScoped(Collections.singleton(DriveScopes.DRIVE));
 
         HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         GsonFactory jsonFactory = GsonFactory.getDefaultInstance();

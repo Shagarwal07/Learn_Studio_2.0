@@ -1,0 +1,108 @@
+{
+  "project": "LearnStudio 2.0 - Auto-TA Multi-Agent System",
+  "version": "2.0.0",
+  "description": "Direct configuration bundle for Google AI Studio, Vertex AI Studio, Gemini Custom Gems, and Function Calling APIs.",
+  "system_instructions": {
+    "question_generator_agent": {
+      "role": "Expert School Teacher & Curriculum Author",
+      "instruction_text": "You are an expert school teacher and curriculum author for LearnStudio 2.0. Your task is to generate high-quality academic questions for exam sections based strictly on syllabus chapters and provided study material (RAG context).\n\nCORE RULES:\n1. Age-Appropriate & Professional: All questions, calculations, and explanations must align with the specified target grade and Bloom's Taxonomy level.\n2. Complete Solution Generation: You MUST generate the question, solve it step-by-step in an internal math scratchpad ('calculations'), provide the final structured answer, and define a clear marking scheme in one pass.\n3. Subject-Specific Directives:\n   - Mathematics / Physics: Focus heavily on equation solving, step-by-step intermediate proof steps, geometric reasoning, and accurate algebraic manipulations.\n   - Computer Science / Programming: Focus on step-by-step logic execution, dry-running code, algorithmic complexity, and explicit edge cases.\n   - Languages / Grammar (Sanskrit/Hindi/English): Focus on flawless grammar (Vyakarana, Sandhi, Samas, Vibhakti, Shabda-Roop), vocabulary mastery, and translation accuracy.\n   - Sciences: Focus on foundational definitions, empirical explanations, and conceptual clarity.\n4. Formatting Rule: Double-escape all LaTeX backslashes (e.g., \\\\( x^2 + 2x + 1 = 0 \\\\)). Do not output markdown code blocks if structured JSON mode is enabled."
+    },
+    "senior_examiner_auditor_agent": {
+      "role": "Senior Examiner and Quality Auditor Agent",
+      "instruction_text": "You are an independent, extremely rigorous Senior Examiner and Quality Auditor Agent for LearnStudio 2.0.\nYour EXCLUSIVE responsibility is to verify the mathematical, logical, and factual correctness of proposed exam questions and solutions.\n\nVERIFICATION DIRECTIVES:\n1. Audit Calculations & Solution Steps for any algebraic, arithmetic, conceptual, or formatting errors.\n2. Ensure the 'Final Answer' exactly matches the actual mathematically correct result calculated independently.\n3. For Multiple Choice Questions (MCQ): Ensure the Final Answer exactly matches one of the provided options (A, B, C, or D).\n4. Check Bloom's Taxonomy & Difficulty adherence against syllabus criteria.\n5. Zero Tolerance: If there is ANY error, discrepancy, placeholder text, or ambiguous wording, set 'isPassed' to false and provide a highly detailed diagnostic 'rejectionReason' so the generation agent can remediate immediately."
+    },
+    "prompt_enhancer_agent": {
+      "role": "Education Curriculum Consultant",
+      "instruction_text": "You are an expert education curriculum consultant. Your task is to clean up, format, and enhance raw syllabus texts, topic notes, or chapter descriptions into a precise, comprehensive, comma-separated list of core concepts, academic keywords, and pedagogical subtopics. Do not introduce explanations, chat chatter, or markdown formatting—return only the cleaned, enriched comma-separated topic sequence."
+    }
+  },
+  "ai_studio_structured_output_schemas": {
+    "QuestionGenerationResponseSchema": {
+      "type": "ARRAY",
+      "description": "Schema for structured question generation in Google AI Studio JSON Mode.",
+      "items": {
+        "type": "OBJECT",
+        "properties": {
+          "slotIndex": { "type": "INTEGER", "description": "The target slot index for the generated question." },
+          "questionText": { "type": "STRING", "description": "The exact question phrasing with double-escaped LaTeX formulas." },
+          "questionType": { "type": "STRING", "enum": ["MCQ", "SHORT", "LONG", "NUMERICAL"], "description": "Question classification type." },
+          "chapter": { "type": "STRING", "description": "Specific syllabus chapter name." },
+          "topic": { "type": "STRING", "description": "Granular academic topic or concept." },
+          "options": {
+            "type": "ARRAY",
+            "items": { "type": "STRING" },
+            "description": "Array of 4 options for MCQs (e.g. ['4', '8', '12', '16']). Leave empty for non-MCQs."
+          },
+          "calculations": { "type": "STRING", "description": "Internal scratchpad reasoning and raw step-by-step mathematical working." },
+          "solutionSteps": { "type": "STRING", "description": "Polished, final step-by-step educational solution for students." },
+          "finalAnswer": { "type": "STRING", "description": "The precise final answer string." },
+          "markingScheme": { "type": "STRING", "description": "Breakdown of mark allocation across steps." }
+        },
+        "required": [
+          "slotIndex",
+          "questionText",
+          "questionType",
+          "chapter",
+          "topic",
+          "calculations",
+          "solutionSteps",
+          "finalAnswer",
+          "markingScheme"
+        ]
+      }
+    },
+    "SolutionVerificationResponseSchema": {
+      "type": "OBJECT",
+      "description": "Schema for Senior Examiner Audit report in Google AI Studio JSON Mode.",
+      "properties": {
+        "isPassed": { "type": "BOOLEAN", "description": "True if the question and solution are mathematically and logically error-free." },
+        "isCritical": { "type": "BOOLEAN", "description": "True if the failure represents an unfixable structural or pedagogical breakdown." },
+        "rejectionReason": { "type": "STRING", "description": "Detailed corrective feedback if isPassed is false. Leave empty string if true." }
+      },
+      "required": ["isPassed", "isCritical", "rejectionReason"]
+    }
+  },
+  "function_calling_openapi_tools": [
+    {
+      "name": "generate_section_questions",
+      "description": "Invokes LearnStudio AutoTA backend to generate a balanced set of exam questions for a course section.",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "subject": { "type": "STRING", "description": "Academic subject (e.g., Mathematics, Physics, Computer Science)." },
+          "course": { "type": "STRING", "description": "Grade or degree level (e.g., Class 12, B.Tech CS Sem 4)." },
+          "syllabus": { "type": "STRING", "description": "Comma-separated list of core concepts and chapter names." },
+          "sectionName": { "type": "STRING", "description": "Exam section identifier (e.g., Section A - Objective, Section B - Long Answer)." },
+          "ragContext": { "type": "STRING", "description": "Optional study materials or extracted reference notes to strictly constrain question facts." }
+        },
+        "required": ["subject", "course", "syllabus", "sectionName"]
+      }
+    },
+    {
+      "name": "verify_solution_audit",
+      "description": "Submits a generated exam question and proposed solution to the LearnStudio Senior Examiner Auditor for mathematical and pedagogical validation.",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "questionText": { "type": "STRING", "description": "The generated question prompt." },
+          "finalAnswer": { "type": "STRING", "description": "The final answer proposed by the generator." },
+          "solutionSteps": { "type": "STRING", "description": "The complete step-by-step solution derivation." },
+          "options": { "type": "STRING", "description": "JSON string representation of multiple choice options, if applicable." }
+        },
+        "required": ["questionText", "finalAnswer", "solutionSteps"]
+      }
+    },
+    {
+      "name": "enhance_syllabus_prompt",
+      "description": "Transforms conversational or raw course outlines into professional, structured keyword lists for optimal AI question generation.",
+      "parameters": {
+        "type": "OBJECT",
+        "properties": {
+          "subject": { "type": "STRING", "description": "Target subject title." },
+          "rawSyllabus": { "type": "STRING", "description": "The draft syllabus or course topic notes." }
+        },
+        "required": ["subject", "rawSyllabus"]
+      }
+    }
+  ]
+}

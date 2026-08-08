@@ -19,6 +19,7 @@ public class AiService {
     private final UserRepository userRepository;
     private final AiProviderRouter aiProviderRouter;
     private final AiPlanService aiPlanService;
+    private final GcsAiCacheService gcsAiCacheService;
 
     // Ask with automatic fallback handling and Model Routing
     public String askWithFallback(Long userId, String feature, String prompt, String preferredProvider) {
@@ -42,6 +43,32 @@ public class AiService {
         boolean isByokOrForced = "BYOK".equals(decision.getBillingType()) || 
                                  "mock".equals(initialProviderName) || 
                                  "vertex".equals(initialProviderName);
+
+        boolean isCacheable = List.of("GENERATE_QUIZ", "GENERATE_VIVA", "COURSE_RECOMMEND", "NOTE_GENERATION", "AUTO_TA_GENERATOR", "AUTO_TA_VERIFICATION").contains(feature);
+        String promptHash = null;
+        if (isCacheable) {
+            String normalizedPrompt = prompt.replaceAll("\\s+", " ").trim().toLowerCase();
+            try {
+                java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+                byte[] hash = digest.digest(normalizedPrompt.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                StringBuilder hexString = new StringBuilder(2 * hash.length);
+                for (byte b : hash) {
+                    String hex = Integer.toHexString(0xff & b);
+                    if (hex.length() == 1) {
+                        hexString.append('0');
+                    }
+                    hexString.append(hex);
+                }
+                promptHash = hexString.toString();
+                
+                String cached = gcsAiCacheService.getCachedResponse(feature, initialProviderName, promptHash);
+                if (cached != null) {
+                    return cached;
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: failed to check AI cache: " + e.getMessage());
+            }
+        }
 
         List<String> providerChain;
         if (isByokOrForced) {
@@ -68,6 +95,10 @@ public class AiService {
                 
                 // 3. Log Usage and Increment Quota
                 aiPlanService.incrementUsage(user, feature, providerName, "default", 0, java.math.BigDecimal.ZERO, true, null);
+                
+                if (isCacheable && promptHash != null) {
+                    gcsAiCacheService.saveCachedResponse(feature, initialProviderName, promptHash, response);
+                }
                 
                 return response;
             } catch (Exception e) {

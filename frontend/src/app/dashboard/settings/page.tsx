@@ -16,7 +16,9 @@ import {
   Lock,
   Smartphone,
   LogOut,
-  Mail
+  Mail,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -32,7 +34,7 @@ interface AiKey {
 export default function SettingsPage() {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'appearance' | 'keys' | 'accounts' | 'security' | 'notifications'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'keys' | 'accounts' | 'security' | 'notifications' | 'integrations'>('appearance');
 
   // AI Keys State
   const [keys, setKeys] = useState<AiKey[]>([]);
@@ -62,6 +64,9 @@ export default function SettingsPage() {
   const [notifyHomework, setNotifyHomework] = useState(true);
   const [notifySchedule, setNotifySchedule] = useState(true);
   const [notifSuccess, setNotifSuccess] = useState(false);
+
+  // Sync Tab States
+  const [syncingDrive, setSyncingDrive] = useState(false);
 
   const fetchKeys = async () => {
     setFetching(true);
@@ -271,6 +276,20 @@ export default function SettingsPage() {
             <Bell className="w-4 h-4 text-slate-400" />
             <span>Notification Channels</span>
           </button>
+          
+          {['ADMIN', 'INSTRUCTOR'].includes(user?.role || '') && (
+            <button 
+              onClick={() => setActiveTab('integrations')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-left transition-colors cursor-pointer ${
+                activeTab === 'integrations' 
+                  ? 'bg-slate-800 text-white' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              }`}
+            >
+              <Database className="w-4 h-4 text-slate-400" />
+              <span>Backup & Integrations</span>
+            </button>
+          )}
         </div>
 
         {/* Right Content Panels */}
@@ -630,6 +649,45 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* TAB 6: INTEGRATIONS */}
+          {activeTab === 'integrations' && (
+            <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-base font-semibold text-white">Backup & Integrations</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Manage data synchronization with external services.
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-semibold text-white">Google Drive Sync</h4>
+                  <p className="text-xs text-slate-400 max-w-md">
+                    Force a manual sync of all pending Notes and Homework to your connected Google Drive folder. This process normally runs automatically at 11:00 PM.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    setSyncingDrive(true);
+                    try {
+                      const res = await api.post('/admin/sync/drive');
+                      alert(res.data.message || 'Sync completed successfully!');
+                    } catch (e: any) {
+                      alert(e.response?.data?.message || 'Failed to sync with Google Drive.');
+                    } finally {
+                      setSyncingDrive(false);
+                    }
+                  }}
+                  disabled={syncingDrive}
+                  className="flex flex-shrink-0 items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {syncingDrive ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  {syncingDrive ? 'Syncing...' : 'Force Sync Now'}
+                </button>
+              </div>
             </div>
           )}
 

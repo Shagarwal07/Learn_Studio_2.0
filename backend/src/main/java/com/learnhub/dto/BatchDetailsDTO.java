@@ -9,7 +9,7 @@ public record BatchDetailsDTO(
     Long id,
     String name,
     String level,
-    UserDTO instructor,
+    List<UserDTO> instructors,
     List<UserDTO> students,
     Set<String> subjects
 ) {}

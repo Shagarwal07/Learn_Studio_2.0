@@ -14,7 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (token: string, refreshToken: string, userDetails: User) => void;
+  login: (userDetails: User) => void;
   logout: () => Promise<void>;
   updateUser: (userDetails: User) => void;
 }
@@ -28,21 +28,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const loadUser = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      // Clear Google's g_state cookie if present, as its format causes Tomcat to drop the entire Cookie header
+      document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+      const cached = localStorage.getItem('cached_user');
+      if (!cached) {
         setLoading(false);
         return;
       }
 
       // Hydrate instantly from cache so mobile PWA renders immediately without network delay or when offline
-      const cached = localStorage.getItem('cached_user');
-      if (cached) {
-        try {
-          setUser(JSON.parse(cached));
-          setLoading(false);
-        } catch (e) {
-          // ignore invalid json
-        }
+      try {
+        setUser(JSON.parse(cached));
+        setLoading(false);
+      } catch (e) {
+        // ignore invalid json
       }
 
       try {
@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // For network errors or offline states on phone PWAs, keep user logged in with cached profile!
         const status = error.response?.status;
         if (status === 401 || status === 403) {
-          localStorage.clear();
+          localStorage.removeItem('cached_user');
           setUser(null);
         }
       } finally {
@@ -69,9 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, []);
 
-  const login = (token: string, refreshToken: string, userDetails: User) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('refreshToken', refreshToken);
+  const login = (userDetails: User) => {
     localStorage.setItem('cached_user', JSON.stringify(userDetails));
     setUser(userDetails);
     
@@ -86,15 +84,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
     try {
-      if (refreshToken) {
-        await api.post('/auth/logout', { refreshToken });
-      }
+      await api.post('/auth/logout');
     } catch (e: any) {
       console.warn('Logout request failed on backend:', e.message || e);
     } finally {
-      localStorage.clear();
+      localStorage.removeItem('cached_user');
       setUser(null);
       router.push('/login');
     }

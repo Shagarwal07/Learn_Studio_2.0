@@ -155,7 +155,7 @@ public class ScheduleService {
                 .course(course)
                 .batch(batch)
                 .subjectName(dto.getSubjectName())
-                .instructor(course != null ? course.getInstructor() : (batch != null && batch.getInstructor() != null ? batch.getInstructor() : creator))
+                .instructor(course != null ? course.getInstructor() : (batch != null && batch.getInstructors() != null && !batch.getInstructors().isEmpty() ? batch.getInstructors().iterator().next() : creator))
                 .targetRole(ScheduleEvent.TargetRole.valueOf(dto.getTargetRole().toUpperCase()))
                 .eventDate(dto.getEventDate())
                 .startTime(dto.getStartTime())

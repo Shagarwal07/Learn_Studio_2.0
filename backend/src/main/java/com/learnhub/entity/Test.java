@@ -3,9 +3,13 @@ package com.learnhub.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "tests")
+@SQLDelete(sql = "UPDATE tests SET deleted_at = CURRENT_TIMESTAMP WHERE id=?")
+@SQLRestriction("deleted_at IS NULL")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor

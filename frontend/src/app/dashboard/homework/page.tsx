@@ -159,7 +159,23 @@ export default function HomeworkCoursesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          {isInstructorOrAdmin && batches.length > 0 && (
+            <select
+              value={selectedBatchId}
+              onChange={(e) => {
+                setSelectedBatchId(e.target.value);
+                setSelectedSubject(null);
+              }}
+              className="w-full sm:w-48 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
+            >
+              <option value="" disabled>Select Batch</option>
+              {batches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          )}
+
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
@@ -334,22 +350,6 @@ export default function HomeworkCoursesPage() {
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Subject Folders ({ACADEMIC_SUBJECTS.length})
             </h2>
-            {isInstructorOrAdmin && batches.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Target Batch:</span>
-                <select
-                  value={selectedBatchId}
-                  onChange={(e) => setSelectedBatchId(e.target.value)}
-                  className="px-3 py-1 bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg focus:outline-none focus:border-slate-700 cursor-pointer"
-                >
-                  {batches.map(b => (
-                    <option key={b.id} value={b.id} className="bg-slate-950">
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

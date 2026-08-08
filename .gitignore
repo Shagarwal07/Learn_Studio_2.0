@@ -15,6 +15,7 @@ backend/target/
 # Environment & secrets
 .env
 application-prod.properties
+application-secrets.properties
 resources/google-credentials.json
 
 # OS files

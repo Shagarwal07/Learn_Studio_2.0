@@ -7,9 +7,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.cache.annotation.EnableCaching;
 
 @SpringBootApplication
 @EnableAsync
+@EnableCaching
 public class LmsApplication {
     public static void main(String[] args) {
         loadEnv();
