@@ -658,7 +658,7 @@ export default function InstructorBatchesPage() {
   };
 
   const handleAssignInstructors = (batchId: number, instructorIds: number[]) => {
-    updateAssignmentsMutation.mutate({ batchId, instructorIds: instructorIds, subjects: batchDetails.subjects || [] });
+    updateAssignmentsMutation.mutate({ batchId, instructorIds: instructorIds, subjects: batchDetails?.subjects || [] });
   };
 
   const handleDeleteBatch = (id: number) => {
