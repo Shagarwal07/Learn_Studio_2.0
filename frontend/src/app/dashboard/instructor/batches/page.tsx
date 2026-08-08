@@ -57,7 +57,7 @@ interface BatchDetailsDTO {
   id: number;
   name: string;
   level: string;
-  instructor: UserDTO | null;
+  instructors: UserDTO[];
   students: UserDTO[];
   subjects: string[];
 }
@@ -1275,18 +1275,16 @@ export default function InstructorBatchesPage() {
                     allInstructors={allInstructors}
                     allSubjects={Array.from(new Set([...ACADEMIC_SUBJECTS, ...(batchDetails.subjects || [])]))}
                     onSave={(instructorIds, subjects) => {
-                      Promise.all([
-                        assignInstructorMutation.mutateAsync({ batchId: batchDetails.id, instructorIds }),
-                        assignSubjectsMutation.mutateAsync({ batchId: batchDetails.id, subjects })
-                      ]).then(() => {
-                        alert('Assignments saved successfully!');
-                        queryClient.invalidateQueries({ queryKey: ['batch', batchDetails.id] });
-                      }).catch(err => {
-                        console.error("Failed to save assignments", err);
-                        alert("Failed to save assignments");
-                      });
+                      updateAssignmentsMutation.mutateAsync({ batchId: batchDetails.id, instructorIds, subjects })
+                        .then(() => {
+                          alert('Assignments saved successfully!');
+                          queryClient.invalidateQueries({ queryKey: ['batch', batchDetails.id] });
+                        }).catch(err => {
+                          console.error("Failed to save assignments", err);
+                          alert("Failed to save assignments");
+                        });
                     }}
-                    isSaving={assignInstructorMutation.isPending || assignSubjectsMutation.isPending}
+                    isSaving={updateAssignmentsMutation.isPending}
                   />
                 )}
 
