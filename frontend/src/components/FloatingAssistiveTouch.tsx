@@ -22,7 +22,7 @@ export function FloatingAssistiveTouch() {
       const { success, data, message } = res.data;
       if (success && data) {
         const { token, refreshToken, userId, name, email: userEmail, role } = data;
-        login(token, refreshToken, { id: userId, name, email: userEmail, role });
+        login({ id: userId, name, email: userEmail, role });
         setIsOpen(false);
       } else {
         setError(message || 'Google login failed.');
