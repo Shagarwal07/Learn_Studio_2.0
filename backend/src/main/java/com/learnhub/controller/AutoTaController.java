@@ -365,9 +365,9 @@ public class AutoTaController {
 
         byte[] pdfBytes;
         try {
-            pdfBytes = pdfExportService.generatePdfWithHeadlessBrowser(editorService.toDTO(paper), accessToken, layoutMode);
+            pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper), fontSize);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("Headless PDF Generation failed: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("PDF Generation failed: " + e.getMessage()));
         }
 
         return ResponseEntity.ok()
