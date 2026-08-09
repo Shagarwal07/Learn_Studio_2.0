@@ -32,17 +32,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 
       const cached = localStorage.getItem('cached_user');
-      if (!cached) {
-        setLoading(false);
-        return;
-      }
-
+      
       // Hydrate instantly from cache so mobile PWA renders immediately without network delay or when offline
-      try {
-        setUser(JSON.parse(cached));
-        setLoading(false);
-      } catch (e) {
-        // ignore invalid json
+      if (cached) {
+        try {
+          setUser(JSON.parse(cached));
+          setLoading(false);
+        } catch (e) {
+          // ignore invalid json
+        }
       }
 
       try {
