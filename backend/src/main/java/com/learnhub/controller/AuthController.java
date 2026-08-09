@@ -30,10 +30,10 @@ public class AuthController {
     private ResponseCookie createCookie(String name, String value, int maxAgeDays) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
-                .secure(false) // Set to true if using HTTPS in production
+                .secure(true) // Required for cross-site cookies
                 .path("/")
                 .maxAge(value == null || value.isEmpty() ? 0 : maxAgeDays * 24 * 60 * 60)
-                .sameSite("Lax")
+                .sameSite("None") // Required for cross-domain requests (Vercel -> Cloud Run)
                 .build();
     }
 
