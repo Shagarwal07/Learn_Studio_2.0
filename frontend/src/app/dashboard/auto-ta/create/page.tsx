@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
@@ -37,9 +37,11 @@ interface BucketNote {
 
 export default function CreateExamPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialBatchId = searchParams.get('batchId');
 
   // Form state
-  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [selectedBatchId, setSelectedBatchId] = useState<string>(initialBatchId || '');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedNoteIds, setSelectedNoteIds] = useState<number[]>([]);
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
@@ -55,9 +57,12 @@ export default function CreateExamPage() {
       const response = await api.get('/instructor/batches');
       const data = response.data.success ? response.data.data : [];
       if (data.length > 0) {
-        setSelectedBatchId(String(data[0].id));
-        if (data[0].subjects && data[0].subjects.length > 0) {
-          setSelectedSubject(data[0].subjects[0]);
+        const batchToSelect = initialBatchId && data.find((b: Batch) => String(b.id) === initialBatchId) 
+                                ? data.find((b: Batch) => String(b.id) === initialBatchId) 
+                                : data[0];
+        setSelectedBatchId(String(batchToSelect.id));
+        if (batchToSelect.subjects && batchToSelect.subjects.length > 0) {
+          setSelectedSubject(batchToSelect.subjects[0]);
         }
       }
       return data;
@@ -133,11 +138,7 @@ export default function CreateExamPage() {
         formData.append('images', img);
       });
 
-      const response = await api.post('/autota/requests/multimodal', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response = await api.post('/autota/requests/multimodal', formData);
 
       const successData = response.data;
       if (successData.success && successData.data?.paperId) {
