@@ -216,7 +216,7 @@ isActive ? activeGrad : inactiveGrad
       <motion.aside 
         animate={{ width: collapsed ? 80 : 260 }}
         transition={{ type: 'spring', damping: 24, stiffness: 180 }}
-        className="hidden lg:flex lg:flex-col lg:static z-35 bg-bg-secondary border-r border-border-color shrink-0 overflow-hidden"
+        className="hidden lg:flex lg:flex-col lg:static z-35 bg-bg-secondary border-r border-border-color shrink-0 overflow-hidden print:hidden"
       >
         {/* Brand Logo */}
         <div className="h-16 flex items-center px-5 border-b border-border-color overflow-hidden">
@@ -292,7 +292,7 @@ isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-16 bg-bg-secondary/80 backdrop-blur-xl border-b border-border-color flex items-center justify-between px-6 lg:px-8 z-30 transition-colors duration-200">
+        <header className="h-16 bg-bg-secondary/80 backdrop-blur-xl border-b border-border-color flex items-center justify-between px-6 lg:px-8 z-30 transition-colors duration-200 print:hidden">
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <button 
               onClick={() => setSidebarOpen(true)}
@@ -316,7 +316,7 @@ isActive ? 'text-accent-grape' : 'text-text-muted group-hover:text-foreground'
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 bg-background transition-colors duration-200 scrollbar-thin">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 bg-background transition-colors duration-200 scrollbar-thin print:p-0 print:bg-white print:overflow-visible">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}

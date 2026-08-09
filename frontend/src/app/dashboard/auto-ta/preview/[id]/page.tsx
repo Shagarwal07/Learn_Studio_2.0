@@ -224,8 +224,9 @@ export default function PaperPreviewPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('printLayoutMode') === 'answerKey') {
-        setPrintLayoutMode('answerKey');
+      const mode = urlParams.get('printLayoutMode');
+      if (mode === 'answerKey' || mode === 'worksheet' || mode === 'formal') {
+        setPrintLayoutMode(mode);
         setActiveTab('print');
       }
     }
@@ -1409,7 +1410,7 @@ export default function PaperPreviewPage() {
       </div>
 
       {/* Right Column: controls & Snapshot history */}
-      <div className="order-1 lg:order-2">
+      <div className="order-1 lg:order-2 print:hidden">
         <SidebarControls
           paper={paper}
           calculatedTotalMarks={calculatedTotalMarks}
