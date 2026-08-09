@@ -28,7 +28,7 @@ public class PdfExportService {
     private String frontendBaseUrl;
 
     public byte[] generatePdfWithHeadlessBrowser(GeneratedPaperDTO paper, String token, String layoutMode) throws Exception {
-        String targetUrl = frontendBaseUrl + "/dashboard/instructor/auto-ta/preview/" + paper.getId();
+        String targetUrl = frontendBaseUrl + "/dashboard/auto-ta/preview/" + paper.getId();
         
         java.util.Map<String, String> requestBody = new java.util.HashMap<>();
         requestBody.put("url", targetUrl);
