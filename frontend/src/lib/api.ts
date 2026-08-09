@@ -43,7 +43,8 @@ api.interceptors.response.use(
     if (
       originalRequest.url?.includes('/auth/login') ||
       originalRequest.url?.includes('/auth/register') ||
-      originalRequest.url?.includes('/auth/refresh')
+      originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/logout')
     ) {
       return Promise.reject(error);
     }
@@ -79,6 +80,12 @@ api.interceptors.response.use(
         const status = refreshError?.response?.status;
         if ((status === 401 || status === 403) && typeof window !== 'undefined') {
           localStorage.clear();
+          // Attempt to clear HttpOnly cookies via backend before redirecting
+          try {
+            await axios.post(`${API_BASE_URL}/auth/logout`, {}, { withCredentials: true });
+          } catch (logoutError) {
+            // Ignore logout errors during forceful redirect
+          }
           window.location.href = '/login?expired=true';
         }
         return Promise.reject(refreshError);
