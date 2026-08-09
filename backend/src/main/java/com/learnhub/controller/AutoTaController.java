@@ -6,6 +6,7 @@ import com.learnhub.repository.AgentExecutionLogRepository;
 import com.learnhub.repository.ExamRequestRepository;
 import com.learnhub.repository.GeneratedPaperRepository;
 import com.learnhub.service.EditorService;
+import com.learnhub.service.FirestoreService;
 import com.learnhub.service.ManagerService;
 import com.learnhub.service.ReviewService;
 import com.learnhub.service.DocxExportService;
@@ -39,11 +40,9 @@ public class AutoTaController {
     private final com.learnhub.repository.UserRepository userRepository;
     private final com.learnhub.repository.BatchRepository batchRepository;
     private final com.learnhub.repository.NoteRepository noteRepository;
-    private final com.learnhub.repository.ReviewHistoryRepository reviewHistoryRepository;
-    private final com.learnhub.repository.PaperVersionRepository paperVersionRepository;
     private final com.learnhub.service.PromptSanitizerService promptSanitizerService;
     private final com.learnhub.service.VertexAiMultimodalProvider vertexAiMultimodalProvider;
-
+    private final FirestoreService firestoreService;
     @org.springframework.beans.factory.annotation.Autowired
     private com.learnhub.service.VertexAiProvider vertexAiProvider;
 
@@ -143,12 +142,17 @@ public class AutoTaController {
     }
 
     @GetMapping("/papers")
-    public ResponseEntity<ApiResponse<List<GeneratedPaperDTO>>> getAllPapers() {
-        List<GeneratedPaper> papers = paperRepository.findByOrderByCreatedAtDesc();
+    public ResponseEntity<ApiResponse<List<GeneratedPaperDTO>>> getAllPapers(@RequestParam(required = false) Long instructorId) {
+        List<GeneratedPaper> papers;
+        if (instructorId != null) {
+            papers = paperRepository.findByInstructorIdOrderByCreatedAtDesc(instructorId);
+        } else {
+            papers = paperRepository.findByOrderByCreatedAtDesc();
+        }
         List<GeneratedPaperDTO> dtos = papers.stream()
                 .map(editorService::toDTO)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(dtos, "All generated exam papers retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(dtos, "Generated exam papers retrieved"));
     }
 
     @GetMapping("/papers/{id}")
@@ -182,24 +186,28 @@ public class AutoTaController {
                 return ResponseEntity.ok(ApiResponse.success(result, "Paper not found"));
             }
 
-            errors.addAll(editorService.runValidation(paper));
+            List<com.learnhub.dto.GeneratedQuestionDTO> questions = firestoreService.getQuestionsForPaper(paper.getFirestoreDocumentId());
+            errors.addAll(editorService.runValidation(paper, questions));
             result.put("valid", errors.isEmpty());
             result.put("isValid", errors.isEmpty()); // fallback
             
             // Collect question-level warnings
-            if (paper.getQuestions() != null) {
-                for (com.learnhub.entity.GeneratedQuestion q : paper.getQuestions()) {
+            // fetched questions earlier
+            if (questions != null) {
+                for (com.learnhub.dto.GeneratedQuestionDTO q : questions) {
                     if ("COMPLETED_WITH_WARNINGS".equals(q.getQualityStatus())) {
                         warnings.add(String.format("Warning in Question ID %d: %s", q.getId(), q.getAgentType() != null && q.getAgentType().startsWith("WARNING") ? q.getAgentType() : "Minor pedagogical or math warning flagged by AI."));
                     }
                 }
             }
-
+            
+            // Recalculate dynamic stats
             int expectedTotal = paper.getTotalMarks() != null ? paper.getTotalMarks() : 0;
-            int actualTotal = paper.getQuestions() != null 
-                ? paper.getQuestions().stream().mapToInt(q -> q.getMarks() != null ? q.getMarks() : 0).sum() 
+            int actualTotal = questions != null 
+                ? questions.stream().mapToInt(q -> q.getMarks() != null ? q.getMarks() : 0).sum() 
                 : 0;
-
+            
+            result.put("dynamicTotalMarks", actualTotal);
             paperTotal.put("target", expectedTotal);
             paperTotal.put("actual", actualTotal);
             result.put("paperTarget", expectedTotal); // flat fallback
@@ -207,8 +215,8 @@ public class AutoTaController {
 
             // Dynamically collect actual marks per section
             Map<String, Integer> actualMap = new java.util.TreeMap<>();
-            if (paper.getQuestions() != null) {
-                for (var q : paper.getQuestions()) {
+            if (questions != null) {
+                for (var q : questions) {
                     String sec = q.getSection() != null && !q.getSection().isBlank() ? q.getSection() : "SECTION_A";
                     int m = q.getMarks() != null ? q.getMarks() : 0;
                     actualMap.put(sec, actualMap.getOrDefault(sec, 0) + m);
@@ -313,7 +321,8 @@ public class AutoTaController {
                 .orElseThrow(() -> new RuntimeException("Paper not found"));
 
         // Validate first
-        List<String> errors = editorService.runValidation(paper);
+        List<com.learnhub.dto.GeneratedQuestionDTO> questions = firestoreService.getQuestionsForPaper(paper.getFirestoreDocumentId());
+        List<String> errors = editorService.runValidation(paper, questions);
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("DOCX Export Blocked: Validation errors present: " + String.join("; ", errors)));
         }
@@ -340,7 +349,8 @@ public class AutoTaController {
                 .orElseThrow(() -> new RuntimeException("Paper not found"));
 
         // Validate first
-        List<String> errors = editorService.runValidation(paper);
+        List<com.learnhub.dto.GeneratedQuestionDTO> questions = firestoreService.getQuestionsForPaper(paper.getFirestoreDocumentId());
+        List<String> errors = editorService.runValidation(paper, questions);
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("PDF Export Blocked: Validation errors present: " + String.join("; ", errors)));
         }
@@ -376,8 +386,7 @@ public class AutoTaController {
     @PostMapping("/papers/{id}/questions/{questionId}/regenerate")
     public ResponseEntity<ApiResponse<GeneratedPaperDTO>> regenerateQuestion(
             @PathVariable Long id, @PathVariable Long questionId, Principal principal) {
-        GeneratedPaperDTO result = reviewService.regenerateSingleQuestion(id, questionId, principal.getName());
-        return ResponseEntity.ok(ApiResponse.success(result, "Question successfully regenerated via Feedback Loop"));
+        return ResponseEntity.status(501).body(ApiResponse.error("Regenerate single question not implemented yet for Firestore."));
     }
 
     @PutMapping("/papers/{id}/questions/{questionId}")
@@ -396,20 +405,7 @@ public class AutoTaController {
 
     @GetMapping("/papers/{id}/versions")
     public ResponseEntity<ApiResponse<List<PaperVersionDTO>>> getPaperVersions(@PathVariable Long id) {
-        List<PaperVersion> versions = reviewService.getVersionHistory(id);
-        List<PaperVersionDTO> dtos = versions.stream()
-                .map(v -> PaperVersionDTO.builder()
-                        .id(v.getId())
-                        .paperId(v.getGeneratedPaper().getId())
-                        .version(v.getVersion())
-                        .questionsJson(v.getQuestionsJson())
-                        .changeReason(v.getChangeReason())
-                        .changedByName(v.getChangedBy() != null ? v.getChangedBy().getName() : "Professor (Direct Edit)")
-                        .timestamp(v.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(ApiResponse.success(dtos, "Exam paper version history retrieved"));
+        return ResponseEntity.status(501).body(ApiResponse.error("Version history not implemented yet for Firestore."));
     }
 
     @GetMapping("/requests/{id}/paper")
@@ -445,7 +441,8 @@ public class AutoTaController {
             
             response.put("status", "SUCCESS");
             response.put("paperGenerated", paper != null);
-            response.put("questionsGenerated", paper != null && paper.getQuestions() != null ? paper.getQuestions().size() : 0);
+            List<com.learnhub.dto.GeneratedQuestionDTO> questions = paper != null ? firestoreService.getQuestionsForPaper(paper.getFirestoreDocumentId()) : new ArrayList<>();
+            response.put("questionsGenerated", questions != null ? questions.size() : 0);
             
             byte[] docx = docxExportService.generateDocx(editorService.toDTO(paper));
             response.put("docxExportReady", docx != null && docx.length > 0);
@@ -640,7 +637,7 @@ public class AutoTaController {
 
             GeneratedPaper savedPaper = editorService.compileExamPaper(savedRequest, questionDTOList);
             if (hasUploadedImages) {
-                savedPaper.setTestType("Categorized Practice");
+                // savedPaper.setTestType("Categorized Practice");
                 savedPaper.setTitle((subject != null && !subject.isBlank() ? subject : "Mathematics") + " Worksheet - Categorized Practice");
                 savedPaper.setTotalMarks(0);
             }
@@ -671,8 +668,6 @@ public class AutoTaController {
         if (!paperRepository.existsById(paperId)) {
             return ResponseEntity.status(404).body(ApiResponse.error("Exam paper not found"));
         }
-        reviewHistoryRepository.deleteByGeneratedPaperId(paperId);
-        paperVersionRepository.deleteByGeneratedPaperId(paperId);
         paperRepository.deleteById(paperId);
         return ResponseEntity.ok(ApiResponse.success(null, "Paper removed successfully"));
     }
@@ -680,8 +675,7 @@ public class AutoTaController {
     @org.springframework.transaction.annotation.Transactional
     @DeleteMapping("/papers")
     public ResponseEntity<ApiResponse<Void>> deleteAllPapers() {
-        reviewHistoryRepository.deleteAll();
-        paperVersionRepository.deleteAll();
+        // Deleted repositories removed
         paperRepository.deleteAll();
         return ResponseEntity.ok(ApiResponse.success(null, "All exam papers removed successfully"));
     }

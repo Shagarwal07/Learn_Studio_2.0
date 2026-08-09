@@ -76,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     menuItems = [
       { name: 'Dashboard Overview', href: '/dashboard', icon: Grid },
       { name: 'Batch Management', href: '/dashboard/instructor/batches', icon: BookOpen },
-      { name: 'Auto-TA Generator', href: '/dashboard/instructor/auto-ta', icon: Bot },
+      { name: 'Auto-TA Generator', href: '/dashboard/auto-ta', icon: Bot },
       { name: 'Announcements', href: '/dashboard/instructor/announcements', icon: Megaphone },
       { name: 'Profile / Settings', href: '/dashboard/settings', icon: Settings },
     ];
@@ -84,7 +84,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     menuItems = [
       { name: 'Dashboard', href: '/dashboard', icon: Grid },
       { name: 'Batches', href: '/dashboard/instructor/batches', icon: BookOpen },
-      { name: 'Auto-TA Generator', href: '/dashboard/instructor/auto-ta', icon: Bot },
+      // Admin no longer has a separate auto-ta link here, since they can use the main one, or keep it if we want it in admin menu:
+      { name: 'Auto-TA Generator', href: '/dashboard/auto-ta', icon: Bot },
       { name: 'Schedule', href: scheduleHref, icon: Calendar },
       // { name: 'Attendance', href: attendanceHref, icon: ClipboardCheck },
       { name: 'Notes', href: '/dashboard/notes', icon: FileText },
@@ -118,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (pathname.startsWith('/courses')) return 'Explore Courses';
     if (pathname.startsWith('/dashboard/schedule') || pathname.startsWith('/dashboard/instructor/schedules')) return 'Schedule & Calendar';
     if (pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/dashboard/instructor/attendance')) return 'Attendance Dashboard';
-    if (pathname.startsWith('/dashboard/instructor/auto-ta')) return 'Auto-TA Exam Generator';
+    if (pathname.startsWith('/dashboard/auto-ta')) return 'Auto-TA Exam Generator';
     if (pathname.startsWith('/dashboard/instructor/batches')) return 'Batch Management';
     if (pathname.startsWith('/dashboard/instructor/notes')) return 'Notes & PDF Upload Center';
     if (pathname.startsWith('/dashboard/instructor/homework')) return 'Homework Assignments Workspace';

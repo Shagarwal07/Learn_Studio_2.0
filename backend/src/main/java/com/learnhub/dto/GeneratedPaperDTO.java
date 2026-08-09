@@ -16,6 +16,7 @@ public class GeneratedPaperDTO {
     private List<GeneratedQuestionDTO> questions;
     private String status; // DRAFT, UNDER_REVIEW, REVISION_NEEDED, APPROVED, PUBLISHED
     private Integer version;
+    private String firestoreDocumentId;
     private String fileUrl;
     private LocalDateTime createdAt;
     private Integer duration;

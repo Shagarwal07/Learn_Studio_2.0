@@ -27,13 +27,8 @@ public class GeneratedPaper extends BaseEntity {
     @Column(name = "total_marks", nullable = false)
     private Integer totalMarks;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "paper_questions",
-        joinColumns = @JoinColumn(name = "paper_id"),
-        inverseJoinColumns = @JoinColumn(name = "question_id")
-    )
-    private List<GeneratedQuestion> questions;
+    @Column(name = "firestore_document_id")
+    private String firestoreDocumentId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -43,31 +38,6 @@ public class GeneratedPaper extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Integer version = 1;
-
-    @Column(name = "file_url")
-    private String fileUrl;
-
-    @Column(name = "duration")
-    private Integer duration;
-
-    @Column(name = "test_type")
-    private String testType;
-
-    @Column(name = "chapters", columnDefinition = "TEXT")
-    private String chapters;
-
-    @Column(name = "topics", columnDefinition = "TEXT")
-    private String topics;
-
-    @OneToMany(mappedBy = "generatedPaper", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private List<ReviewHistory> reviewHistories;
-
-    @OneToMany(mappedBy = "generatedPaper", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    private List<PaperVersion> paperVersions;
 
     public enum Status {
         DRAFT, UNDER_REVIEW, REVISION_NEEDED, REVIEWED, APPROVED, EXPORTED, PUBLISHED

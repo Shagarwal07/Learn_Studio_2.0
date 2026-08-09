@@ -938,7 +938,7 @@ function InstructorDashboardView() {
           </h3>
           <div className="flex flex-col gap-3">
             <Link 
-              href="/dashboard/instructor/auto-ta"
+              href="/dashboard/auto-ta"
               className="flex items-center justify-between p-3.5 bg-gradient-to-r from-accent-grape/15 via-primary-blue/15 to-accent-blue/10 hover:from-accent-grape/25 hover:to-accent-blue/20 border border-accent-grape/30 hover:border-accent-grape rounded-xl text-xs font-bold transition-all text-foreground hover:scale-[1.01] group cursor-pointer shadow-sm"
             >
               <span className="flex items-center gap-2.5 font-extrabold text-accent-grape dark:text-accent-blue">

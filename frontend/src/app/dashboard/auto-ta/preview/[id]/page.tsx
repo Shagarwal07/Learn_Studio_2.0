@@ -33,7 +33,7 @@ import { PrintLayoutView } from './components/PrintLayoutView';
 import { SidebarControls } from './components/SidebarControls';
 import { RevisionModal } from './components/RevisionModal';
 
-const ALLOWED_MARKS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
+const ALLOWED_MARKS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
 export function calculateSectionTotals(questions: QuestionDTO[]) {
   const map: Record<string, QuestionDTO[]> = {};
@@ -116,7 +116,7 @@ export default function PaperPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'edit' | 'print'>('edit');
-  const [printLayoutMode, setPrintLayoutMode] = useState<'formal' | 'worksheet'>('formal');
+  const [printLayoutMode, setPrintLayoutMode] = useState<'formal' | 'worksheet' | 'answerKey'>('formal');
   const [validation, setValidation] = useState<{
     isValid: boolean;
     errors: string[];
@@ -215,6 +215,17 @@ export default function PaperPreviewPage() {
   useEffect(() => {
     fetchPaperDetails();
   }, [paperId]);
+
+  // Handle headless browser URL parameters for Answer Sheet PDF generation
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('printLayoutMode') === 'answerKey') {
+        setPrintLayoutMode('answerKey');
+        setActiveTab('print');
+      }
+    }
+  }, []);
 
   // Real-time marks calculation
   const calculatedTotalMarks = useMemo(() => {
@@ -407,7 +418,26 @@ export default function PaperPreviewPage() {
     setEditOptions(q.options || '');
     setEditCorrectAnswer(q.correctAnswer || '');
     setEditSolutionSteps(q.solutionSteps || '');
-    setEditQuestionType(q.questionType || 'SHORT');
+    let qt = (q.questionType || 'SHORT').trim().toUpperCase();
+    
+    // Normalize Vertex AI synonyms to our standard types
+    const typeMapping: Record<string, string> = {
+      'SHORT_ANSWER': 'SHORT',
+      'LONG_ANSWER': 'LONG',
+      'MULTIPLE_CHOICE': 'MCQ',
+      'MULTIPLE_CHOICE_QUESTION': 'MCQ',
+      'FILL_IN_THE_BLANKS': 'FILL_BLANK',
+      'FILL_IN_BLANKS': 'FILL_BLANK',
+      'FILL_IN_THE_BLANK': 'FILL_BLANK',
+      'NUMERICAL_ANSWER': 'NUMERICAL',
+      'T/F': 'TRUE_FALSE'
+    };
+    
+    if (typeMapping[qt]) {
+      qt = typeMapping[qt];
+    }
+    
+    setEditQuestionType(qt);
     setEditChapter(q.chapter || '');
     setEditTopic(q.topic || '');
     setEditLearningOutcome(q.learningOutcome || '');
@@ -583,12 +613,24 @@ export default function PaperPreviewPage() {
 
   // MCQ parsing helper
   const parseOptionsObj = (optStr: string) => {
+    const defaultOpts = { A: '', B: '', C: '', D: '' };
     try {
       const cleaned = optStr.trim();
-      if (!cleaned) return { A: '', B: '', C: '', D: '' };
-      return JSON.parse(cleaned);
+      if (!cleaned) return defaultOpts;
+      const parsed = JSON.parse(cleaned);
+      if (typeof parsed !== 'object' || parsed === null) return defaultOpts;
+      
+      // Map the object values sequentially to ensure A,B,C,D keys exist
+      // regardless of what keys (e.g. 'a', 'b' or '1', '2') Vertex AI originally used
+      const values = Object.values(parsed);
+      return {
+        A: (values[0] as string) || '',
+        B: (values[1] as string) || '',
+        C: (values[2] as string) || '',
+        D: (values[3] as string) || ''
+      };
     } catch (e) {
-      return { A: '', B: '', C: '', D: '' };
+      return defaultOpts;
     }
   };
 
@@ -687,6 +729,42 @@ export default function PaperPreviewPage() {
     }
   };
 
+  // Safe Java OpenPDF Studio-Grade Answer Sheet Download Trigger
+  const handleDownloadAnswerSheet = async () => {
+    if (validation && !validation.isValid) {
+      alert('Answer Sheet Export Blocked: Paper validation failed:\n' + validation.errors.join('\n'));
+      return;
+    }
+    if (paper?.status !== 'APPROVED' && paper?.status !== 'EXPORTED' && paper?.status !== 'PUBLISHED' && paper?.status !== 'REVIEWED') {
+      alert('Answer Sheet Export Blocked: You must Approve the paper first to authorize PDF export.');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const dynamicFontSize = printLayoutMode === 'formal' ? 14 : 16;
+      // Pass layoutMode=answerKey to tell backend/headless browser to render the answer sheet
+      const response = await api.get(`/autota/papers/${paperId}/export/pdf?fontSize=${dynamicFontSize}&layoutMode=answerKey`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `studio-answer-sheet-${paperId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Failed to export Answer Sheet PDF:', err);
+      alert('Failed to download Answer Sheet: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const toggleQuestionRejection = (id: number) => {
     if (selectedRejectedIds.includes(id)) {
       setSelectedRejectedIds(selectedRejectedIds.filter(item => item !== id));
@@ -713,21 +791,21 @@ export default function PaperPreviewPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto text-slate-100 animate-in fade-in duration-300">
+    <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6 max-w-7xl mx-auto text-slate-100 animate-in fade-in duration-300">
       
       {/* Left 2 Columns: Workspace */}
-      <div className="lg:col-span-2 space-y-5">
+      <div className="lg:col-span-2 space-y-5 order-2 lg:order-1">
         
         {/* Navigation Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800/80 pb-4 no-print">
           <div>
-            <Link
-              href="/dashboard/instructor/auto-ta"
+            <button
+              onClick={() => router.back()}
               className="flex items-center gap-1 text-xs font-extrabold text-indigo-400 hover:text-indigo-300 transition-all cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              Auto-TA Dashboard
-            </Link>
+              Go Back
+            </button>
             <h2 className="text-xl sm:text-2xl font-black text-white mt-2.5">{paper.title}</h2>
             <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-300 font-semibold">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-indigo-300 font-bold">
@@ -1035,10 +1113,15 @@ export default function PaperPreviewPage() {
                               onChange={(e) => setEditQuestionType(e.target.value)}
                               className="w-full px-3 py-2 bg-slate-955 border border-slate-800 rounded-xl text-xs text-white focus:outline-none"
                             >
+                              {!['SHORT', 'MCQ', 'LONG', 'NUMERICAL', 'FILL_BLANK', 'TRUE_FALSE'].includes(editQuestionType) && (
+                                <option value={editQuestionType}>{editQuestionType.replace(/_/g, ' ')}</option>
+                              )}
                               <option value="SHORT">Short Answer Question</option>
                               <option value="MCQ">Multiple Choice (MCQ)</option>
                               <option value="LONG">Long Answer Question</option>
                               <option value="NUMERICAL">Numerical / Mathematical Formula</option>
+                              <option value="FILL_BLANK">Fill in the Blanks</option>
+                              <option value="TRUE_FALSE">True / False</option>
                             </select>
                           </div>
                           
@@ -1092,8 +1175,8 @@ export default function PaperPreviewPage() {
                           <div className="space-y-2">
                             <label className="text-[9px] font-extrabold uppercase tracking-wider text-slate-455">MCQ Options Builder</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-955 p-4 rounded-xl border border-slate-850">
-                              {['A', 'B', 'C', 'D'].map((key) => {
-                                const opts = parseOptionsObj(editOptions);
+                              {(['A', 'B', 'C', 'D'] as const).map((key) => {
+                                const opts = parseOptionsObj(editOptions) as Record<'A'|'B'|'C'|'D', string>;
                                 return (
                                   <div key={key} className="flex items-center gap-2">
                                     <span className="text-xs font-black text-indigo-400 w-4">{key}.</span>
@@ -1152,7 +1235,14 @@ export default function PaperPreviewPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <div className="text-xs sm:text-sm text-slate-100 font-medium leading-relaxed prose prose-invert max-w-none">
+                        <div 
+                          className="text-xs sm:text-sm text-slate-100 font-medium leading-relaxed prose prose-invert max-w-none max-sm:pointer-events-none sm:cursor-pointer sm:hover:bg-slate-800/40 p-2 -mx-2 rounded-lg transition-colors"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (paper.status !== 'APPROVED') startEditing(q);
+                          }}
+                          title="Click to edit (Desktop only)"
+                        >
                           <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
                             {q.questionText}
                           </ReactMarkdown>
@@ -1186,7 +1276,14 @@ export default function PaperPreviewPage() {
 
                         {/* Answer and explanations */}
                         {(q.correctAnswer || q.solutionSteps || q.learningOutcome || q.topic) && (
-                          <div className="bg-slate-955/45 border border-slate-900/65 rounded-xl p-3.5 mt-2 space-y-1.5 text-[11px] leading-relaxed">
+                          <div 
+                            className="bg-slate-955/45 border border-slate-900/65 rounded-xl p-3.5 mt-2 space-y-1.5 text-[11px] leading-relaxed max-sm:pointer-events-none sm:cursor-pointer sm:hover:border-indigo-500/50 sm:hover:bg-slate-900/60 transition-all"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (paper.status !== 'APPROVED') startEditing(q);
+                            }}
+                            title="Click to edit answer (Desktop only)"
+                          >
                             {q.correctAnswer && (
                               <p className="text-emerald-450 font-medium">
                                 <span className="font-extrabold text-slate-450 uppercase tracking-wider text-[9px] mr-1">Correct Answer:</span> {q.correctAnswer}
@@ -1206,7 +1303,7 @@ export default function PaperPreviewPage() {
                               </div>
                             )}
                             {(q.topic || q.learningOutcome) && (
-                              <div className="flex flex-wrap gap-x-4 pt-1 border-t border-slate-800/30 text-slate-500 font-semibold">
+                              <div className="flex flex-wrap gap-x-4 pt-1 border-t border-slate-800/30 text-slate-500 font-semibold mt-2">
                                 {q.topic && <span>Topic: {q.topic}</span>}
                                 {q.learningOutcome && <span>LO: {q.learningOutcome}</span>}
                               </div>
@@ -1218,7 +1315,7 @@ export default function PaperPreviewPage() {
 
                     {/* Inline Actions */}
                     {editingQuestionId !== q.id && paper.status !== 'APPROVED' && (
-                      <div className="flex items-center gap-2 pt-2.5 border-t border-slate-800/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-800/20 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         
                         <button
                           onClick={() => startEditing(q)}
@@ -1308,18 +1405,24 @@ export default function PaperPreviewPage() {
       </div>
 
       {/* Right Column: controls & Snapshot history */}
-      <SidebarControls
-        paper={paper}
-        calculatedTotalMarks={calculatedTotalMarks}
-        editTotalMarks={Number(editTotalMarks)}
-        validation={validation}
-        versions={versions}
-        actionLoading={actionLoading}
-        handleSaveDraft={() => handleSaveDraft()}
-        handleRecalculateMarks={handleRecalculateMarks}
-        handleApprove={handleApprove}
-        onOpenRevisionModal={() => setShowRevisionModal(true)}
-      />
+      <div className="order-1 lg:order-2">
+        <SidebarControls
+          paper={paper}
+          calculatedTotalMarks={calculatedTotalMarks}
+          editTotalMarks={Number(editTotalMarks)}
+          validation={validation}
+          versions={versions}
+          actionLoading={actionLoading}
+          handleSaveDraft={() => handleSaveDraft()}
+          handleRecalculateMarks={handleRecalculateMarks}
+          handleApprove={handleApprove}
+          onOpenRevisionModal={() => setShowRevisionModal(true)}
+          handleDownloadAnswerSheet={handleDownloadAnswerSheet}
+          handleToggleUnlock={() => {
+            if (paper) setPaper({ ...paper, status: 'DRAFT' });
+          }}
+        />
+      </div>
 
       {/* Revision Modal */}
       <RevisionModal

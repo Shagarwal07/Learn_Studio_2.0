@@ -156,7 +156,7 @@ export default function GenerationProgressPage() {
               className="shrink-0"
             >
               <Link
-                href={`/dashboard/instructor/auto-ta/preview/${paperId}`}
+                href={`/dashboard/auto-ta/preview/${paperId}`}
                 className="btn-premium flex items-center gap-1.5 px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-lg animate-bounce cursor-pointer"
               >
                 Proceed to Review

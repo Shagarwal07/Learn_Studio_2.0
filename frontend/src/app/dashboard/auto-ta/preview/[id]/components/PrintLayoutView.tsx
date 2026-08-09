@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Printer, Save, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,8 +12,8 @@ import { PaperDTO, DynamicSection } from './types';
 interface PrintLayoutViewProps {
   paper: PaperDTO;
   dynamicSections: DynamicSection[];
-  printLayoutMode: 'formal' | 'worksheet';
-  setPrintLayoutMode: (mode: 'formal' | 'worksheet') => void;
+  printLayoutMode: 'formal' | 'worksheet' | 'answerKey';
+  setPrintLayoutMode: (mode: 'formal' | 'worksheet' | 'answerKey') => void;
   handlePrintTrigger: () => void;
   handleDownloadDocx: () => void;
   handleDownloadStudioPdf?: () => void;
@@ -41,6 +41,15 @@ export function PrintLayoutView({
   editTotalMarks,
 }: PrintLayoutViewProps) {
   const [lineMultiplier, setLineMultiplier] = useState(1);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollPage = (direction: 1 | -1) => {
+    if (scrollContainerRef.current) {
+      // 297mm height is roughly 1122px at 96dpi
+      scrollContainerRef.current.scrollBy({ top: direction * 1122, behavior: 'smooth' });
+    }
+  };
+
   const printSizeMain = printLayoutMode === 'worksheet' ? 'print:!text-[16pt]' : 'print:!text-[14pt]';
   const printSizeSub = printLayoutMode === 'worksheet' ? 'print:!text-[14pt]' : 'print:!text-[12pt]';
 
@@ -54,26 +63,16 @@ export function PrintLayoutView({
           
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <span className="text-[11px] font-extrabold text-slate-300 mr-1">Layout Template:</span>
-            <button
-              onClick={() => setPrintLayoutMode('formal')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer border ${
-                printLayoutMode === 'formal'
-                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                  : 'bg-slate-955 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
+            <select
+              value={printLayoutMode}
+              onChange={(e) => setPrintLayoutMode(e.target.value as any)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-955 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer appearance-none pr-8 relative"
+              style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7rem top 50%', backgroundSize: '.65rem auto' }}
             >
-              📑 Compact Branded Extract (Formal Structure)
-            </button>
-            <button
-              onClick={() => setPrintLayoutMode('worksheet')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer border ${
-                printLayoutMode === 'worksheet'
-                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
-                  : 'bg-slate-955 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              📝 Practice Worksheet (Dynamic Spacing, Zero-Marks)
-            </button>
+              <option value="formal" className="bg-slate-900 text-slate-200">📑 Formal Extract</option>
+              <option value="worksheet" className="bg-slate-900 text-slate-200">📝 Practice Worksheet</option>
+              <option value="answerKey" className="bg-slate-900 text-slate-200">🔑 Answer Key</option>
+            </select>
             {printLayoutMode === 'worksheet' && (
               <div className="flex items-center gap-1 ml-2 xl:ml-4 border border-slate-700 bg-slate-900 rounded-lg overflow-hidden h-[30px]">
                 <button onClick={() => setLineMultiplier(Math.max(1, lineMultiplier - 1))} className="px-2.5 text-slate-400 hover:text-white hover:bg-slate-800 font-bold transition-all">-</button>
@@ -83,36 +82,37 @@ export function PrintLayoutView({
             )}
           </div>
         </div>
-        <div className="flex flex-wrap gap-2.5 self-start xl:self-auto">
+        <div className="flex flex-wrap gap-2 mt-3 xl:mt-0 xl:self-auto self-start">
           {handleDownloadStudioPdf && (
             <button
               onClick={handleDownloadStudioPdf}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0 shadow-lg shadow-rose-500/25"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-sm"
             >
-              <FileText className="w-4 h-4" />
-              Download Studio PDF (.pdf)
+              <FileText className="w-3.5 h-3.5" />
+              PDF
             </button>
           )}
           <button
             onClick={handlePrintTrigger}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0 shadow-lg shadow-indigo-500/25"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-sm"
           >
-            <Printer className="w-4 h-4" />
-            Browser Print Preview
+            <Printer className="w-3.5 h-3.5" />
+            Web View
           </button>
           <button
             onClick={handleDownloadDocx}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shrink-0 shadow-lg shadow-emerald-500/25"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-sm"
           >
-            <Save className="w-4 h-4" />
-            Download MS Word (.docx)
+            <Save className="w-3.5 h-3.5" />
+            Word
           </button>
         </div>
       </div>
 
       {/* A4 Container */}
-      <div className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 flex justify-center shadow-inner print-container">
-        <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-full max-w-[210mm] print:max-w-none print:w-[210mm] min-h-[297mm] block overflow-visible space-y-6 text-left relative select-text ${
+      <div className="relative group">
+        <div ref={scrollContainerRef} className="overflow-auto bg-slate-955/60 border border-slate-900 rounded-2xl p-4 sm:p-8 shadow-inner print-container max-h-[85vh]">
+        <div id="printable-exam-paper" className={`bg-white text-black font-serif rounded-none shadow-2xl mx-auto w-[210mm] min-w-[210mm] shrink-0 print:max-w-none print:w-[210mm] min-h-[297mm] h-fit block overflow-visible space-y-6 text-left relative select-text ${
           printLayoutMode === 'worksheet' ? 'p-8 sm:p-10 border-none' : 'p-9 sm:p-12 border-[5px] border-double border-black'
         }`}>
           
@@ -431,6 +431,41 @@ export function PrintLayoutView({
                             }
                             return null;
                           })()}
+                          {/* Answer Key Rendering */}
+                          {printLayoutMode === 'answerKey' && (
+                            <div className="w-full mt-4 bg-emerald-50/50 print:bg-transparent print:border-l-2 print:border-emerald-500 rounded-lg p-4 border border-emerald-500/20 text-[15px] sm:text-[16px]">
+                              {q.correctAnswer && (
+                                <div className="mb-3">
+                                  <span className="font-extrabold text-emerald-700 print:text-black uppercase tracking-widest text-[11px] block mb-1">Correct Answer</span>
+                                  <div className="prose prose-sm max-w-none text-black print-math-container">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                      {q.correctAnswer}
+                                    </ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+                              {q.solutionSteps && (
+                                <div className="mb-3">
+                                  <span className="font-extrabold text-emerald-700 print:text-black uppercase tracking-widest text-[11px] block mb-1">Solution / Explanation</span>
+                                  <div className="prose prose-sm max-w-none text-black print-math-container">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                      {q.solutionSteps}
+                                    </ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+                              {q.markingScheme && (
+                                <div>
+                                  <span className="font-extrabold text-emerald-700 print:text-black uppercase tracking-widest text-[11px] block mb-1">Marking Scheme</span>
+                                  <div className="prose prose-sm max-w-none text-black print-math-container">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                      {q.markingScheme}
+                                    </ReactMarkdown>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -451,6 +486,25 @@ export function PrintLayoutView({
             <span>GENERATED: {new Date(paper.createdAt).toLocaleString()}</span>
           </div>
         </div>
+      </div>
+        
+      {/* Floating Pagination Controls */}
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 no-print">
+        <button 
+          onClick={() => handleScrollPage(-1)}
+          className="w-10 h-10 rounded-full bg-slate-800 hover:bg-indigo-600 text-white flex items-center justify-center shadow-lg border border-slate-700 hover:border-indigo-500 transition-all cursor-pointer"
+          title="Previous Page"
+        >
+          <span className="text-xl leading-none -mt-1">↑</span>
+        </button>
+        <button 
+          onClick={() => handleScrollPage(1)}
+          className="w-10 h-10 rounded-full bg-slate-800 hover:bg-indigo-600 text-white flex items-center justify-center shadow-lg border border-slate-700 hover:border-indigo-500 transition-all cursor-pointer"
+          title="Next Page"
+        >
+          <span className="text-xl leading-none mt-1">↓</span>
+        </button>
+      </div>
       </div>
     </div>
   );

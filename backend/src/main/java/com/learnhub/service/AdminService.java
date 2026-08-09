@@ -37,8 +37,7 @@ public class AdminService {
     private final OnlineActivityLogRepository onlineActivityLogRepository;
     private final LessonProgressRepository lessonProgressRepository;
     private final ReviewRepository reviewRepository;
-    private final ReviewHistoryRepository reviewHistoryRepository;
-    private final PaperVersionRepository paperVersionRepository;
+
     private final NoteViewLogRepository noteViewLogRepository;
     private final UserIdentityProfileRepository userIdentityProfileRepository;
     private final PasswordEncoder passwordEncoder;
@@ -160,12 +159,6 @@ public class AdminService {
             }
             if (!announcementRepository.findByCreatedById(id).isEmpty()) {
                 throw new RuntimeException("This user has published announcements and cannot be deleted. Deactivate them instead.");
-            }
-            if (!reviewHistoryRepository.findByReviewedById(id).isEmpty()) {
-                throw new RuntimeException("This user has exam paper review history and cannot be deleted. Deactivate them instead.");
-            }
-            if (!paperVersionRepository.findByChangedById(id).isEmpty()) {
-                throw new RuntimeException("This user has changed exam paper versions and cannot be deleted. Deactivate them instead.");
             }
         }
     }
