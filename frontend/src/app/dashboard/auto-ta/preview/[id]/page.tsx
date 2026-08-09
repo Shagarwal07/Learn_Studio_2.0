@@ -199,9 +199,13 @@ export default function PaperPreviewPage() {
         }
       }
       
-      const versionsRes = await api.get(`/autota/papers/${paperId}/versions`);
-      if (versionsRes.data.success) {
-        setVersions(versionsRes.data.data);
+      try {
+        const versionsRes = await api.get(`/autota/papers/${paperId}/versions`);
+        if (versionsRes.data.success) {
+          setVersions(versionsRes.data.data);
+        }
+      } catch (versionErr) {
+        console.warn('Versions endpoint not yet implemented', versionErr);
       }
       
       await runBackendValidation();

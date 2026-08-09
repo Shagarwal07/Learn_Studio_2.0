@@ -365,9 +365,9 @@ public class AutoTaController {
 
         byte[] pdfBytes;
         try {
-            pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper), fontSize);
+            pdfBytes = pdfExportService.generatePdfWithHeadlessBrowser(editorService.toDTO(paper), accessToken, layoutMode);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("PDF Generation failed: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Headless PDF Generation failed: " + e.getMessage()));
         }
 
         return ResponseEntity.ok()
@@ -405,7 +405,57 @@ public class AutoTaController {
 
     @GetMapping("/papers/{id}/versions")
     public ResponseEntity<ApiResponse<List<PaperVersionDTO>>> getPaperVersions(@PathVariable Long id) {
-        return ResponseEntity.status(501).body(ApiResponse.error("Version history not implemented yet for Firestore."));
+        try {
+            GeneratedPaper paper = paperRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Paper not found"));
+
+            if (paper.getFirestoreDocumentId() == null) {
+                return ResponseEntity.ok(ApiResponse.success(new java.util.ArrayList<>()));
+            }
+
+            List<java.util.Map<String, Object>> versionMaps = firestoreService.getPaperVersions(paper.getFirestoreDocumentId());
+            List<PaperVersionDTO> dtoList = new java.util.ArrayList<>();
+            
+            // Map the Maps to DTOs
+            for (java.util.Map<String, Object> map : versionMaps) {
+                PaperVersionDTO dto = new PaperVersionDTO();
+                
+                // Firestore document id is a string, but DTO expects a Long
+                if (map.containsKey("id")) {
+                    String stringId = (String) map.get("id");
+                    dto.setId((long) stringId.hashCode());
+                }
+                dto.setPaperId(id);
+                
+                if (map.containsKey("changeDescription")) {
+                    dto.setChangeReason((String) map.get("changeDescription"));
+                }
+                if (map.containsKey("userId")) {
+                    dto.setChangedByName("User " + map.get("userId")); // Or fetch user details if available
+                }
+                
+                if (map.containsKey("timestamp")) {
+                    Object tsObj = map.get("timestamp");
+                    if (tsObj instanceof com.google.cloud.Timestamp) {
+                        java.time.Instant instant = java.time.Instant.ofEpochSecond(((com.google.cloud.Timestamp) tsObj).getSeconds());
+                        dto.setTimestamp(java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault()));
+                    } else if (tsObj instanceof java.util.Date) {
+                        dto.setTimestamp(((java.util.Date) tsObj).toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime());
+                    }
+                }
+                
+                if (map.containsKey("questions")) {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    dto.setQuestionsJson(mapper.writeValueAsString(map.get("questions")));
+                }
+
+                dtoList.add(dto);
+            }
+
+            return ResponseEntity.ok(ApiResponse.success(dtoList));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.error("Failed to fetch versions: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/requests/{id}/paper")

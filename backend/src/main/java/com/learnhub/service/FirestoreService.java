@@ -66,6 +66,27 @@ public class FirestoreService {
     }
 
     /**
+     * Fetches all snapshot versions from the versions sub-collection.
+     */
+    public java.util.List<Map<String, Object>> getPaperVersions(String documentId) throws Exception {
+        ApiFuture<com.google.cloud.firestore.QuerySnapshot> future = firestore
+            .collection("auto_ta_papers")
+            .document(documentId)
+            .collection("versions")
+            .orderBy("timestamp", com.google.cloud.firestore.Query.Direction.DESCENDING)
+            .get();
+            
+        com.google.cloud.firestore.QuerySnapshot snapshot = future.get();
+        java.util.List<Map<String, Object>> versions = new java.util.ArrayList<>();
+        for (com.google.cloud.firestore.QueryDocumentSnapshot doc : snapshot.getDocuments()) {
+            Map<String, Object> data = doc.getData();
+            data.put("id", doc.getId()); // Store the version ID
+            versions.add(data);
+        }
+        return versions;
+    }
+
+    /**
      * Helper to fetch questions as a list of GeneratedQuestionDTO.
      */
     public java.util.List<com.learnhub.dto.GeneratedQuestionDTO> getQuestionsForPaper(String documentId) {
