@@ -19,8 +19,10 @@ public class FirestoreService {
 
     @PostConstruct
     public void init() {
-        // Initializes Firestore with default credentials (ADC)
-        FirestoreOptions firestoreOptions = FirestoreOptions.getDefaultInstance().toBuilder().build();
+        // Initializes Firestore with custom database ID
+        FirestoreOptions firestoreOptions = FirestoreOptions.getDefaultInstance().toBuilder()
+                .setDatabaseId("auto-paper-gen")
+                .build();
         this.firestore = firestoreOptions.getService();
     }
 
