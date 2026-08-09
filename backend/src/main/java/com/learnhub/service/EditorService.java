@@ -6,17 +6,37 @@ import com.learnhub.entity.ExamRequest;
 import com.learnhub.entity.GeneratedPaper;
 import com.learnhub.repository.GeneratedPaperRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.annotation.PostConstruct;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EditorService {
 
     private final GeneratedPaperRepository paperRepository;
     private final FirestoreService firestoreService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @PostConstruct
+    @Transactional
+    public void init() {
+        try {
+            entityManager.createNativeQuery("ALTER TABLE generated_papers DROP CONSTRAINT IF EXISTS generated_papers_status_check").executeUpdate();
+            log.info("Dropped generated_papers_status_check constraint if it existed.");
+        } catch (Exception e) {
+            log.warn("Could not drop constraint on generated_papers: {}", e.getMessage());
+        }
+    }
 
     private static final List<Integer> ALLOWED_MARKS = Arrays.asList(1, 2, 3, 4, 5, 6, 8, 10, 12, 15);
 

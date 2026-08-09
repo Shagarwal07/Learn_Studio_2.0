@@ -114,6 +114,7 @@ public class VertexAiMultimodalProvider {
 
             // 1. Add Inline Multimodal Images (Vision OCR) FIRST (Google Best Practice)
             if (images != null) {
+                log.info("Processing {} multimodal images for Vertex AI request", images.size());
                 for (MultipartFile img : images) {
                     if (img != null && !img.isEmpty()) {
                         byte[] bytes = img.getBytes();
@@ -172,7 +173,7 @@ public class VertexAiMultimodalProvider {
 
             String rawText = textObj != null ? textObj.toString() : "";
             log.info("Vertex AI generation completed in {}ms, response length: {}", System.currentTimeMillis() - start, rawText.length());
-            log.debug("Vertex AI Raw Response JSON: \n{}", rawText);
+            log.info("Vertex AI Raw Response JSON: \n{}", rawText);
 
             return cleanJsonText(rawText);
 
