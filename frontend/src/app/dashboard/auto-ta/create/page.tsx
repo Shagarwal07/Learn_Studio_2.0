@@ -138,7 +138,12 @@ export default function CreateExamPage() {
         formData.append('images', img);
       });
 
-      const response = await api.post('/autota/requests/multimodal', formData);
+      const response = await api.post('/autota/requests/multimodal', formData, {
+        transformRequest: (data, headers) => {
+          delete headers['Content-Type'];
+          return data;
+        }
+      });
 
       const successData = response.data;
       if (successData.success && successData.data?.paperId) {
