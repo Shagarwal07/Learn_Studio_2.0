@@ -59,7 +59,7 @@ public class PromptSanitizerService {
                 visionPrompt.append("Instructor Note: ").append(input).append(".\n\n");
             }
             visionPrompt.append("[COGNITIVE FORCING: THE PRE-FLIGHT CHECK]\n");
-            visionPrompt.append("Before generating the output items, silently analyze the attached images and adhere to these structural checks:\n");
+            visionPrompt.append("Before generating the output items, silently analyze ALL of the attached images (there may be multiple pages). You MUST extract the exercises from EVERY SINGLE IMAGE provided. Do not stop after the first image.\n");
             visionPrompt.append("1. Identify the main category instruction headings (e.g., '1. Write the number which comes just before:', 'SECTION A: MULTIPLE CHOICE QUESTIONS').\n");
             visionPrompt.append("2. Identify all handwritten text, red ink marks, tick marks, and student solutions that must be completely eradicated and replaced with standardized blank input spaces (e.g., '______').\n\n");
             visionPrompt.append("[ARCHITECTURAL RULES FOR EXTRACTION]\n");
