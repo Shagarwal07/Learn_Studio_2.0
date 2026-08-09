@@ -112,9 +112,7 @@ public class VertexAiMultimodalProvider {
                     "  {\"questionText\":\"Derive Newton's second law of motion mathematically starting from the concept of rate of change of momentum. A braking force of 5000 N is applied to a car of mass 1000 kg moving at 20 m/s. Calculate the retardation produced and the time taken to bring the car to rest.\",\"questionType\":\"LONG_ANSWER\",\"options\":[],\"correctOption\":\"Retardation a = -5 m/s^2; Time t = 4 seconds.\",\"solutionExplanation\":\"Step 1: State F is proportional to dp/dt = m(v-u)/t = ma. Step 2: For calculation, use a = F/m = -5000/1000 = -5 m/s^2. Step 3: From v = u + at, 0 = 20 - 5t => t = 4 s.\",\"marks\":5,\"difficulty\":\"HARD\",\"bloomLevel\":\"Applying\",\"chapter\":\"Unit 1\",\"section\":\"SECTION_C\"}\n" +
                     "]\n");
 
-            partsList.add(Map.of("text", combinedText.toString()));
-
-            // 2. Add Inline Multimodal Images (Vision OCR)
+            // 1. Add Inline Multimodal Images (Vision OCR) FIRST (Google Best Practice)
             if (images != null) {
                 for (MultipartFile img : images) {
                     if (img != null && !img.isEmpty()) {
@@ -130,6 +128,9 @@ public class VertexAiMultimodalProvider {
                     }
                 }
             }
+
+            // 2. Add Text System Instructions & PDF RAG Text LAST
+            partsList.add(Map.of("text", combinedText.toString()));
 
             Map<String, Object> generationConfig = Map.of(
                     "maxOutputTokens", 8192,
@@ -171,6 +172,7 @@ public class VertexAiMultimodalProvider {
 
             String rawText = textObj != null ? textObj.toString() : "";
             log.info("Vertex AI generation completed in {}ms, response length: {}", System.currentTimeMillis() - start, rawText.length());
+            log.debug("Vertex AI Raw Response JSON: \n{}", rawText);
 
             return cleanJsonText(rawText);
 

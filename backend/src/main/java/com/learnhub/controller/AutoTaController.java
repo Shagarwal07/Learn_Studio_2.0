@@ -624,8 +624,13 @@ public class AutoTaController {
             if (rootNode.isArray()) {
                 for (com.fasterxml.jackson.databind.JsonNode node : rootNode) {
                     String qText = node.path("questionText").asText("");
+                    if (qText.isBlank()) qText = node.path("question").asText("");
+                    if (qText.isBlank()) qText = node.path("text").asText("");
+                    
                     String qType = node.path("questionType").asText("MCQ");
                     String correct = node.path("correctOption").hasNonNull("value") ? node.path("correctOption").asText() : node.path("correctAnswer").asText("");
+                    if (correct.isBlank()) correct = node.path("answer").asText("");
+                    if (correct.isBlank()) correct = node.path("solution").asText("");
                     if (correct.isBlank()) {
                         correct = hasUploadedImages ? "Answer provided in practice session." : "A";
                     }
