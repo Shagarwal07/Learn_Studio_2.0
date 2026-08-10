@@ -14,7 +14,7 @@ interface PrintLayoutViewProps {
   dynamicSections: DynamicSection[];
   printLayoutMode: 'formal' | 'worksheet' | 'answerKey';
   setPrintLayoutMode: (mode: 'formal' | 'worksheet' | 'answerKey') => void;
-  handlePrintTrigger: () => void;
+  handleDownloadPrettyPrintPdf: () => void;
   handleDownloadDocx: () => void;
   handleDownloadStudioPdf?: () => void;
   editTestType: string;
@@ -30,7 +30,7 @@ export function PrintLayoutView({
   dynamicSections,
   printLayoutMode,
   setPrintLayoutMode,
-  handlePrintTrigger,
+  handleDownloadPrettyPrintPdf,
   handleDownloadDocx,
   handleDownloadStudioPdf,
   editTestType,
@@ -93,11 +93,11 @@ export function PrintLayoutView({
             </button>
           )}
           <button
-            onClick={handlePrintTrigger}
+            onClick={handleDownloadPrettyPrintPdf}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold transition-all cursor-pointer shrink-0 shadow-sm"
           >
             <Printer className="w-3.5 h-3.5" />
-            Web View
+            Pretty print
           </button>
           <button
             onClick={handleDownloadDocx}
@@ -216,7 +216,7 @@ export function PrintLayoutView({
           ` }} />
 
           {/* Circular Watermark Logo (Only in Formal Exam Layout) */}
-          {printLayoutMode !== 'worksheet' && (
+          {printLayoutMode === 'worksheet' && (
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.035] pointer-events-none select-none z-0">
               <div className="w-[440px] h-[440px] rounded-full border-[8px] border-double border-black flex items-center justify-center relative">
                 <div className="w-[410px] h-[410px] rounded-full border-2 border-dashed border-black flex items-center justify-center">
@@ -240,7 +240,7 @@ export function PrintLayoutView({
           )}
 
           {/* Header */}
-          {printLayoutMode === 'worksheet' ? (
+          {printLayoutMode !== 'worksheet' ? (
             <div className="pb-1.5 relative z-10 w-full text-center">
               <h1 className="text-2xl sm:text-[28px] font-black tracking-wider uppercase text-black font-serif my-1 leading-none">
                 {editTestType && editTestType.length < 45 ? editTestType : 'R. K. COACHING CLASSES, BALOTRA'}
@@ -328,11 +328,10 @@ export function PrintLayoutView({
                 let isCompactGrid = false;
                 let gridClass = "space-y-3.5 pt-1.5";
                 if (!isMcqPresent && sec.questions.length >= 3) {
-                  if (avgLen <= 35) {
+                  // Only apply 2-column grid for very short single-word type questions (like antonyms, word meanings)
+                  if (avgLen <= 15) {
                     isCompactGrid = true;
                     gridClass = "grid grid-cols-2 gap-x-10 gap-y-4 pt-2.5 space-y-0";
-                  } else if (avgLen <= 70) {
-                    gridClass = "space-y-2.5 pt-2";
                   } else {
                     gridClass = "space-y-3.5 pt-2";
                   }
@@ -340,16 +339,25 @@ export function PrintLayoutView({
                   gridClass = "space-y-3.5 pt-2";
                 }
 
+                // Word Bank parsing logic
+                let cleanLabel = sec.displayLabel;
+                let wordBank = null;
+                const wbMatch = sec.displayLabel.match(/\(([^)]+)\)/) || sec.displayLabel.match(/\[([^\]]+)\]/);
+                if (wbMatch && (wbMatch[1].includes("/") || wbMatch[1].includes(","))) {
+                  wordBank = wbMatch[1];
+                  cleanLabel = sec.displayLabel.replace(wbMatch[0], "").trim();
+                }
+
                 return (
                   <div key={sec.key} className="space-y-2 print-section-container">
                     {printLayoutMode === 'worksheet' ? (
                       <div className={`text-left font-extrabold font-serif text-[18px] tracking-wide pt-2.5 pb-0.5 text-black flex items-center gap-2 print-section-header ${printSizeMain}`}>
-                        {!sec.displayLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-5 inline-block my-auto shrink-0" />}
-                        <span>{sec.displayLabel}</span>
+                        {!cleanLabel.trim().match(/^\d+\./) && <span className="border-l-[4px] border-black h-5 inline-block my-auto shrink-0" />}
+                        <span>{cleanLabel}</span>
                       </div>
                     ) : (
-                      <div className={`text-center font-bold font-serif text-[16px] tracking-wide pt-1.5 print-section-header ${printSizeMain}`}>
-                        <span className="underline uppercase font-extrabold">{sec.displayLabel}</span>
+                      <div className={`text-left font-bold font-serif text-[16px] tracking-wide pt-1.5 print-section-header ${printSizeMain}`}>
+                        <span className="underline uppercase font-extrabold">{cleanLabel}</span>
                         {Number(sec.totalMarks) > 0 && (
                           <span className="font-extrabold ml-1.5">
                             {sec.allSameMarks
@@ -358,6 +366,14 @@ export function PrintLayoutView({
                             }
                           </span>
                         )}
+                      </div>
+                    )}
+
+                    {wordBank && (
+                      <div className="flex flex-wrap gap-x-8 gap-y-3 justify-center border-2 border-black border-dashed py-3 px-8 mx-auto my-4 w-11/12">
+                        {wordBank.split(/[\/,]/).map((w, i) => (
+                          <span key={i} className="font-bold text-black tracking-widest text-[15px]">{w.trim()}</span>
+                        ))}
                       </div>
                     )}
 
@@ -388,7 +404,7 @@ export function PrintLayoutView({
                               const parsed = JSON.parse(q.options);
                               if (Array.isArray(parsed) && parsed.length === 0) return null;
                               return (
-                                <div className="grid grid-cols-2 w-full gap-x-12 gap-y-2 pl-8 pt-1 text-black print-mcq-options">
+                                <div className={printLayoutMode === 'worksheet' ? "grid grid-cols-2 w-full gap-x-12 gap-y-2 pl-8 pt-1 text-black print-mcq-options" : "flex flex-wrap w-full gap-x-10 gap-y-2 pl-8 pt-1 text-black print-mcq-options"}>
                                   {Object.entries(parsed).map(([key, val], optIdx) => {
                                     const stdLabel = ['a', 'b', 'c', 'd', 'e', 'f'][optIdx] || key.toLowerCase();
                                     return (

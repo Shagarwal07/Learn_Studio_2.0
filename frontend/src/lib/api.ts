@@ -86,10 +86,8 @@ api.interceptors.response.use(
           } catch (logoutError) {
             // Ignore logout errors during forceful redirect
           }
-          // DO NOT redirect if already on login page to avoid infinite loop
-          if (!window.location.pathname.includes('/login')) {
-            window.location.href = '/login?expired=true';
-          }
+          // DO NOT forcefully redirect. Instead, dispatch an event to decouple from routing.
+          window.dispatchEvent(new Event('session-expired'));
         }
         return Promise.reject(refreshError);
       }

@@ -161,7 +161,6 @@ public class ManagerService {
                                     if (verifyResult.isCritical()) {
                                         q.setAgentType("CRITICAL_AUDIT_FAILED");
                                         logAgent(request, "AUDITOR", AgentExecutionLog.Status.FAILED, 0L, "CRITICAL Audit failure isolated: " + verifyResult.getRejectionReason());
-                                        System.err.println("⚠️ CRITICAL Audit failed for question but isolating failure. Reason: " + verifyResult.getRejectionReason());
                                     } else {
                                         q.setAgentType("AUDIT_WARNING");
                                         logAgent(request, "AUDITOR", AgentExecutionLog.Status.FAILED, 0L, "Audit warning: " + verifyResult.getRejectionReason());
@@ -169,7 +168,6 @@ public class ManagerService {
                                 }
                             } catch (Exception processEx) {
                                 logAgent(request, "PIPELINE", AgentExecutionLog.Status.FAILED, 0L, "Agent crash isolated: " + processEx.getMessage());
-                                System.err.println("⚠️ Pipeline Agent completely crashed for question. Isolating failure to prevent section wipeout: " + processEx.getMessage());
                                 q.setQualityStatus("COMPLETED_WITH_WARNINGS");
                                 q.setAgentType("AGENT_CRASH_FALLBACK");
                             }

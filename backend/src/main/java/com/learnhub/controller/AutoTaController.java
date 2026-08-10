@@ -94,7 +94,6 @@ public class AutoTaController {
             } catch (Exception e) {
                 savedRequest.setStatus(ExamRequest.Status.FAILED);
                 examRequestRepository.save(savedRequest);
-                System.err.println("Auto-TA multi-agent pipeline failed: " + e.getMessage());
             }
         });
 
@@ -344,7 +343,7 @@ public class AutoTaController {
     }
 
     @GetMapping("/papers/{id}/export/pdf")
-    public ResponseEntity<?> exportPdf(@PathVariable Long id, @RequestParam(required = false, defaultValue = "11") Integer fontSize, @CookieValue(name = "access_token", required = false) String accessToken, @RequestParam(required = false, defaultValue = "worksheet") String layoutMode) {
+    public ResponseEntity<?> exportPdf(@PathVariable Long id, @RequestParam(required = false, defaultValue = "11") Integer fontSize, @CookieValue(name = "access_token", required = false) String accessToken, @RequestParam(required = false, defaultValue = "worksheet") String layoutMode, @RequestParam(required = false, defaultValue = "false") boolean useNative) {
         GeneratedPaper paper = paperRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Paper not found"));
 
@@ -364,10 +363,20 @@ public class AutoTaController {
         }
 
         byte[] pdfBytes;
-        try {
-            pdfBytes = pdfExportService.generatePdfWithHeadlessBrowser(editorService.toDTO(paper), accessToken, layoutMode);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("Headless PDF Generation failed: " + e.getMessage()));
+        if (useNative) {
+            try {
+                pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper), fontSize);
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body(ApiResponse.error("Native PDF Generation failed: " + e.getMessage()));
+            }
+        } else {
+            try {
+                pdfBytes = pdfExportService.generatePdfWithHeadlessBrowser(editorService.toDTO(paper), accessToken, layoutMode);
+            } catch (Exception e) {
+                System.err.println("GCP PDF EXPORT FAILED: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.internalServerError().body(ApiResponse.error("Headless PDF Generation failed: " + e.getMessage()));
+            }
         }
 
         return ResponseEntity.ok()
@@ -386,7 +395,8 @@ public class AutoTaController {
     @PostMapping("/papers/{id}/questions/{questionId}/regenerate")
     public ResponseEntity<ApiResponse<GeneratedPaperDTO>> regenerateQuestion(
             @PathVariable Long id, @PathVariable Long questionId, Principal principal) {
-        return ResponseEntity.status(501).body(ApiResponse.error("Regenerate single question not implemented yet for Firestore."));
+        GeneratedPaperDTO result = reviewService.regenerateQuestion(id, questionId, principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(result, "Question successfully regenerated."));
     }
 
     @PutMapping("/papers/{id}/questions/{questionId}")
@@ -468,72 +478,7 @@ public class AutoTaController {
         return ResponseEntity.ok(ApiResponse.success(dto, "Generated paper retrieved"));
     }
 
-    @PreAuthorize("permitAll()")
-    @GetMapping("/test/mock-generation")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> testMockGeneration() {
-        Map<String, Object> response = new HashMap<>();
-        try {
-            ExamRequest req = ExamRequest.builder()
-                .subject("Science")
-                .course("Grade 10")
-                .syllabus("Force and Laws of Motion")
-                .marks(10)
-                .totalQuestions(5)
-                .difficulty("MEDIUM")
-                .questionPattern("Standard")
-                .status(ExamRequest.Status.PENDING)
-                .build();
-            ExamRequest saved = examRequestRepository.save(req);
-            
-            User user = userRepository.findAll().stream().findFirst().orElseThrow(() -> new RuntimeException("No users in DB for test"));
-            
-            GeneratedPaper paper = managerService.generateExamPaper(saved, user.getId());
-            
-            response.put("status", "SUCCESS");
-            response.put("paperGenerated", paper != null);
-            List<com.learnhub.dto.GeneratedQuestionDTO> questions = paper != null ? firestoreService.getQuestionsForPaper(paper.getFirestoreDocumentId()) : new ArrayList<>();
-            response.put("questionsGenerated", questions != null ? questions.size() : 0);
-            
-            byte[] docx = docxExportService.generateDocx(editorService.toDTO(paper));
-            response.put("docxExportReady", docx != null && docx.length > 0);
-            
-            return ResponseEntity.ok(ApiResponse.success(response, "Mock generation successful"));
-        } catch (Exception e) {
-            response.put("status", "FAILED");
-            response.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error("Mock generation failed: " + e.getMessage()));
-        }
-    }
 
-    @PreAuthorize("permitAll()")
-    @GetMapping("/test/vertex")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> testVertexGeneration() {
-        Map<String, Object> response = new HashMap<>();
-        try {
-            com.learnhub.entity.User user = userRepository.findAll().stream().findFirst().orElseThrow(() -> new RuntimeException("No users in DB for test"));
-            String prompt = "Return only this JSON: [{\"slotIndex\":0,\"questionText\":\"Test question?\",\"questionType\":\"SHORT\",\"chapter\":\"Test\",\"topic\":\"Test\",\"options\":[]}]";
-            
-            String rawResponse = vertexAiProvider.ask(prompt, null);
-            
-            String cleaned = com.learnhub.util.AiJsonParser.extractJson(rawResponse);
-            com.fasterxml.jackson.databind.ObjectMapper mapper = com.learnhub.util.AiJsonParser.getMapper();
-            Object parsed = mapper.readValue(cleaned, Object.class);
-            
-            response.put("provider", "vertex");
-            response.put("model", "gemini-2.5-flash");
-            response.put("success", true);
-            response.put("rawResponse", rawResponse);
-            response.put("parsedSuccessfully", parsed != null);
-            
-            return ResponseEntity.ok(ApiResponse.success(response, "Vertex AI test successful"));
-        } catch (Exception e) {
-            response.put("provider", "vertex");
-            response.put("model", "gemini-2.5-flash");
-            response.put("success", false);
-            response.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error("Vertex AI test failed: " + e.getMessage()));
-        }
-    }
 
     @GetMapping("/bucket-materials")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getBucketMaterials(

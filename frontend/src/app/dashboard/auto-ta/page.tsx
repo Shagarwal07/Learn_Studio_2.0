@@ -42,7 +42,8 @@ export default function AutoTaDashboard() {
     queryKey: ['autota-papers', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const response = await api.get(`/autota/papers?instructorId=${user.id}`);
+      const url = user.role === 'ADMIN' ? `/autota/papers` : `/autota/papers?instructorId=${user.id}`;
+      const response = await api.get(url);
       return response.data.success ? response.data.data : [];
     },
     enabled: !!user?.id

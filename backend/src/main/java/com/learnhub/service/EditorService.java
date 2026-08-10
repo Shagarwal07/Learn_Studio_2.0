@@ -45,25 +45,20 @@ public class EditorService {
         // 1. Sort questions dynamically into sections
         Map<String, List<GeneratedQuestionDTO>> sectionMap = new TreeMap<>();
         for (GeneratedQuestionDTO dto : allQuestions) {
-            String sec = dto.getSection();
-            if (sec == null || sec.isBlank()) {
-                sec = "SECTION_A";
-                dto.setSection(sec);
-            } else {
-                sec = sec.toUpperCase().trim().replace(" ", "_");
-                if (!sec.startsWith("SECTION_")) {
-                    sec = sec.startsWith("SEC_") ? sec.replace("SEC_", "SECTION_") : "SECTION_" + sec;
-                }
-                dto.setSection(sec);
-            }
+            String sec = sanitizeSection(dto.getSection(), dto.getQuestionType());
+            dto.setSection(sec);
             sectionMap.computeIfAbsent(sec, k -> new ArrayList<>()).add(dto);
         }
 
         // 2. Set question order within each section
         List<GeneratedQuestionDTO> sortedList = new ArrayList<>();
+        long tempIdCounter = System.currentTimeMillis();
         for (List<GeneratedQuestionDTO> list : sectionMap.values()) {
             for (int i = 0; i < list.size(); i++) {
                 list.get(i).setQuestionOrder(i + 1);
+                if (list.get(i).getId() == null) {
+                    list.get(i).setId(tempIdCounter++);
+                }
             }
             sortedList.addAll(list);
         }
@@ -74,15 +69,13 @@ public class EditorService {
         for (GeneratedQuestionDTO dto : sortedList) {
             String origText = dto.getQuestionText() != null ? dto.getQuestionText().trim() : "Question";
             String normText = origText.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "");
-            String finalText = origText;
             int varCount = 2;
             while (seenTexts.contains(normText)) {
-                finalText = origText + " (Variation " + varCount + ")";
-                normText = finalText.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "");
+                normText = origText.toLowerCase().replaceAll("[^a-zA-Z0-9]+", "") + varCount;
                 varCount++;
             }
             seenTexts.add(normText);
-            dto.setQuestionText(finalText);
+            dto.setQuestionText(origText);
             finalQuestions.add(dto);
         }
 
@@ -98,7 +91,15 @@ public class EditorService {
             Map<String, Object> firestorePayload = new HashMap<>();
             firestorePayload.put("title", String.format("Final Exam: %s (%s)", request.getCourse(), request.getSubject()));
             firestorePayload.put("totalMarks", finalTotalMarks);
-            firestorePayload.put("questions", finalQuestions);
+            
+            // Fix Firestore serialization bug by explicitly converting POJOs to Maps using Jackson
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.List<Map<String, Object>> questionsMapList = mapper.convertValue(
+                finalQuestions, 
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<Map<String, Object>>>() {}
+            );
+            firestorePayload.put("questions", questionsMapList);
+            
             firestoreId = firestoreService.savePaper(firestorePayload);
         } catch (Exception e) {
             throw new RuntimeException("Failed to save paper to Firestore", e);
@@ -142,19 +143,7 @@ public class EditorService {
         return errors;
     }
 
-    public List<GeneratedQuestionDTO> fetchQuestionsForClient(GeneratedPaper paper) {
-        try {
-            Map<String, Object> doc = firestoreService.getPaper(paper.getFirestoreDocumentId());
-            if (doc != null && doc.containsKey("questions")) {
-                // In a real app, use ObjectMapper to safely convert the nested list back to DTOs
-                return (List<GeneratedQuestionDTO>) doc.get("questions");
-            }
-        } catch (Exception e) {
-            // log error
-        }
-        return new ArrayList<>();
-    }
-    
+
     public GeneratedPaperDTO toDTO(GeneratedPaper paper) {
         GeneratedPaperDTO dto = GeneratedPaperDTO.builder()
                 .id(paper.getId())
@@ -166,6 +155,11 @@ public class EditorService {
                 .build();
         
         List<GeneratedQuestionDTO> qs = firestoreService.getQuestionsForPaper(paper.getFirestoreDocumentId());
+        if (qs != null) {
+            for (GeneratedQuestionDTO q : qs) {
+                q.setSection(sanitizeSection(q.getSection(), q.getQuestionType()));
+            }
+        }
         dto.setQuestions(qs);
         
         if (paper.getExamRequest() != null) {
@@ -173,5 +167,28 @@ public class EditorService {
             dto.setCourse(paper.getExamRequest().getCourse());
         }
         return dto;
+    }
+
+    private String sanitizeSection(String sec, String qType) {
+        if (sec == null || sec.isBlank()) return "SECTION_A";
+        
+        boolean hasWordBank = sec.contains("(") && sec.contains(")");
+        int maxLength = hasWordBank ? 100 : 35;
+        int maxWords = hasWordBank ? 15 : 6;
+        
+        // If the section looks like a hallucinated question text
+        if (sec.length() > maxLength || sec.contains("?") || sec.split("\\s+").length > maxWords || sec.split("_").length > maxWords) {
+            if ("MCQ".equalsIgnoreCase(qType) || "TRUE_FALSE".equalsIgnoreCase(qType) || "FILL_BLANK".equalsIgnoreCase(qType) || "FILL_IN_THE_BLANK".equalsIgnoreCase(qType)) {
+                return "SECTION_OBJECTIVE_QUESTIONS";
+            } else {
+                return "SECTION_ANSWER_THE_FOLLOWING_QUESTIONS";
+            }
+        }
+        
+        sec = sec.toUpperCase().trim().replace(" ", "_");
+        if (!sec.startsWith("SECTION_")) {
+            sec = sec.startsWith("SEC_") ? sec.replace("SEC_", "SECTION_") : "SECTION_" + sec;
+        }
+        return sec;
     }
 }

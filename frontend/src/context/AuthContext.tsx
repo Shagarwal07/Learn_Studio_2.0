@@ -67,6 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, []);
 
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      localStorage.removeItem('cached_user');
+      setUser(null);
+    };
+    window.addEventListener('session-expired', handleSessionExpired);
+    return () => window.removeEventListener('session-expired', handleSessionExpired);
+  }, []);
+
   const login = (userDetails: User) => {
     localStorage.setItem('cached_user', JSON.stringify(userDetails));
     setUser(userDetails);

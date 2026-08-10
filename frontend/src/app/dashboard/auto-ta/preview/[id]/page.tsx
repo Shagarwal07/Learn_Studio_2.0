@@ -66,11 +66,6 @@ export function calculateSectionTotals(questions: QuestionDTO[]) {
         'MCQ': 'Multiple Choice Questions',
         'FILL_IN_THE_BLANK': 'Fill in the Blanks',
         'ASSERTION_REASON': 'Assertion & Reason Questions',
-        'VERY_SHORT_ANSWER': 'Very Short Answer Type Questions',
-        'SHORT_ANSWER': 'Short Answer Type Questions',
-        'SHORT': 'Short Answer Type Questions',
-        'LONG_ANSWER': 'Long Answer Type Questions',
-        'LONG': 'Long Answer Type Questions',
         'CASE_STUDY': 'Case Study & Competency Questions',
         'NUMERICAL': 'Numerical & Problem Solving',
         'TRUE_FALSE': 'True / False Questions'
@@ -178,6 +173,11 @@ export default function PaperPreviewPage() {
       const paperRes = await api.get(`/autota/papers/${paperId}`);
       if (paperRes.data.success) {
         const p = paperRes.data.data as PaperDTO;
+        if (p.questions) {
+          p.questions.forEach((q, idx) => {
+            if (!q.id) q.id = -Date.now() - idx; // fallback for legacy papers without IDs
+          });
+        }
         setPaper(p);
         setEditTitle(p.title || '');
         setEditClass(p.course || '');
@@ -639,30 +639,64 @@ export default function PaperPreviewPage() {
     }
   };
 
-  // Safe Print Trigger
-  const handlePrintTrigger = async () => {
+  // Native Java PDF Download Trigger (Pretty Print)
+  const handleDownloadPrettyPrintPdf = async () => {
     if (validation && !validation.isValid) {
-      alert('Print Blocked: Paper validation failed:\n' + validation.errors.join('\n'));
+      alert('Pretty Print Blocked: Paper validation failed:\n' + validation.errors.join('\n'));
       return;
     }
-    if (paper?.status !== 'APPROVED' && paper?.status !== 'EXPORTED' && paper?.status !== 'PUBLISHED') {
-      alert('Print Blocked: You must Approve the paper first to authorize PDF generation/printing.');
+    if (paper?.status !== 'APPROVED' && paper?.status !== 'EXPORTED' && paper?.status !== 'PUBLISHED' && paper?.status !== 'REVIEWED') {
+      alert('Pretty Print Blocked: You must Approve the paper first to authorize PDF generation.');
       return;
     }
 
     try {
-      await api.put(`/autota/papers/${paperId}`, {
-        ...paper,
-        status: 'EXPORTED'
+      setActionLoading(true);
+      const dynamicFontSize = printLayoutMode === 'formal' ? 14 : 16;
+      const response = await api.get(`/autota/papers/${paperId}/export/pdf?fontSize=${dynamicFontSize}&useNative=true`, {
+        responseType: 'blob'
       });
-      if (paper) {
-        setPaper({ ...paper, status: 'EXPORTED' });
-      }
-    } catch (e) {
-      console.warn('Could not transition status to EXPORTED:', e);
-    }
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `pretty-print-paper-${paperId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-    window.print();
+      // Transition status to EXPORTED
+      try {
+        await api.put(`/autota/papers/${paperId}`, {
+          ...paper,
+          status: 'EXPORTED'
+        });
+        if (paper) {
+          setPaper({ ...paper, status: 'EXPORTED' });
+        }
+      } catch (e) {
+        console.warn('Could not transition status to EXPORTED:', e);
+      }
+
+    } catch (err: any) {
+      console.error('Failed to export Pretty Print PDF:', err);
+      let errorMessage = err.message;
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          errorMessage = json.message || errorMessage;
+        } catch (e) {
+        }
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      alert('Failed to download Pretty Print PDF: ' + errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Safe POI Word (.docx) Document Download Trigger
@@ -728,7 +762,19 @@ export default function PaperPreviewPage() {
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error('Failed to export Studio PDF:', err);
-      alert('Failed to download Studio PDF: ' + (err.response?.data?.message || err.message));
+      let errorMessage = err.message;
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          errorMessage = json.message || errorMessage;
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      alert('Failed to download Studio PDF: ' + errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -1395,7 +1441,7 @@ export default function PaperPreviewPage() {
             dynamicSections={dynamicSections}
             printLayoutMode={printLayoutMode}
             setPrintLayoutMode={setPrintLayoutMode}
-            handlePrintTrigger={handlePrintTrigger}
+            handleDownloadPrettyPrintPdf={handleDownloadPrettyPrintPdf}
             handleDownloadDocx={handleDownloadDocx}
             handleDownloadStudioPdf={handleDownloadStudioPdf}
             editTestType={editTestType}
