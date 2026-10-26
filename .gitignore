@@ -17,6 +17,7 @@ backend/target/
 application-prod.properties
 application-secrets.properties
 resources/google-credentials.json
+gcp-pdf-generator/
 
 # OS files
 .DS_Store

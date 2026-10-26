@@ -363,20 +363,10 @@ public class AutoTaController {
         }
 
         byte[] pdfBytes;
-        if (useNative) {
-            try {
-                pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper), fontSize);
-            } catch (Exception e) {
-                return ResponseEntity.internalServerError().body(ApiResponse.error("Native PDF Generation failed: " + e.getMessage()));
-            }
-        } else {
-            try {
-                pdfBytes = pdfExportService.generatePdfWithHeadlessBrowser(editorService.toDTO(paper), accessToken, layoutMode);
-            } catch (Exception e) {
-                System.err.println("GCP PDF EXPORT FAILED: " + e.getMessage());
-                e.printStackTrace();
-                return ResponseEntity.internalServerError().body(ApiResponse.error("Headless PDF Generation failed: " + e.getMessage()));
-            }
+        try {
+            pdfBytes = pdfExportService.generatePdf(editorService.toDTO(paper), fontSize);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.error("PDF Generation failed: " + e.getMessage()));
         }
 
         return ResponseEntity.ok()

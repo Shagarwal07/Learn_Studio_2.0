@@ -6,7 +6,6 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import com.lowagie.text.pdf.draw.LineSeparator;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
 import java.io.ByteArrayOutputStream;
 import java.awt.Color;
 import java.util.List;
@@ -14,48 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class PdfExportService {
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Value("${gcp.pdf.generator.url:http://localhost:8081/generatePdf}")
-    private String gcpPdfGeneratorUrl;
-
-    @Value("${frontend.base.url:http://localhost:3000}")
-    private String frontendBaseUrl;
-
-    public byte[] generatePdfWithHeadlessBrowser(GeneratedPaperDTO paper, String token, String layoutMode) throws Exception {
-        String targetUrl = frontendBaseUrl + "/dashboard/auto-ta/preview/" + paper.getId();
-        
-        java.util.Map<String, String> requestBody = new java.util.HashMap<>();
-        requestBody.put("url", targetUrl);
-        if (token != null) {
-            requestBody.put("token", token);
-        }
-        if (layoutMode != null) {
-            requestBody.put("layoutMode", layoutMode);
-        }
-
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
-
-        java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
-        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                .uri(java.net.URI.create(gcpPdfGeneratorUrl))
-                .header("Content-Type", "application/json")
-                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(jsonBody))
-                .build();
-
-        java.net.http.HttpResponse<byte[]> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("GCP Function returned error: " + new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
-        }
-
-        return response.body();
-    }
 
     public byte[] generatePdf(GeneratedPaperDTO paper, Integer customFontSize) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {

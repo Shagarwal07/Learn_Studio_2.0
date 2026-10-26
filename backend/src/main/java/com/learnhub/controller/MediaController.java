@@ -2,14 +2,11 @@ package com.learnhub.controller;
 
 import com.learnhub.dto.ApiResponse;
 import com.learnhub.service.GoogleCloudStorageService;
-import com.learnhub.repository.NoteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
-import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/media")
@@ -17,7 +14,6 @@ import java.util.HashMap;
 public class MediaController {
 
     private final GoogleCloudStorageService gcsService;
-    private final NoteRepository noteRepository;
 
     @PostMapping("/upload")
     public ResponseEntity<ApiResponse<Map<String, String>>> upload(
@@ -33,25 +29,6 @@ public class MediaController {
                 "File uploaded successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("File upload failed: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/debug-sync")
-    @PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> debugSync() {
-        try {
-            long databaseNotesCount = noteRepository.count();
-            int gcsAssetsCount = -1; // Not supported directly in GCS without iteration
-
-            Map<String, Object> stats = new HashMap<>();
-            stats.put("databaseNotesCount", databaseNotesCount);
-            stats.put("gcsAssetsCount", gcsAssetsCount);
-            stats.put("status", "Synchronized");
-            stats.put("message", "Note: Asset count not supported directly for GCS.");
-
-            return ResponseEntity.ok(ApiResponse.success(stats, "Debug sync report compiled successfully"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Debug sync failed: " + e.getMessage()));
         }
     }
 }
